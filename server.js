@@ -308,27 +308,49 @@ async function enrichFromRecords(id, meter, token) {
 /* ------------------------------- Daraja ------------------------------- */
 
 let darajaTok = { value: null, exp: 0 };
-async function darajaToken() {
-  if (darajaTok.value && Date.now() < darajaTok.exp) return darajaTok.value;
-  const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
-  const r = await fetch(`${DARAJA}/oauth/v1/generate?grant_type=client_credentials`, {
-    headers: { Authorization: `Basic ${auth}` },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!r.ok) throw new Error(`Daraja auth failed (${r.status})`);
-  const j = await r.json();
-  darajaTok = { value: j.access_token, exp: Date.now() + (Number(j.expires_in) - 60) * 1000 };
-  return darajaTok.value;
+let darajaTokenFlight = null;
+async function darajaToken(forceRefresh = false) {
+  if (!forceRefresh && darajaTok.value && Date.now() < darajaTok.exp) return darajaTok.value;
+  // Share concurrent OAuth requests: repeated token generation can invalidate an
+  // access token another in-flight Daraja request is using.
+  if (darajaTokenFlight) return darajaTokenFlight;
+  darajaTokenFlight = (async () => {
+    const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
+    const r = await fetch(`${DARAJA}/oauth/v1/generate?grant_type=client_credentials`, {
+      headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(15000),
+    });
+    const raw = await r.text();
+    let j; try { j = JSON.parse(raw); } catch { throw new Error(`Daraja OAuth returned non-JSON HTTP ${r.status}`); }
+    if (!r.ok || !j.access_token) throw new Error(`Daraja auth failed (${r.status}): ${j.error_description || j.errorMessage || 'OAuth rejected'}`);
+    const lifetime = Math.max(60, Number(j.expires_in) || 3600);
+    darajaTok = { value: j.access_token, exp: Date.now() + (lifetime - 120) * 1000 };
+    return darajaTok.value;
+  })();
+  try { return await darajaTokenFlight; } finally { darajaTokenFlight = null; }
 }
 
 async function darajaPost(apiPath, body) {
-  const r = await fetch(`${DARAJA}${apiPath}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${await darajaToken()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000),
-  });
-  return r.json();
+  const send = async (token) => {
+    const r = await fetch(`${DARAJA}${apiPath}`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(30000),
+    });
+    const raw = await r.text();
+    let payload; try { payload = JSON.parse(raw); } catch { throw new Error(`Daraja ${apiPath} returned non-JSON HTTP ${r.status}`); }
+    return { response: r, payload };
+  };
+  let result = await send(await darajaToken());
+  const details = JSON.stringify(result.payload);
+  // Retry only explicit auth rejection; never replay an ambiguous payment POST.
+  if (result.response.status === 401 || /invalid access token|access token.*expired|invalid token/i.test(details)) {
+    darajaTok = { value: null, exp: 0 };
+    result = await send(await darajaToken(true));
+  }
+  if (!result.response.ok) {
+    const msg = result.payload.errorMessage || result.payload.ResponseDescription || result.payload.error_description || `HTTP ${result.response.status}`;
+    const error = new Error(`Daraja ${apiPath} rejected: ${msg}`); error.definitive = true; throw error;
+  }
+  return result.payload;
 }
 
 const stkPassword = (t) => Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${t}`).toString('base64');
@@ -593,9 +615,17 @@ app.post('/api/pay', requireUser, requireReady, payLimit, wrap(async (req, res) 
   try {
     stk = await stkPush({ amount, phone, meter });
   } catch (e) {
-    await pool.query(`UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1`,
-      [id, `stk push error: ${e.message}`]);
-    return res.status(502).json({ ok: false, message: 'We could not reach M-Pesa. Try again in a moment.' });
+    if (e.definitive) {
+      await pool.query(`UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1`,
+        [id, `STK request rejected: ${e.message}`]);
+      return res.status(502).json({ ok: false, message: 'M-Pesa rejected the payment request. Please check the number and try again.' });
+    }
+    // A network break after submitting the POST is ambiguous: Safaricom may
+    // already have accepted the prompt. Never mark it failed or invite a duplicate.
+    await pool.query(`UPDATE transactions SET status='NEEDS_REVIEW', last_error=$2, updated_at=now() WHERE id=$1`,
+      [id, `STK submission outcome unknown: ${e.message}`]);
+    log('STK_SUBMISSION_UNKNOWN', id, e.message);
+    return res.status(202).json({ ok: true, transactionId: id, pending: true, message: 'We are checking whether M-Pesa received your request. Please do not try again yet.' });
   }
 
   if (String(stk.ResponseCode) !== '0') {
