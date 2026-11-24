@@ -446,12 +446,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 
-const lightLimit = rateLimit({ windowMs: 60000, max: 40 });
-const loginLimit = rateLimit({ windowMs: 10 * 60000, max: 20 });
+const lightLimit = rateLimit({ windowMs: 60000, max: 40, namespace: 'quote' });
+const loginLimit = rateLimit({ windowMs: 10 * 60000, max: 20, namespace: 'login' });
 const byUser = (req) => (req.user ? req.user.id : req.ip);
-const pollLimit = rateLimit({ windowMs: 60000, max: 120, key: byUser });
-const payLimit = rateLimit({ windowMs: 10 * 60000, max: 6, key: byUser });
-const adminLimit = rateLimit({ windowMs: 60000, max: 120 });
+const pollLimit = rateLimit({ windowMs: 60000, max: 120, key: byUser, namespace: 'poll' });
+const payLimit = rateLimit({ windowMs: 10 * 60000, max: 6, key: byUser, namespace: 'payment' });
+const adminLimit = rateLimit({ windowMs: 60000, max: 120, namespace: 'admin' });
 
 // What the pages need to know before they start
 app.get('/api/config', (_req, res) => {
@@ -660,23 +660,26 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
     }
 
     const items = Object.fromEntries(((cb.CallbackMetadata || {}).Item || []).map((i) => [i.Name, i.Value]));
-    const receipt = items.MpesaReceiptNumber;
+    const receipt = String(items.MpesaReceiptNumber || '');
     const paid = Number(items.Amount);
+    if (!/^[A-Z0-9]{8,16}$/.test(receipt) || !Number.isSafeInteger(paid) || paid <= 0) {
+      log('callback rejected: missing or invalid receipt metadata', checkoutId);
+      return;
+    }
 
-    // Idempotent claim: a retried callback finds status != PENDING_PAYMENT and does nothing
+    // A successful STK Query can confirm payment before the callback arrives, but
+    // it does not provide the receipt. Only this callback may attach the receipt
+    // and release the transaction for Hydro token issuance.
     const claim = await pool.query(
       `UPDATE transactions
           SET status = CASE WHEN amount = $3 THEN 'PAID' ELSE 'NEEDS_REVIEW' END,
-              last_error = CASE WHEN amount = $3 THEN last_error ELSE 'Amount mismatch, M-Pesa paid ' || $4 END,
+              last_error = CASE WHEN amount = $3 THEN NULL ELSE 'Amount mismatch, M-Pesa paid ' || $4 END,
               mpesa_receipt = $2, updated_at = now()
-        WHERE checkout_request_id = $1 AND status = 'PENDING_PAYMENT'
+        WHERE checkout_request_id = $1
+          AND status IN ('PENDING_PAYMENT', 'PAID')
+          AND mpesa_receipt IS NULL
         RETURNING id, status`,
       [checkoutId, receipt, paid, String(paid)]);
-
-    // If the reconciler already marked it paid, still record the receipt
-    await pool.query(
-      `UPDATE transactions SET mpesa_receipt=$2 WHERE checkout_request_id=$1 AND mpesa_receipt IS NULL`,
-      [checkoutId, receipt]);
 
     if (claim.rows[0] && claim.rows[0].status === 'PAID') await issueToken(claim.rows[0].id);
   } catch (e) {
@@ -905,10 +908,11 @@ async function worker() {
         const q = await stkQuery(r.checkout_request_id);
         if (q.ResultCode === undefined) continue; // still being processed
         if (String(q.ResultCode) === '0') {
-          const c = await pool.query(
+          // STK Query confirms the payment result but does not carry the
+          // M-Pesa receipt metadata. Wait for the callback before issuing water.
+          await pool.query(
             `UPDATE transactions SET status='PAID', updated_at=now()
-              WHERE id=$1 AND status='PENDING_PAYMENT' RETURNING id`, [r.id]);
-          if (c.rows[0]) await issueToken(r.id);
+              WHERE id=$1 AND status='PENDING_PAYMENT'`, [r.id]);
         } else {
           await pool.query(
             `UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now()
@@ -921,6 +925,9 @@ async function worker() {
     await pool.query(
       `UPDATE transactions SET status='NEEDS_REVIEW', last_error='No callback or query result after 30 min', updated_at=now()
         WHERE status='PENDING_PAYMENT' AND created_at < now() - interval '30 minutes'`);
+    await pool.query(
+      `UPDATE transactions SET status='NEEDS_REVIEW', last_error='Payment query succeeded but receipt callback was not received after 30 min', updated_at=now()
+        WHERE status='PAID' AND mpesa_receipt IS NULL AND created_at < now() - interval '30 minutes'`);
 
     // 4. housekeeping
     await pool.query(`DELETE FROM sessions WHERE expires_at < now()`);
