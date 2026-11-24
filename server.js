@@ -34,8 +34,8 @@ for (const k of ['DATABASE_URL', 'HYDRO_BASE_URL', 'HYDRO_TOKEN', 'MPESA_CONSUME
   'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY', 'CALLBACK_BASE_URL', 'CALLBACK_SECRET']) {
   if (!process.env[k]) { console.error(`Missing env var ${k}`); process.exit(1); }
 }
-if (ADMIN_KEY && ADMIN_KEY.length < 20) {
-  console.error('ADMIN_KEY must be at least 20 characters.');
+if (ADMIN_KEY && ADMIN_KEY.length < 12) {
+  console.error('ADMIN_KEY must be at least 12 characters.');
   process.exit(1);
 }
 if (!ADMIN_KEY) console.warn('ADMIN_KEY is not set: the admin panel is switched off, so no logins can be created.');
