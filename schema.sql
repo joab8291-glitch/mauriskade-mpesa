@@ -13,10 +13,11 @@ CREATE TABLE IF NOT EXISTS meters (
   last_seen_at    timestamptz NOT NULL DEFAULT now()
 );
 
--- One login per meter. The username is the meter number.
+-- One login per meter. Username is a distinct login field, initially set to meter_code.
 CREATE TABLE IF NOT EXISTS users (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   meter_code      text NOT NULL UNIQUE REFERENCES meters(meter_code),
+  username        text UNIQUE,
   password_hash   text NOT NULL,             -- scrypt$salt$hash
   must_change     boolean NOT NULL DEFAULT true,
   disabled        boolean NOT NULL DEFAULT false,
@@ -68,3 +69,9 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS hydro_recharge_no text;
 
 CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions (status);
 CREATE INDEX IF NOT EXISTS idx_tx_meter  ON transactions (meter_number, created_at DESC);
+
+-- Safe in-place migration for existing customer accounts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username text;
+UPDATE users SET username = meter_code WHERE username IS NULL OR btrim(username) = '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users (username);
+ALTER TABLE users ALTER COLUMN username SET NOT NULL;
