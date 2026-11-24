@@ -26,6 +26,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
 .lcd{margin:22px 0;padding:9px;background:linear-gradient(145deg,#233c52,#101d2d);border:1px solid rgba(255,255,255,.13);border-radius:19px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.lcd-screen{padding:20px;color:var(--lcd-ink);background:var(--lcd);border-radius:12px;box-shadow:inset 0 2px 0 rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.12)}.lcd-label{margin:0 0 10px;font-size:.82rem;font-weight:800;opacity:.72;text-transform:uppercase;letter-spacing:.12em}.lcd-digits{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:.4rem .9rem;font:500 clamp(1.25rem,6vw,2rem)/1.2 var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.lcd-digits span{opacity:0;animation:on .01s forwards;animation-delay:calc(var(--i)*110ms)}@keyframes on{to{opacity:1}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.lcd-digits span{animation:none;opacity:1}*{transition:none!important}}
 .facts{margin:20px 0}.facts div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}.facts dt{color:var(--muted)}.facts dd{margin:0;font-weight:700;text-align:right;overflow-wrap:anywhere}.actions{display:grid;gap:10px;margin-top:18px}.status-dot{display:inline-block;width:11px;height:11px;margin-right:10px;border-radius:50%;background:var(--accent2);vertical-align:baseline}.status-dot.live{animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{50%{opacity:.3}}
 .recent{margin-top:22px}.recent h2{font-size:1.2rem}.recent ul{margin:0;padding:0;list-style:none}.recent li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}.recent li:last-child{border-bottom:0}.recent small{display:block;color:var(--muted);font-size:.88rem}
+.hint a,.site-foot a{color:#8bd0ff}.site-foot{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}.site-foot p{margin:0 0 8px}.site-foot nav{display:flex;flex-wrap:wrap;gap:4px 18px}
 @media(min-width:700px){main{padding-top:48px}#view-pay{padding:30px}.actions{grid-template-columns:1fr 1fr}}@media(max-width:480px){main{width:min(100% - 22px,760px);padding-top:26px}.who{align-items:flex-start}.chip{flex:1 1 calc(50% - 9px)}.facts div{align-items:flex-start}.facts dd{max-width:58%}}
 </style>
 </head>
@@ -53,6 +54,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
         <p class="hint">Your password comes from <span class="bizName"></span>. If you don't have one, ask them.</p>
       </div>
       <button class="btn" id="loginBtn" type="submit">Sign in</button>
+      <p class="hint">By signing in you agree to the <a href="/terms">Terms and Conditions</a> and the <a href="/privacy">Privacy Policy</a>.</p>
       <p class="msg" id="loginMsg" role="alert"></p>
     </form>
   </section>
@@ -101,6 +103,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
         <p class="hint">You will get a payment prompt on this phone.</p>
       </div>
       <button class="btn" id="payBtn" type="submit">Pay with M-Pesa</button>
+      <p class="hint">By paying you agree to the <a href="/terms">Terms and Conditions</a>. Your phone number is shared with Safaricom to send the M-Pesa prompt. See the <a href="/privacy">Privacy Policy</a>.</p>
       <p class="msg" id="payMsg" role="alert"></p>
     </form>
     <p style="margin-top:.5rem"><button class="link" id="changePw" type="button">Change password</button></p>
@@ -141,6 +144,15 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
     <h2 id="h-recent">Your recent top-ups</h2>
     <ul id="recentList"></ul>
   </section>
+
+  <footer class="site-foot">
+    <p>&copy; <span id="yr">2026</span> <span class="bizName">Mauriskade Apartments</span>. All rights reserved.</p>
+    <nav aria-label="Legal pages">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms and Conditions</a>
+      <a href="/copyright">Copyright</a>
+    </nav>
+  </footer>
 </main>
 
 <script>
@@ -499,6 +511,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
 
   /* ---------- start ---------- */
   (async () => {
+    $('#yr').textContent = new Date().getFullYear();
     try {
       cfg = await api('/api/config');
       $('#biz').textContent = cfg.businessName;
