@@ -199,7 +199,10 @@ async function hydro(method, apiPath, body) {
 async function lookupOwnedMeter(code) {
   if (!/^\d{6,20}$/.test(code)) return null;
   const res = await hydro('GET', `/stsMeter/code/${encodeURIComponent(code)}`);
-  if (res.code === 0 && res.data && Number(res.data.companyId) === Number(HYDRO_COMPANY_ID)) {
+  // Meter detail uses the same documented fields as the archive list and may
+  // omit companyId. The meter was already registered from the companyId-scoped
+  // queryPage sync, so verify the returned meterCode matches the requested code.
+  if (res.code === 0 && res.data && String(res.data.meterCode || '') === String(code)) {
     return res.data;
   }
   return null;
