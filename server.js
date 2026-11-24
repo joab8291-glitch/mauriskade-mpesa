@@ -339,7 +339,9 @@ async function darajaPost(apiPath, body) {
     let payload; try { payload = JSON.parse(raw); } catch { throw new Error(`Daraja ${apiPath} returned non-JSON HTTP ${r.status}`); }
     return { response: r, payload };
   };
-  let result = await send(await darajaToken());
+  const startedAt = Date.now();
+  const resultToken = await darajaToken();
+  let result = await send(resultToken);
   const details = JSON.stringify(result.payload);
   // Retry only explicit auth rejection; never replay an ambiguous payment POST.
   if (result.response.status === 401 || /invalid access token|access token.*expired|invalid token/i.test(details)) {
@@ -348,8 +350,12 @@ async function darajaPost(apiPath, body) {
   }
   if (!result.response.ok) {
     const msg = result.payload.errorMessage || result.payload.ResponseDescription || result.payload.error_description || `HTTP ${result.response.status}`;
+    log('DARAJA_HTTP_REJECT', apiPath, result.response.status, msg, Date.now() - startedAt + 'ms');
     const error = new Error(`Daraja ${apiPath} rejected: ${msg}`); error.definitive = true; throw error;
   }
+  log('DARAJA_RESPONSE', apiPath, result.payload.ResponseCode ?? result.payload.ResultCode ?? 'no-result-code',
+    result.payload.ResponseDescription || result.payload.ResultDesc || result.payload.errorMessage || 'accepted',
+    Date.now() - startedAt + 'ms');
   return result.payload;
 }
 
@@ -613,6 +619,7 @@ app.post('/api/pay', requireUser, requireReady, payLimit, wrap(async (req, res) 
 
   let stk;
   try {
+    log('STK_PUSH_START', id, 'phone-ending', phone.slice(-3), 'amount', amount, 'env', MPESA_ENV);
     stk = await stkPush({ amount, phone, meter });
   } catch (e) {
     if (e.definitive) {
@@ -997,5 +1004,12 @@ async function worker() {
     process.exit(1);
   }
   setInterval(worker, 30000);
-  app.listen(PORT, () => log(`hydro-pay listening on :${PORT} (${MPESA_ENV})`));
+  app.listen(PORT, () => {
+  log(`hydro-pay listening on :${PORT} (${MPESA_ENV})`);
+  // Warm Daraja OAuth after startup so the first customer payment does not
+  // pay the cold-token acquisition latency. Failure is logged; payment flow
+  // can still recover through the normal OAuth path.
+  darajaToken().then(() => log('DARAJA_OAUTH_WARM', 'ready'))
+    .catch((e) => log('DARAJA_OAUTH_WARM_FAILED', e.message));
+});
 })();
