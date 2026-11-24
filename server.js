@@ -102,7 +102,7 @@ const RATE_LIMIT_SCRIPT = [
   "if count == 1 then redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[1])) end",
   "local ttl = redis.call('PTTL', KEYS[1])",
   "return {count, ttl}"
-].join("\\n");
+].join("\n");
 
 async function consumeRateLimit(key, windowMs) {
   let base = String(process.env.UPSTASH_REDIS_REST_URL || '');
