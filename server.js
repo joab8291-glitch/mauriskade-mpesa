@@ -82,11 +82,17 @@ function validAmount(a) {
 }
 
 function failReason(desc) {
-  const d = String(desc || '').toLowerCase();
-  if (d.includes('cancel')) return 'You cancelled the payment on your phone.';
-  if (d.includes('insufficient') || d.includes('balance')) return 'Your M-Pesa balance was too low for this payment.';
-  if (d.includes('timeout') || d.includes('timed out') || d.includes('did not')) return 'The M-Pesa prompt timed out before it was approved.';
-  return 'M-Pesa could not complete the payment. No money was taken.';
+  const raw = String(desc || '');
+  const d = raw.toLowerCase();
+  // Daraja ResultCode 1037 is a handset/DS timeout, not an application-server
+  // error. Explain the likely phone-side causes instead of a generic failure.
+  if (/(1037|ds timeout|request timeout|timed out)/i.test(raw)) {
+    return 'Safaricom did not receive your approval before the M-Pesa prompt expired. Keep your phone unlocked, make sure the Safaricom SIM has signal, and approve the prompt as soon as it appears. You can safely try again once this payment is marked failed.';
+  }
+  if (/(1032|cancelled by user|canceled by user|cancel)/i.test(d)) return 'The payment was cancelled on your phone. No water credit was issued.';
+  if (/(insufficient|balance)/i.test(d) || /resultcode[^0-9]*1\b/i.test(d)) return 'Your M-Pesa balance was too low for this payment. Top up your M-Pesa account and try again.';
+  if (d.includes('did not') || d.includes('failed')) return 'Safaricom could not complete this payment. Check your M-Pesa messages before trying again; if money was deducted, contact support and do not pay again.';
+  return 'M-Pesa could not confirm this payment. Check your M-Pesa messages before trying again; if money was deducted, contact support and do not pay again.';
 }
 
 const viewOf = (s) => ({
