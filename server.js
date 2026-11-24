@@ -555,18 +555,33 @@ app.post('/api/pay', requireUser, requireReady, payLimit, wrap(async (req, res) 
     return res.status(409).json({ ok: false, message: `Your meter is not available on the system right now. Contact ${BUSINESS_NAME}.` });
   }
 
-  const dup = await pool.query(
-    `SELECT 1 FROM transactions
-      WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'`,
-    [meter]);
-  if (dup.rowCount) {
-    return res.status(429).json({ ok: false, message: 'A payment prompt is already open for this meter. Approve it on your phone or wait a minute.' });
+  // Serialize payment creation per meter. Without this lock, two near-simultaneous
+  // requests can both pass the pending-payment check and send duplicate STK prompts.
+  const client = await pool.connect();
+  let id;
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [meter]);
+    const dup = await client.query(
+      `SELECT 1 FROM transactions
+        WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'
+        LIMIT 1`,
+      [meter]);
+    if (dup.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(429).json({ ok: false, message: 'A payment prompt is already open for this meter. Approve it on your phone or wait a minute.' });
+    }
+    const ins = await client.query(
+      `INSERT INTO transactions (meter_number, phone, amount) VALUES ($1,$2,$3) RETURNING id`,
+      [meter, phone, amount]);
+    id = ins.rows[0].id;
+    await client.query('COMMIT');
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch { /* transaction may already be closed */ }
+    throw e;
+  } finally {
+    client.release();
   }
-
-  const ins = await pool.query(
-    `INSERT INTO transactions (meter_number, phone, amount) VALUES ($1,$2,$3) RETURNING id`,
-    [meter, phone, amount]);
-  const id = ins.rows[0].id;
 
   let stk;
   try {
