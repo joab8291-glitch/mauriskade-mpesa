@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://mauriskade-mpesa-api.onrender.com/api/:path*"
+      "destination": "https://api.mauriskade.co.ke/api/:path*"
     },
     {
       "source": "/admin",
