@@ -414,7 +414,7 @@ app.post('/api/auth/login', loginLimit, wrap(async (req, res) => {
 
   const u = (await pool.query(
     `SELECT u.*, m.flat, m.tenant_name, m.phone FROM users u JOIN meters m ON m.meter_code=u.meter_code
-      WHERE u.meter_code=$1`, [username])).rows[0];
+      WHERE u.username=$1`, [username])).rows[0];
   if (!u) {
     if (dummyHash) await verifyPassword(password, dummyHash);
     return bad();
@@ -669,7 +669,7 @@ app.get('/api/admin/meters', wrap(async (req, res) => {
   const onlyNoLogin = req.query.filter === 'nologin';
   const offset = Math.max(0, Number(req.query.offset) || 0);
   const { rows } = await pool.query(
-    `SELECT m.meter_code, m.hydro_label, m.flat, m.tenant_name, m.phone, m.first_seen_at,
+    `SELECT m.meter_code, m.hydro_label, m.flat, m.tenant_name, m.phone, m.first_seen_at, u.username,
             (u.id IS NOT NULL) AS has_login, COALESCE(u.disabled,false) AS disabled,
             COALESCE(u.must_change,false) AS must_change, u.last_login_at
        FROM meters m LEFT JOIN users u ON u.meter_code = m.meter_code
@@ -705,7 +705,7 @@ app.post('/api/admin/logins/create', wrap(async (req, res) => {
   for (const m of rows) {
     const password = genPassword();
     const r = await pool.query(
-      `INSERT INTO users (meter_code, password_hash) VALUES ($1,$2) ON CONFLICT (meter_code) DO NOTHING RETURNING id`,
+      `INSERT INTO users (meter_code, username, password_hash) VALUES ($1,$1,$2) ON CONFLICT (meter_code) DO NOTHING RETURNING id`,
       [m.meter_code, await hashPassword(password)]);
     if (r.rowCount) {
       created.push({ meterCode: m.meter_code, flat: m.flat, tenantName: m.tenant_name, username: m.meter_code, password });
@@ -718,10 +718,10 @@ app.post('/api/admin/logins/:meter/reset', wrap(async (req, res) => {
   const password = genPassword();
   const r = await pool.query(
     `UPDATE users SET password_hash=$2, must_change=true, failed_attempts=0, locked_until=NULL
-      WHERE meter_code=$1 RETURNING id`, [req.params.meter, await hashPassword(password)]);
+      WHERE meter_code=$1 RETURNING id, username`, [req.params.meter, await hashPassword(password)]);
   if (!r.rowCount) return res.status(404).json({ ok: false, message: 'That meter has no login yet.' });
   await pool.query(`DELETE FROM sessions WHERE user_id=$1`, [r.rows[0].id]);
-  res.json({ ok: true, username: req.params.meter, password });
+  res.json({ ok: true, username: r.rows[0].username, meterCode: req.params.meter, password });
 }));
 
 app.post('/api/admin/logins/:meter/disable', wrap(async (req, res) => {
