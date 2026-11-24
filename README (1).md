@@ -6,21 +6,12 @@ Customer water-credit portal and M-Pesa STK Push integration for Mauriskade Apar
 
 - **Frontend:** Vercel serves `index.html` and `admin.html`.
 - **Backend:** Render runs `server.js` as an Express web service.
-- **Database:** Render PostgreSQL stores meter mappings, customer login hashes, sessions and payment transactions.
+- **Database:** Supabase PostgreSQL (`mauriskade-mpesa`, EU West) stores meter mappings, customer login hashes, sessions and payment transactions.
 - **Integrations:** The backend alone calls Safaricom Daraja and the Hydro STS API. Never put Hydro or Daraja credentials in browser code.
 
-For browser requests to remain same-origin (and keep the customer session cookie working), configure Vercel rewrites after the Render service URL is known:
+Vercel routing is configured in `vercel.json` and sends `/api/*` requests to `https://mauriskade-mpesa-api.onrender.com`. The `/admin` path serves `admin.html`. Keep browser API calls relative (`/api/...`) so the customer session cookie remains same-origin.
 
-```json
-{
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "https://YOUR-RENDER-SERVICE.onrender.com/api/:path*" },
-    { "source": "/admin", "destination": "/admin.html" }
-  ]
-}
-```
-
-Replace the Render hostname with the actual service URL. Keep the frontend API calls relative (`/api/...`); do not add a browser-side secret or expose the Hydro token.
+The Vercel rewrite destination is the Render service `mauriskade-mpesa-api.onrender.com`. Keep browser API calls relative (`/api/...`); do not add a browser-side secret or expose the Hydro token.
 
 ## Run locally
 
@@ -31,7 +22,7 @@ cp .env.example .env
 npm start
 ```
 
-Open `http://localhost:3000/` for the customer portal and `http://localhost:3000/admin` for the admin dashboard. The server creates/updates the PostgreSQL schema from `schema.sql` on startup.
+Open `http://localhost:3000/` for the customer portal and `http://localhost:3000/admin` for the admin dashboard. The server creates/updates the PostgreSQL schema from `schema.sql` on startup. Use the Supabase Session Pooler connection string (port 5432) with SSL required in `DATABASE_URL` for Render.
 
 ## Required backend environment variables
 
@@ -128,4 +119,4 @@ The current application uses the amount recharge endpoint because M-Pesa collect
 
 - Token display is in the customer portal; SMS delivery is not implemented.
 - A transaction UUID is treated as a private reference. Do not share transaction URLs publicly.
-- Render's free PostgreSQL plan is temporary and expires; use a persistent database plan for production records.
+- Supabase project `mauriskade-mpesa` is the primary persistent database. Keep regular backups enabled and monitor Supabase usage/compute limits.
