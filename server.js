@@ -34,11 +34,9 @@ for (const k of ['DATABASE_URL', 'HYDRO_BASE_URL', 'HYDRO_TOKEN', 'MPESA_CONSUME
   'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY', 'CALLBACK_BASE_URL', 'CALLBACK_SECRET']) {
   if (!process.env[k]) { console.error(`Missing env var ${k}`); process.exit(1); }
 }
-if (ADMIN_KEY && ADMIN_KEY.length < 20) {
-  console.error('ADMIN_KEY must be at least 20 characters.');
-  process.exit(1);
+if (!ADMIN_KEY || ADMIN_KEY.length < 20) {
+  console.warn('ADMIN_KEY is missing or shorter than 20 characters: admin routes are disabled until a strong key is configured.');
 }
-if (!ADMIN_KEY) console.warn('ADMIN_KEY is not set: the admin panel is switched off, so no logins can be created.');
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 pool.on('error', (e) => console.error('pg pool error', e.message));
@@ -620,7 +618,7 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
 function adminAuth(req, res, next) {
   const got = Buffer.from(req.get('x-admin-key') || '');
   const want = Buffer.from(ADMIN_KEY || '');
-  if (!ADMIN_KEY || got.length !== want.length || !crypto.timingSafeEqual(got, want)) {
+  if (!ADMIN_KEY || ADMIN_KEY.length < 20 || got.length !== want.length || !crypto.timingSafeEqual(got, want)) {
     return res.status(403).json({ ok: false, message: 'Forbidden' });
   }
   next();
