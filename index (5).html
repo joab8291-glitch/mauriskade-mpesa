@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buy water credit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist: #F3F6F5;
+    --ink: #12262B;
+    --slate: #566B70;
+    --rule: #CCD8D6;
+    --field: #6F8683;
+    --lcd: #C9D8A6;
+    --lcd-ink: #16220E;
+    --bezel: #1E3238;
+    --alert: #A8231B;
+    --focus: #0A6C8C;
+    --font: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--mist); color: var(--ink); font: 400 1.0625rem/1.5 var(--font); }
+  main { max-width: 30rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  header { margin-bottom: 1.75rem; }
+  .biz { margin: 0 0 .25rem; font-weight: 600; color: var(--slate); }
+  h1 { margin: 0; font-size: 2rem; line-height: 1.1; font-weight: 700; letter-spacing: -.01em; }
+  h2 { margin: 0 0 .5rem; font-size: 1.375rem; line-height: 1.2; font-weight: 700; }
+  h2:focus { outline: none; }
+  p { margin: 0 0 .75rem; }
+  .lede { color: var(--slate); max-width: 28rem; }
+
+  [hidden] { display: none !important; }
+
+  label, .label { display: block; margin: 0 0 .35rem; font-weight: 600; }
+  .hint { color: var(--slate); font-size: .9375rem; margin: .35rem 0 0; }
+  .field { margin-bottom: 1.25rem; }
+  input {
+    width: 100%; min-height: 3.25rem; padding: 0 .9rem; font: inherit; color: var(--ink);
+    background: #fff; border: 1.5px solid var(--field); border-radius: 6px;
+  }
+  input::placeholder { color: #8A9C99; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  .btn {
+    display: block; width: 100%; min-height: 3.25rem; padding: 0 1rem; font: inherit; font-weight: 600;
+    color: #fff; background: var(--ink); border: 0; border-radius: 6px; cursor: pointer;
+  }
+  .btn:disabled { opacity: .6; cursor: progress; }
+  .btn.quiet { color: var(--ink); background: transparent; border: 1.5px solid var(--field); }
+  .link {
+    min-height: 2.75rem; padding: 0; font: inherit; font-weight: 600; color: var(--ink);
+    background: none; border: 0; text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 .75rem; }
+  .chip {
+    min-height: 2.75rem; padding: 0 1rem; font: inherit; font-weight: 600; color: var(--ink);
+    background: transparent; border: 1.5px solid var(--field); border-radius: 6px; cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { color: #fff; background: var(--ink); border-color: var(--ink); }
+
+  .msg { min-height: 1.5rem; margin: .75rem 0 0; }
+  .msg.err { color: var(--alert); font-weight: 600; }
+
+  .who {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .5rem 0 .75rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--rule);
+  }
+  .who p { margin: 0; }
+  .who small { display: block; color: var(--slate); font-size: .9375rem; }
+
+  .quote { min-height: 3rem; margin: .5rem 0 1.25rem; color: var(--slate); }
+  .quote strong { color: var(--ink); }
+
+  .lcd { margin: 1.25rem 0; padding: .6rem; background: var(--bezel); border-radius: 12px; }
+  .lcd-screen {
+    padding: 1rem 1.1rem 1.1rem; color: var(--lcd-ink); background: var(--lcd); border-radius: 6px;
+    box-shadow: inset 0 2px 0 rgba(0,0,0,.18), inset 0 0 0 1px rgba(0,0,0,.12);
+  }
+  .lcd-label { margin: 0 0 .5rem; font-size: .875rem; font-weight: 600; opacity: .75; }
+  .lcd-digits {
+    display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: .35rem .9rem;
+    font: 500 clamp(1.3rem, 6.8vw, 2rem)/1.15 var(--mono); letter-spacing: .02em; font-variant-numeric: tabular-nums;
+  }
+  .lcd-digits span { opacity: 0; animation: on .01s forwards; animation-delay: calc(var(--i) * 110ms); }
+  @keyframes on { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .lcd-digits span { animation: none; opacity: 1; } }
+
+  .facts { margin: 1.25rem 0; }
+  .facts div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--rule); }
+  .facts dt { color: var(--slate); }
+  .facts dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .actions { display: grid; gap: .75rem; margin-top: 1.25rem; }
+
+  .status-dot {
+    display: inline-block; width: .75rem; height: .75rem; margin-right: .5rem; border-radius: 50%;
+    background: var(--ink); vertical-align: baseline;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .status-dot.live { animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .25; } }
+  }
+
+  .recent { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); }
+  .recent h2 { font-size: 1.125rem; }
+  .recent ul { margin: 0; padding: 0; list-style: none; }
+  .recent li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .25rem 0; border-bottom: 1px solid var(--rule); }
+  .recent small { display: block; color: var(--slate); font-size: .9375rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="biz" id="biz"></p>
+    <h1>Buy water credit</h1>
+    <p class="lede">Pay with M-Pesa. Your token appears on this page. Enter it on the meter keypad.</p>
+  </header>
+
+  <noscript><p class="msg err">This page needs JavaScript to run.</p></noscript>
+
+  <!-- Sign in -->
+  <section id="view-login" aria-labelledby="h-login" hidden>
+    <h2 id="h-login" tabindex="-1">Sign in</h2>
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="loginUser">Meter number</label>
+        <input id="loginUser" inputmode="numeric" autocomplete="username" placeholder="13-digit number on the meter">
+      </div>
+      <div class="field">
+        <label for="loginPass">Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password">
+        <p class="hint">Your password comes from <span class="bizName"></span>. If you don't have one, ask them.</p>
+      </div>
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+      <p class="msg" id="loginMsg" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Choose a new password -->
+  <section id="view-pw" aria-labelledby="h-pw" hidden>
+    <h2 id="h-pw" tabindex="-1">Choose your own password</h2>
+    <p>You are using a password you were given. Replace it before you continue.</p>
+    <form id="pwForm" novalidate>
+      <div class="field">
+        <label for="pwCur">Current password</label>
+        <input id="pwCur" type="password" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="pwNew">New password</label>
+        <input id="pwNew" type="password" autocomplete="new-password">
+        <p class="hint">At least 8 characters.</p>
+      </div>
+      <button class="btn" id="pwBtn" type="submit">Save password</button>
+      <p class="msg" id="pwMsg" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Amount and phone -->
+  <section id="view-pay" aria-labelledby="h-pay" hidden>
+    <h2 id="h-pay" tabindex="-1">How much?</h2>
+    <div class="who">
+      <p><span id="whoMeter"></span><small id="whoLabel"></small></p>
+      <button class="link" id="signOut" type="button">Sign out</button>
+    </div>
+    <form id="payForm" novalidate>
+      <div class="field">
+        <span class="label" id="amtLabel">Amount in KSh</span>
+        <div class="chips" role="group" aria-labelledby="amtLabel" id="chips">
+          <button class="chip" type="button" data-amt="50" aria-pressed="false">50</button>
+          <button class="chip" type="button" data-amt="100" aria-pressed="false">100</button>
+          <button class="chip" type="button" data-amt="200" aria-pressed="false">200</button>
+          <button class="chip" type="button" data-amt="500" aria-pressed="false">500</button>
+        </div>
+        <input id="amount" inputmode="numeric" autocomplete="off" aria-labelledby="amtLabel" placeholder="Or type an amount">
+        <p class="quote" id="quote" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label for="phone">M-Pesa number</label>
+        <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0712 345 678">
+        <p class="hint">You will get a payment prompt on this phone.</p>
+      </div>
+      <button class="btn" id="payBtn" type="submit">Pay with M-Pesa</button>
+      <p class="msg" id="payMsg" role="alert"></p>
+    </form>
+    <p style="margin-top:.5rem"><button class="link" id="changePw" type="button">Change password</button></p>
+  </section>
+
+  <!-- Waiting / problems -->
+  <section id="view-wait" aria-labelledby="h-wait" hidden>
+    <h2 id="h-wait" tabindex="-1"><span class="status-dot live" id="dot" aria-hidden="true"></span><span id="waitTitle"></span></h2>
+    <p id="waitBody" aria-live="polite"></p>
+    <div class="actions" id="waitActions" hidden>
+      <button class="btn" id="tryAgain" type="button">Try again</button>
+    </div>
+    <p style="margin-top:1rem"><button class="link" id="backHome" type="button">Back to my meter</button></p>
+  </section>
+
+  <!-- Token -->
+  <section id="view-token" aria-labelledby="h-token" hidden>
+    <h2 id="h-token" tabindex="-1">Your token is ready</h2>
+    <p>Enter these 20 digits on the meter keypad.</p>
+    <div class="lcd">
+      <div class="lcd-screen">
+        <p class="lcd-label">Token</p>
+        <div class="lcd-digits" id="digits" role="group"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="copyBtn" type="button">Copy token</button>
+    </div>
+    <p class="msg" id="copyMsg" aria-live="polite"></p>
+    <dl class="facts" id="facts"></dl>
+    <p class="hint">If the meter rejects the token, don't pay again. Contact <span class="bizName"></span> with the M-Pesa receipt above.</p>
+    <div class="actions">
+      <button class="btn quiet" id="buyMore" type="button">Buy more water</button>
+    </div>
+  </section>
+
+  <section class="recent" id="recent" hidden aria-labelledby="h-recent">
+    <h2 id="h-recent">Your recent top-ups</h2>
+    <ul id="recentList"></ul>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const fmt = (n) => Number(n).toLocaleString('en-KE');
+
+  let cfg = { businessName: '', pricePerM3: 120, minAmount: 10, maxAmount: 20000 };
+  let me = null;
+  let lastToken = '';
+  let pollTimer = null;
+  let quoteTimer = null;
+  let pollGen = 0;
+
+  /* ---------- helpers ---------- */
+  async function api(path, opts) {
+    let r;
+    try { r = await fetch(path, { credentials: 'same-origin', ...opts }); }
+    catch { throw new Error('No connection. Check your internet and try again.'); }
+    let j = null;
+    try { j = await r.json(); } catch { /* not JSON */ }
+    if (!r.ok || !j || j.ok === false) {
+      const e = new Error((j && j.message) || 'Something went wrong. Try again.');
+      e.status = r.status;
+      e.mustChange = !!(j && j.mustChange);
+      throw e;
+    }
+    return j;
+  }
+  const post = (path, body) => api(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+  });
+
+  const VIEWS = ['login', 'pw', 'pay', 'wait', 'token'];
+  function show(name, focus = true) {
+    for (const v of VIEWS) $('#view-' + v).hidden = v !== name;
+    $('#recent').hidden = !(name === 'pay' && recentCount > 0);
+    if (focus) $('#h-' + name).focus({ preventScroll: false });
+  }
+
+  function msg(sel, text, isErr) {
+    const el = $(sel);
+    el.textContent = text || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    if (on) { btn.dataset.label = btn.textContent; btn.textContent = label; }
+    else if (btn.dataset.label) btn.textContent = btn.dataset.label;
+  }
+
+  const shortMeter = (m) => '…' + String(m).slice(-4);
+  const when = (iso) => new Date(iso).toLocaleString('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  /* ---------- sign in ---------- */
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg('#loginMsg', '');
+    const username = $('#loginUser').value.replace(/\s/g, '');
+    const password = $('#loginPass').value;
+    if (!username || !password) return msg('#loginMsg', 'Enter your meter number and password.', true);
+    const btn = $('#loginBtn');
+    busy(btn, true, 'Signing in…');
+    try {
+      const j = await post('/api/auth/login', { username, password });
+      $('#loginPass').value = '';
+      enter(j.me);
+    } catch (err) {
+      msg('#loginMsg', err.message, true);
+    } finally {
+      busy(btn, false);
+    }
+  });
+
+  function enter(u) {
+    me = u;
+    if (me.mustChange) {
+      msg('#pwMsg', '');
+      $('#pwCur').value = ''; $('#pwNew').value = '';
+      return show('pw');
+    }
+    showHome();
+  }
+
+  $('#pwForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg('#pwMsg', '');
+    const current = $('#pwCur').value;
+    const next = $('#pwNew').value;
+    if (next.length < 8) return msg('#pwMsg', 'Your new password must be at least 8 characters.', true);
+    const btn = $('#pwBtn');
+    busy(btn, true, 'Saving…');
+    try {
+      await post('/api/auth/change-password', { current, next });
+      me.mustChange = false;
+      $('#pwCur').value = ''; $('#pwNew').value = '';
+      showHome();
+    } catch (err) {
+      msg('#pwMsg', err.message, true);
+    } finally {
+      busy(btn, false);
+    }
+  });
+
+  $('#changePw').addEventListener('click', () => {
+    msg('#pwMsg', ''); $('#pwCur').value = ''; $('#pwNew').value = '';
+    show('pw');
+  });
+
+  $('#signOut').addEventListener('click', async () => {
+    stopPolling();
+    try { await post('/api/auth/logout'); } catch { /* cookie is cleared by the next failed call anyway */ }
+    me = null;
+    $('#loginUser').value = '';
+    msg('#loginMsg', '');
+    show('login');
+  });
+
+  /* ---------- home: amount, phone, history ---------- */
+  let recentCount = 0;
+
+  async function showHome() {
+    $('#whoMeter').textContent = 'Meter ' + me.meterCode;
+    const bits = [];
+    if (me.flat) bits.push('Flat ' + me.flat);
+    if (me.tenantName) bits.push(me.tenantName);
+    $('#whoLabel').textContent = bits.join(' · ');
+    if (me.phone && !$('#phone').value) $('#phone').value = '0' + me.phone.slice(3);
+    msg('#payMsg', '');
+    scheduleQuote();
+    show('pay');
+    loadRecent();
+  }
+
+  async function loadRecent() {
+    try {
+      const j = await api('/api/me/transactions');
+      renderRecent(j.items);
+    } catch (err) {
+      if (err.status === 401) return sessionEnded();
+    }
+  }
+
+  function renderRecent(items) {
+    const list = items.filter((t) => t.status !== 'waiting_for_payment' || Date.now() - new Date(t.createdAt) < 30 * 60000);
+    recentCount = list.length;
+    $('#recent').hidden = recentCount === 0 || $('#view-pay').hidden;
+    const ul = $('#recentList');
+    ul.textContent = '';
+    for (const t of list) {
+      const li = document.createElement('li');
+      const left = document.createElement('div');
+      left.append(document.createTextNode('KSh ' + fmt(t.amount)));
+      const small = document.createElement('small');
+      const state = { done: 'Token ready', payment_failed: 'Not paid', waiting_for_payment: 'Waiting for payment', processing: 'Payment received, token pending' }[t.status];
+      small.textContent = state + ' · ' + when(t.createdAt);
+      left.append(small);
+      const b = document.createElement('button');
+      b.className = 'link';
+      b.type = 'button';
+      b.textContent = t.status === 'done' ? 'View token' : 'View';
+      b.setAttribute('aria-label', (t.status === 'done' ? 'View token for ' : 'View ') + 'top-up of KSh ' + t.amount + ' on ' + when(t.createdAt));
+      b.addEventListener('click', () => openPurchase(t));
+      li.append(left, b);
+      ul.append(li);
+    }
+  }
+
+  function sessionEnded() {
+    stopPolling();
+    me = null;
+    msg('#loginMsg', 'You were signed out. Sign in again.', true);
+    show('login', false);
+  }
+
+  /* ---------- amount, quote ---------- */
+  function setAmount(v) {
+    $('#amount').value = v;
+    for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c.dataset.amt === String(v)));
+    scheduleQuote();
+  }
+  $('#chips').addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (c) setAmount(c.dataset.amt);
+  });
+  $('#amount').addEventListener('input', () => {
+    $('#amount').value = $('#amount').value.replace(/\D/g, '');
+    for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c.dataset.amt === $('#amount').value));
+    scheduleQuote();
+  });
+
+  function scheduleQuote() {
+    clearTimeout(quoteTimer);
+    const el = $('#quote');
+    const raw = $('#amount').value;
+    const a = Number(raw);
+    if (!raw) { el.textContent = 'Pick an amount to see how much water it buys.'; return; }
+    if (!Number.isInteger(a) || a < cfg.minAmount || a > cfg.maxAmount) {
+      el.textContent = 'Enter a whole amount from KSh ' + fmt(cfg.minAmount) + ' to KSh ' + fmt(cfg.maxAmount) + '.';
+      return;
+    }
+    quoteTimer = setTimeout(async () => {
+      try {
+        const q = await api('/api/quote?amount=' + a);
+        el.textContent = '';
+        const strong = document.createElement('strong');
+        strong.textContent = q.volume.toFixed(2) + ' m³';
+        el.append('You will get about ', strong, ' at KSh ' + fmt(q.pricePerM3) + ' per m³.');
+        if (q.unused > 0) el.append(' KSh ' + q.unused.toFixed(2) + ' is left over because credit is sold in steps of 0.01 m³.');
+      } catch { el.textContent = ''; }
+    }, 250);
+  }
+
+  /* ---------- pay ---------- */
+  $('#payForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg('#payMsg', '');
+    const amount = Number($('#amount').value);
+    const phone = $('#phone').value.replace(/[\s-]/g, '');
+    if (!Number.isInteger(amount) || amount < cfg.minAmount || amount > cfg.maxAmount) {
+      return msg('#payMsg', 'Enter a whole amount from KSh ' + fmt(cfg.minAmount) + ' to KSh ' + fmt(cfg.maxAmount) + '.', true);
+    }
+    if (!/^(?:\+?254|0)?[17]\d{8}$/.test(phone)) {
+      return msg('#payMsg', 'Enter a valid Safaricom number, like 0712 345 678.', true);
+    }
+    const btn = $('#payBtn');
+    busy(btn, true, 'Sending prompt…');
+    try {
+      const j = await post('/api/pay', { phone, amount });
+      showWait('waiting_for_payment', { meter: me.meterCode, amount });
+      startPolling(j.transactionId);
+    } catch (err) {
+      if (err.status === 401) return sessionEnded();
+      msg('#payMsg', err.message, true);
+    } finally {
+      busy(btn, false);
+    }
+  });
+
+  /* ---------- waiting, polling ---------- */
+  function showWait(status, j) {
+    const dot = $('#dot');
+    const title = $('#waitTitle');
+    const body = $('#waitBody');
+    const retry = $('#waitActions');
+    retry.hidden = true;
+    dot.hidden = false;
+    dot.classList.add('live');
+    if (status === 'waiting_for_payment') {
+      title.textContent = 'Approve the payment on your phone';
+      body.textContent = 'Enter your M-Pesa PIN to pay KSh ' + fmt(j.amount) + ' for meter ' + shortMeter(j.meter) + '. The prompt expires after about a minute.';
+    } else if (status === 'payment_failed') {
+      dot.hidden = true;
+      title.textContent = 'The payment did not go through';
+      body.textContent = j.reason || 'M-Pesa could not complete the payment. No money was taken.';
+      retry.hidden = false;
+    } else if (j.stage === 'review') {
+      title.textContent = 'Payment received. We are checking this top-up';
+      body.textContent = 'We could not issue the token automatically. Contact ' + cfg.businessName + ' with M-Pesa receipt ' + (j.receipt || '(sent by SMS)') + '. Do not pay again.';
+    } else if (j.stage === 'delayed') {
+      title.textContent = 'Payment received. Your token is taking longer than usual';
+      body.textContent = 'Keep this page open, or come back to it from your recent top-ups. You do not need to pay again.';
+    } else {
+      title.textContent = 'Payment received';
+      body.textContent = 'Preparing your token…';
+    }
+    show('wait', false);
+  }
+
+  function stopPolling() { pollGen++; clearTimeout(pollTimer); }
+
+  function startPolling(id) {
+    stopPolling();
+    const gen = pollGen;
+    const started = Date.now();
+    const tick = async () => {
+      if (gen !== pollGen) return;
+      try {
+        const j = await api('/api/pay/' + id);
+        if (gen !== pollGen) return;
+        if (j.status === 'done') { showToken(j); return; }
+        if (j.status === 'payment_failed') { showWait('payment_failed', j); return; }
+        showWait(j.status, j);
+      } catch (err) {
+        if (err.status === 401) return sessionEnded();
+        if (err.status === 404) return;
+        /* network blip: keep trying */
+      }
+      const age = Date.now() - started;
+      if (age > 30 * 60000) return;
+      pollTimer = setTimeout(tick, age < 120000 ? 3000 : 8000);
+    };
+    tick();
+  }
+
+  $('#tryAgain').addEventListener('click', () => { stopPolling(); showHome(); });
+  $('#backHome').addEventListener('click', () => { stopPolling(); showHome(); });
+
+  async function openPurchase(t) {
+    stopPolling();
+    try {
+      const j = await api('/api/pay/' + t.id);
+      if (j.status === 'done') return showToken(j);
+      showWait(j.status, j);
+      if (j.status !== 'payment_failed') startPolling(t.id);
+    } catch (err) {
+      if (err.status === 401) return sessionEnded();
+      showWait('payment_failed', { reason: err.message });
+    }
+  }
+
+  /* ---------- token ---------- */
+  function showToken(j) {
+    lastToken = String(j.token);
+    const box = $('#digits');
+    box.textContent = '';
+    (lastToken.match(/.{1,4}/g) || [lastToken]).forEach((g, i) => {
+      const s = document.createElement('span');
+      s.textContent = g;
+      s.style.setProperty('--i', i);
+      box.append(s);
+    });
+    box.setAttribute('aria-label', 'Token ' + lastToken.split('').join(' '));
+
+    const rows = [['Meter', j.meter], ['Paid', 'KSh ' + fmt(j.amount)]];
+    if (typeof j.volume === 'number') rows.push(['Water credit', j.volume.toFixed(2) + ' m³']);
+    if (j.receipt) rows.push(['M-Pesa receipt', j.receipt]);
+    const dl = $('#facts');
+    dl.textContent = '';
+    for (const [k, v] of rows) {
+      const d = document.createElement('div');
+      const dt = document.createElement('dt'); dt.textContent = k;
+      const dd = document.createElement('dd'); dd.textContent = v;
+      d.append(dt, dd);
+      dl.append(d);
+    }
+    msg('#copyMsg', '');
+    show('token');
+  }
+
+  $('#copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(lastToken);
+    } catch {
+      const t = document.createElement('textarea');
+      t.value = lastToken; document.body.append(t); t.select();
+      try { document.execCommand('copy'); } catch { /* ignore */ }
+      t.remove();
+    }
+    msg('#copyMsg', 'Token copied.');
+  });
+
+  $('#buyMore').addEventListener('click', () => { setAmount(''); showHome(); });
+
+  /* ---------- start ---------- */
+  (async () => {
+    try {
+      cfg = await api('/api/config');
+      $('#biz').textContent = cfg.businessName;
+      document.querySelectorAll('.bizName').forEach((n) => { n.textContent = cfg.businessName; });
+      document.title = 'Buy water credit · ' + cfg.businessName;
+    } catch { /* defaults are fine */ }
+    try {
+      const j = await api('/api/me');
+      enter(j.me);
+    } catch {
+      show('login', false);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
