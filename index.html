@@ -129,8 +129,8 @@
     <h2 id="h-login" tabindex="-1">Sign in</h2>
     <form id="loginForm" novalidate>
       <div class="field">
-        <label for="loginUser">Meter number</label>
-        <input id="loginUser" inputmode="numeric" autocomplete="username" placeholder="13-digit number on the meter">
+        <label for="loginUser">Username</label>
+        <input id="loginUser" autocomplete="username" placeholder="Username provided by the admin">
       </div>
       <div class="field">
         <label for="loginPass">Password</label>
@@ -288,7 +288,7 @@
     msg('#loginMsg', '');
     const username = $('#loginUser').value.replace(/\s/g, '');
     const password = $('#loginPass').value;
-    if (!username || !password) return msg('#loginMsg', 'Enter your meter number and password.', true);
+    if (!username || !password) return msg('#loginMsg', 'Enter your username and password.', true);
     const btn = $('#loginBtn');
     busy(btn, true, 'Signing in…');
     try {
