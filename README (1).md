@@ -1,82 +1,131 @@
-# hydro-pay
+# Mauriskade M-Pesa Water Credit
 
-M-Pesa payment to STS water token, for Mauriskade Apartments (Hydro IoT company 10185).
+Customer water-credit portal and M-Pesa STK Push integration for Mauriskade Apartments (Hydro IoT company ID **10185**).
 
-A customer opens the page, checks a meter, pays by M-Pesa STK Push, and the 20-digit token from the
-Hydro API appears on the same page.
+## Deployment architecture
 
-## Run
+- **Frontend:** Vercel serves `index.html` and `admin.html`.
+- **Backend:** Render runs `server.js` as an Express web service.
+- **Database:** Render PostgreSQL stores meter mappings, customer login hashes, sessions and payment transactions.
+- **Integrations:** The backend alone calls Safaricom Daraja and the Hydro STS API. Never put Hydro or Daraja credentials in browser code.
+
+For browser requests to remain same-origin (and keep the customer session cookie working), configure Vercel rewrites after the Render service URL is known:
+
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://YOUR-RENDER-SERVICE.onrender.com/api/:path*" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ]
+}
+```
+
+Replace the Render hostname with the actual service URL. Keep the frontend API calls relative (`/api/...`); do not add a browser-side secret or expose the Hydro token.
+
+## Run locally
 
 ```bash
 npm install
-cp .env.example .env     # fill in every value
-node server.js           # also creates the table from schema.sql
+cp .env.example .env
+# Fill in every required value in .env
+npm start
 ```
 
-Open `http://localhost:3000/`. For real M-Pesa callbacks `CALLBACK_BASE_URL` must be a public HTTPS URL.
+Open `http://localhost:3000/` for the customer portal and `http://localhost:3000/admin` for the admin dashboard. The server creates/updates the PostgreSQL schema from `schema.sql` on startup.
 
-## How the pieces connect
+## Required backend environment variables
 
-```
-Browser page ─► this server ─► Daraja (STK Push)      ◄─ callback ─ Safaricom
-                    └────────► Hydro API (meter lookup, amountRecharge, recharge records)
-```
+- `DATABASE_URL` — PostgreSQL connection string.
+- `HYDRO_BASE_URL` — Hydro API base URL, normally `http://8.217.30.113:8027/api1`.
+- `HYDRO_TOKEN` — server-side permanent API token scoped by the provider to Mauriskade where possible.
+- `HYDRO_COMPANY_ID` — `10185`.
+- `MPESA_ENV` — `sandbox` for testing, `production` only after Daraja Go-Live.
+- `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`.
+- `CALLBACK_BASE_URL` — public HTTPS backend URL used to construct the Safaricom callback URL.
+- `CALLBACK_SECRET` — long random secret in the callback path.
+- `ADMIN_KEY` — at least 20 characters; required to use the admin API/dashboard.
 
-The browser never talks to Daraja or Hydro. `HYDRO_TOKEN` stays in `.env` on the server.
+Optional settings: `PORT`, `BUSINESS_NAME`, `PRICE_PER_M3` (default 120 KSh), `MIN_AMOUNT` (default 10), `MAX_AMOUNT` (default 20000), `MPESA_TXN_TYPE`, and `SESSION_DAYS`.
 
-## Hydro endpoints used (from the STS API document)
+Do not commit `.env`, real API tokens, Daraja keys, passkeys, callback secrets, admin keys, or database credentials. If a real secret was previously shared or committed, revoke/rotate it.
 
-| Purpose | Call |
-|---|---|
-| Check a meter belongs to company 10185 | `GET /stsMeter/code/{meterCode}` |
-| Issue the token after payment | `POST /api/recharge/sts/amountRecharge` |
-| Read back volume and balance, find a token | `POST /business/recharge/stsRecord/queryPage` |
+## Customer flow
 
-## This server's endpoints
+1. The customer signs in with their meter number and the password allocated by the admin.
+2. The backend verifies the account and meter association.
+3. The customer enters an amount and Safaricom number; the backend sends an STK Push.
+4. Safaricom calls `POST /api/mpesa/callback/:secret`.
+5. After confirmed payment, the backend calls Hydro `POST /api/recharge/sts/amountRecharge` with `meterNumber` and `rechargeAmount`.
+6. The 20-digit token is displayed to the customer. The credited water volume is read back from Hydro recharge records when available.
 
-| Call | Used by | What it does |
+## Admin dashboard
+
+Open `/admin` on the Vercel site. Enter the `ADMIN_KEY` configured on Render; the page keeps it in memory only and does not save it in local storage or the URL.
+
+The dashboard can:
+- Sync Mauriskade meters from Hydro company 10185.
+- Search meters and filter those without customer logins.
+- Add flat, tenant and phone details.
+- Create customer logins, reset passwords, and disable/enable accounts.
+- Review transactions that need manual reconciliation.
+
+Generated passwords are shown once when created or reset. Give them to tenants securely; they must change the initial password at first sign-in.
+
+## Backend API
+
+| Method | Path | Purpose |
 |---|---|---|
-| `GET /api/config` | page | Business name, price per m3, amount limits |
-| `GET /api/meter/:code` | page | Confirms the meter is Mauriskade's |
-| `GET /api/quote?amount=100` | page | Estimated m3 for an amount (fixed price, rounded down) |
-| `POST /api/pay` | page | `{meterNumber, phone, amount}`, sends the STK prompt |
-| `GET /api/pay/:id` | page | Status, and the token when ready |
-| `POST /api/mpesa/callback/:secret` | Safaricom | Payment result |
-| `GET /api/admin/review` | you | Paid transactions that need a person, with matching Hydro records |
-| `POST /api/admin/review/:id` | you | `adopt`, `retry` or `close` (needs `x-admin-key`) |
+| GET | `/health` | Render health check |
+| GET | `/api/config` | Public business name, price and amount limits |
+| GET | `/api/quote?amount=100` | Estimate water volume at the configured rate |
+| POST | `/api/auth/login` | Customer sign-in |
+| POST | `/api/auth/logout` | End customer session |
+| POST | `/api/auth/change-password` | Change initial/current password |
+| GET | `/api/me` | Current customer profile |
+| GET | `/api/me/transactions` | Customer's recent top-ups |
+| POST | `/api/pay` | Start STK Push for the signed-in customer's meter |
+| GET | `/api/pay/:id` | Read payment state and token when ready |
+| POST | `/api/mpesa/callback/:secret` | Safaricom callback |
+| GET/POST | `/api/admin/*` | Admin operations; requires `x-admin-key` |
 
-## Payment states
+Customer sessions use an HttpOnly cookie. The Vercel rewrite is intentional: it makes browser API calls same-origin instead of relying on cross-site cookies between Vercel and Render.
 
-`PENDING_PAYMENT` → `PAID` → `ISSUING` → `TOKEN_ISSUED`, or `FAILED` (no money taken),
-`RETRY` (Hydro said try later, retried with backoff), `NEEDS_REVIEW` (a person must look).
+## Hydro STS API integration
 
-A timed-out `amountRecharge` call goes to `NEEDS_REVIEW`, never to an automatic retry, because the
-meter could be credited twice. Use `/api/admin/review` to see which Hydro record matches, then adopt it
-or retry.
+Based on **STS API Document V1.1 (29 July 2026)**. The document covers non-remote STS meters with `deviceType = 26`.
 
-## Admin examples
+| Purpose | Hydro endpoint |
+|---|---|
+| Query meters | `POST /stsMeter/queryPage` |
+| Meter detail | `GET /stsMeter/code/{meterCode}` |
+| Recharge by amount | `POST /api/recharge/sts/amountRecharge` |
+| Recharge records | `POST /business/recharge/stsRecord/queryPage` |
+| Recharge record detail | `GET /business/recharge/stsRecord/detail/{id}` |
 
-```bash
-curl -H "x-admin-key: $ADMIN_KEY" https://your-server/api/admin/review
+For non-remote STS meters, `meterNumber` in recharge/debug requests is the same value as `meterCode` in meter archive queries. The amount recharge API calculates water volume using the meter's pricing strategy and returns the 20-digit token. Hydro fixes the payment method to `CUSTOMER_API`.
 
-# the token is already in Hydro's records: attach it to the customer's purchase
-curl -X POST -H "x-admin-key: $ADMIN_KEY" -H "Content-Type: application/json" \
-  -d '{"action":"adopt","token":"12345678901234567890"}' https://your-server/api/admin/review/<id>
+The current application uses the amount recharge endpoint because M-Pesa collects a KSh amount. The screen estimate uses `PRICE_PER_M3`; the actual credited volume is read from Hydro records.
 
-# no token was issued: run it again
-curl -X POST -H "x-admin-key: $ADMIN_KEY" -H "Content-Type: application/json" \
-  -d '{"action":"retry"}' https://your-server/api/admin/review/<id>
-```
+## Payment safety
 
-## Before going live
+- The backend checks meter ownership against company 10185 before starting a payment.
+- A second pending prompt for the same meter is blocked.
+- Callback processing is idempotent and checks the paid amount against the requested amount.
+- Hydro's duplicate pending recharge response is retried with backoff.
+- A timeout or ambiguous token-issuance result is moved to `NEEDS_REVIEW`; the worker does not blindly issue a second token.
+- The admin must check Hydro recharge records before adopting a token or retrying.
 
-1. Ask the Hydro engineer for a token scoped to company 10185 and revoke the one shared during testing.
-2. Complete Daraja Go-Live for the Paybill, then set `MPESA_ENV=production`.
-3. Test on one agreed meter with a small amount (KSh 10 buys 0.08 m3 at 120 per m3).
-4. If the price changes in the Hydro dashboard, update `PRICE_PER_M3` so the on-screen estimate stays right. The credited volume shown after payment always comes from Hydro.
+## Before production
 
-## Known limits
+1. Confirm the Hydro token is current, reissued if previously exposed, and appropriately scoped by the provider.
+2. Confirm the Paybill/Till details and Daraja Go-Live status with Mauriskade.
+3. Set `MPESA_ENV=production` only after successful sandbox tests and approval.
+4. Confirm the callback URL is public HTTPS and reachable by Safaricom.
+5. Test with one client-approved meter and a small agreed amount.
+6. Agree who handles reconciliation, refunds and customer support for paid-but-unissued cases.
 
-- Anyone with a purchase's UUID can view its token. The UUID is unguessable, but treat the link as private.
-- The page's recent purchases are stored in the browser only (ids, never tokens).
-- Nothing here sends the token by SMS yet.
+## Known limitations
+
+- Token display is in the customer portal; SMS delivery is not implemented.
+- A transaction UUID is treated as a private reference. Do not share transaction URLs publicly.
+- Render's free PostgreSQL plan is temporary and expires; use a persistent database plan for production records.
