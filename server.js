@@ -100,12 +100,19 @@ function rateLimit({ windowMs, max, key = (req) => req.ip }) {
   setInterval(() => {
     const now = Date.now();
     for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
-  }, windowMs).unref();
+  }, Math.min(windowMs, 60000)).unref();
   return (req, res, next) => {
     const now = Date.now();
-    const k = key(req);
+    const k = String(key(req) || 'unknown').slice(0, 160);
     let h = hits.get(k);
-    if (!h || h.reset < now) { h = { n: 0, reset: now + windowMs }; hits.set(k, h); }
+    if (!h || h.reset < now) {
+      if (hits.size >= 20000) {
+        for (const [oldKey, value] of hits) if (value.reset < now) hits.delete(oldKey);
+        if (hits.size >= 20000) return res.status(503).json({ ok: false, message: 'Temporarily busy. Try again shortly.' });
+      }
+      h = { n: 0, reset: now + windowMs };
+      hits.set(k, h);
+    }
     if (++h.n > max) return res.status(429).json({ ok: false, message: 'Too many requests. Wait a minute and try again.' });
     next();
   };
@@ -376,9 +383,35 @@ async function issueToken(id) {
 /* ------------------------------- Express ------------------------------- */
 
 const app = express();
-app.set('trust proxy', 1); // behind Render/nginx; req.ip and req.secure are then the real client's
-app.use(express.json({ limit: '100kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.set('trust proxy', 1); // Render terminates TLS at its trusted edge proxy.
+app.disable('x-powered-by');
+
+// Baseline browser/API hardening. Keep CSP configurable at the hosting edge because
+// both portals currently use inline scripts/styles and load Google Fonts.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+});
+
+app.use(express.json({ limit: '32kb', strict: true, type: 'application/json' }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  dotfiles: 'deny',
+  etag: true,
+  maxAge: '1h',
+  setHeaders(res) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+  },
+}));
 app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 
 const lightLimit = rateLimit({ windowMs: 60000, max: 40 });
