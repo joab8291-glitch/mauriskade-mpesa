@@ -95,26 +95,57 @@ const viewOf = (s) => ({
 }[s]);
 const stageOf = (s) => ({ PAID: 'preparing', ISSUING: 'preparing', RETRY: 'delayed', NEEDS_REVIEW: 'review' }[s]);
 
-function rateLimit({ windowMs, max, key = (req) => req.ip }) {
-  const hits = new Map();
-  setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
-  }, Math.min(windowMs, 60000)).unref();
-  return (req, res, next) => {
-    const now = Date.now();
-    const k = String(key(req) || 'unknown').slice(0, 160);
-    let h = hits.get(k);
-    if (!h || h.reset < now) {
-      if (hits.size >= 20000) {
-        for (const [oldKey, value] of hits) if (value.reset < now) hits.delete(oldKey);
-        if (hits.size >= 20000) return res.status(503).json({ ok: false, message: 'Temporarily busy. Try again shortly.' });
-      }
-      h = { n: 0, reset: now + windowMs };
-      hits.set(k, h);
+// Shared, atomic rate limiting through Upstash Redis REST. No local fallback:
+// sensitive routes fail closed when the shared limiter is unavailable.
+const RATE_LIMIT_SCRIPT = [
+  "local count = redis.call('INCR', KEYS[1])",
+  "if count == 1 then redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[1])) end",
+  "local ttl = redis.call('PTTL', KEYS[1])",
+  "return {count, ttl}"
+].join("\\n");
+
+async function consumeRateLimit(key, windowMs) {
+  const base = String(process.env.UPSTASH_REDIS_REST_URL || '').replace(/\\/$/, '');
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!base || !token) throw new Error('Shared rate limiter is not configured');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    const response = await fetch(base, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(['EVAL', RATE_LIMIT_SCRIPT, '1', key, String(windowMs)]),
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Redis rate limiter HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload.error || !Array.isArray(payload.result) || payload.result.length < 2) {
+      throw new Error('Invalid Redis rate limiter response');
     }
-    if (++h.n > max) return res.status(429).json({ ok: false, message: 'Too many requests. Wait a minute and try again.' });
-    next();
+    return { count: Number(payload.result[0]), ttl: Number(payload.result[1]) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function rateLimit({ windowMs, max, key = (req) => req.ip, namespace = 'general' }) {
+  return async (req, res, next) => {
+    try {
+      const identity = String(key(req) || 'unknown').slice(0, 512);
+      const digest = crypto.createHash('sha256').update(identity).digest('hex');
+      const redisKey = `mauriskade:ratelimit:${namespace}:${digest}`;
+      const result = await consumeRateLimit(redisKey, windowMs);
+      res.setHeader('RateLimit-Limit', String(max));
+      res.setHeader('RateLimit-Remaining', String(Math.max(0, max - result.count)));
+      if (result.count > max) {
+        res.setHeader('Retry-After', String(Math.max(1, Math.ceil(result.ttl / 1000))));
+        return res.status(429).json({ ok: false, message: 'Too many requests. Wait before trying again.' });
+      }
+      return next();
+    } catch (err) {
+      console.error('[rate-limit] Shared limiter unavailable:', err.message);
+      return res.status(503).json({ ok: false, message: 'Security service temporarily unavailable. Please try again shortly.' });
+    }
   };
 }
 
