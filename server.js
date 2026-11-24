@@ -105,7 +105,8 @@ const RATE_LIMIT_SCRIPT = [
 ].join("\\n");
 
 async function consumeRateLimit(key, windowMs) {
-  const base = String(process.env.UPSTASH_REDIS_REST_URL || '').replace(/\\/$/, '');
+  let base = String(process.env.UPSTASH_REDIS_REST_URL || '');
+  while (base.endsWith('/')) base = base.slice(0, -1);
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!base || !token) throw new Error('Shared rate limiter is not configured');
   const controller = new AbortController();
