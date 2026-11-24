@@ -28,6 +28,8 @@ const {
   MAX_AMOUNT = '20000',
   ADMIN_KEY,
   SESSION_DAYS = '7',
+  CONTACT_EMAIL = '',
+  CONTACT_PHONE = '',
 } = process.env;
 
 for (const k of ['DATABASE_URL', 'HYDRO_BASE_URL', 'HYDRO_TOKEN', 'MPESA_CONSUMER_KEY',
@@ -432,6 +434,9 @@ app.get('/api/config', (_req, res) => {
     pricePerM3: Number(PRICE_PER_M3),
     minAmount: Number(MIN_AMOUNT),
     maxAmount: Number(MAX_AMOUNT),
+    // Shown on the Privacy, Terms and Copyright pages. Both are optional.
+    contactEmail: CONTACT_EMAIL.trim() || undefined,
+    contactPhone: CONTACT_PHONE.trim() || undefined,
   });
 });
 

@@ -45,7 +45,15 @@ Open `http://localhost:3000/` for the customer portal and `http://localhost:3000
 - `CALLBACK_SECRET` — long random secret in the callback path.
 - `ADMIN_KEY` — at least 20 characters; required to use the admin API/dashboard.
 
-Optional settings: `PORT`, `BUSINESS_NAME`, `PRICE_PER_M3` (default 120 KSh), `MIN_AMOUNT` (default 10), `MAX_AMOUNT` (default 20000), `MPESA_TXN_TYPE`, and `SESSION_DAYS`.
+Optional settings: `PORT`, `BUSINESS_NAME`, `PRICE_PER_M3` (default 120 KSh), `MIN_AMOUNT` (default 10), `MAX_AMOUNT` (default 20000), `MPESA_TXN_TYPE`, `SESSION_DAYS`, `CONTACT_EMAIL` and `CONTACT_PHONE`.
+
+## Legal pages
+
+`privacy.html`, `terms.html` and `copyright.html` are static pages served by Vercel at `/privacy`, `/terms` and `/copyright` (routes are in `vercel.json`). They share `legal.css` and `legal.js`, and the customer portal links to them from its footer, the sign-in form and the payment form.
+
+Set `CONTACT_EMAIL` and `CONTACT_PHONE` on the backend so the pages show who residents should contact. Without them the pages say "the Mauriskade Apartments management office".
+
+These pages describe what the system actually stores and does. If you change that (add SMS, analytics, a new payment method, a refund process or a data-retention job), update the text and the "Last updated" date. Have a Kenyan lawyer review them before relying on them.
 
 Do not commit `.env`, real API tokens, Daraja keys, passkeys, callback secrets, admin keys, or database credentials. If a real secret was previously shared or committed, revoke/rotate it.
 

@@ -7,26 +7,105 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
 <style>
-:root{color-scheme:dark;--bg:#071426;--surface:rgba(15,32,55,.76);--surface-strong:rgba(17,39,66,.9);--line:rgba(174,207,245,.18);--text:#f2f7ff;--muted:#a8bdd6;--accent:#56b7ff;--accent2:#48dfc0;--danger:#ff8f9b;--lcd:#c9d8a6;--lcd-ink:#16220e;--font:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"Martian Mono",ui-monospace,monospace;--shadow:0 24px 70px rgba(0,0,0,.32)}
-*{box-sizing:border-box}html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--text);font:400 1rem/1.55 var(--font);background:radial-gradient(ellipse at 12% 5%,rgba(23,105,169,.38),transparent 38%),radial-gradient(ellipse at 88% 18%,rgba(16,146,155,.22),transparent 34%),linear-gradient(145deg,#06101f,#0a1b31 55%,#071426);background-attachment:fixed}
-main{width:min(100% - 32px,760px);margin:0 auto;padding:clamp(24px,5vw,54px) 0 64px}header{margin-bottom:24px}.biz{margin:0 0 8px;color:#80ceff;font-size:.82rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase}h1{margin:0;font-size:clamp(2rem,6vw,3rem);line-height:1.08;letter-spacing:-.045em;font-weight:750}h2{margin:0 0 10px;font-size:clamp(1.3rem,4vw,1.75rem);line-height:1.2;letter-spacing:-.025em}h2:focus{outline:none}p{margin:0 0 12px}.lede{max-width:38rem;color:var(--muted);font-size:1.02rem}[hidden]{display:none!important}
-section{margin:16px 0}.glass, #view-login,#view-pw,#view-pay,#view-wait,#view-token,.recent{background:linear-gradient(145deg,rgba(26,53,83,.78),rgba(10,26,47,.76));border:1px solid var(--line);border-radius:24px;padding:clamp(20px,4vw,30px);box-shadow:var(--shadow);backdrop-filter:blur(22px) saturate(145%);-webkit-backdrop-filter:blur(22px) saturate(145%)}
-#view-login,#view-pw{max-width:520px;margin:28px auto 20px;background:linear-gradient(145deg,rgba(57,105,150,.36),rgba(12,29,52,.78));border-color:rgba(184,220,255,.28);box-shadow:0 28px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12)}
-#view-login:before{content:"SECURE CUSTOMER ACCESS";display:block;margin-bottom:12px;color:#80ceff;font-size:.72rem;font-weight:800;letter-spacing:.16em}
-label,.label{display:block;margin:0 0 8px;font-weight:650;color:#e6f2ff}.hint{color:var(--muted);font-size:.9rem;margin:8px 0 0}.field{margin:0 0 18px}
-input{width:100%;min-height:52px;padding:12px 15px;font:inherit;color:var(--text);background:rgba(4,17,32,.62);border:1px solid rgba(173,207,241,.25);border-radius:13px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}
-input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);background:rgba(4,17,32,.82);box-shadow:0 0 0 4px rgba(86,183,255,.14)}
-:focus-visible{outline:3px solid #76c9ff;outline-offset:3px}
-.btn{display:block;width:100%;min-height:52px;padding:12px 18px;font:inherit;font-weight:750;color:#041526;background:linear-gradient(110deg,#76c9ff,#55e0cb);border:0;border-radius:14px;cursor:pointer;box-shadow:0 10px 28px rgba(50,173,213,.18);transition:transform .18s,filter .18s,box-shadow .18s}
-.btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 14px 34px rgba(50,173,213,.25)}.btn:disabled{opacity:.58;cursor:progress}.btn.quiet{color:#dceeff;background:rgba(255,255,255,.06);border:1px solid var(--line);box-shadow:none}
-.link{min-height:44px;padding:4px 0;font:inherit;font-weight:650;color:#8bd0ff;background:none;border:0;text-decoration:underline;text-underline-offset:.22em;cursor:pointer}
-.chips{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 12px}.chip{min-height:44px;padding:0 18px;font:inherit;font-weight:700;color:#dceeff;background:rgba(255,255,255,.055);border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:.18s}.chip:hover{border-color:var(--accent)}.chip[aria-pressed=true]{color:#041526;background:linear-gradient(110deg,#76c9ff,#55e0cb);border-color:transparent}
-.msg{min-height:1.5rem;margin:12px 0 0;color:var(--muted)}.msg.err{color:var(--danger);font-weight:700}.who{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;margin:0 0 20px;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:15px}.who p{margin:0;font-weight:700}.who small{display:block;color:var(--muted);font-size:.9rem;font-weight:400}.quote{min-height:3rem;margin:10px 0 18px;color:var(--muted)}.quote strong{color:#8ce5d8;font-size:1.1em}
-.lcd{margin:22px 0;padding:9px;background:linear-gradient(145deg,#233c52,#101d2d);border:1px solid rgba(255,255,255,.13);border-radius:19px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.lcd-screen{padding:20px;color:var(--lcd-ink);background:var(--lcd);border-radius:12px;box-shadow:inset 0 2px 0 rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.12)}.lcd-label{margin:0 0 10px;font-size:.82rem;font-weight:800;opacity:.72;text-transform:uppercase;letter-spacing:.12em}.lcd-digits{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:.4rem .9rem;font:500 clamp(1.25rem,6vw,2rem)/1.2 var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.lcd-digits span{opacity:0;animation:on .01s forwards;animation-delay:calc(var(--i)*110ms)}@keyframes on{to{opacity:1}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.lcd-digits span{animation:none;opacity:1}*{transition:none!important}}
-.facts{margin:20px 0}.facts div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}.facts dt{color:var(--muted)}.facts dd{margin:0;font-weight:700;text-align:right;overflow-wrap:anywhere}.actions{display:grid;gap:10px;margin-top:18px}.status-dot{display:inline-block;width:11px;height:11px;margin-right:10px;border-radius:50%;background:var(--accent2);vertical-align:baseline}.status-dot.live{animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{50%{opacity:.3}}
-.recent{margin-top:22px}.recent h2{font-size:1.2rem}.recent ul{margin:0;padding:0;list-style:none}.recent li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}.recent li:last-child{border-bottom:0}.recent small{display:block;color:var(--muted);font-size:.88rem}
-@media(min-width:700px){main{padding-top:48px}#view-pay{padding:30px}.actions{grid-template-columns:1fr 1fr}}@media(max-width:480px){main{width:min(100% - 22px,760px);padding-top:26px}.who{align-items:flex-start}.chip{flex:1 1 calc(50% - 9px)}.facts div{align-items:flex-start}.facts dd{max-width:58%}}
+/* Portal-specific styling. Colours, background and the glass panel come from /theme.css. */
+main{width:min(100% - 28px,1080px);margin:0 auto;padding:clamp(28px,6vw,72px) 0 48px;display:grid;gap:18px}
+
+header{margin:0 0 6px}
+.biz{display:flex;align-items:center;gap:10px;margin:0 0 20px;color:var(--foam);font-weight:600;font-size:1rem}
+.biz:empty{display:none}
+.biz::before{content:"";flex:none;width:12px;height:12px;border-radius:0 50% 50% 50%;transform:rotate(45deg);background:linear-gradient(135deg,var(--foam),var(--aqua));box-shadow:0 0 18px rgba(79,209,232,.7)}
+h1{margin:0 0 16px;font-size:clamp(2.5rem,10vw,4.6rem);line-height:1;letter-spacing:-.055em;font-weight:700;text-wrap:balance}
+h2{margin:0 0 10px;font-size:clamp(1.35rem,4vw,1.7rem);line-height:1.2;letter-spacing:-.03em;font-weight:700}
+h2:focus{outline:none}
+p{margin:0 0 12px}
+.lede{max-width:30rem;margin:0;color:var(--muted);font-size:clamp(1.02rem,2.4vw,1.15rem)}
+
+.glass{padding:clamp(22px,4vw,32px)}
+
+label,.label{display:block;margin:0 0 8px;font-weight:600;color:var(--text)}
+.hint{margin:10px 0 0;color:var(--muted);font-size:.92rem}
+.field{margin:0 0 20px}
+input{width:100%;min-height:54px;padding:0 16px;font:inherit;color:var(--text);background:rgba(2,12,24,.55);border:1px solid rgba(255,255,255,.16);border-radius:16px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+input::placeholder{color:#7f97ae}
+input:focus{border-color:var(--aqua);background:rgba(2,12,24,.78);box-shadow:0 0 0 4px rgba(79,209,232,.18)}
+
+.btn{position:relative;overflow:hidden;display:block;width:100%;min-height:54px;padding:0 22px;font:inherit;font-weight:700;color:#032033;background:linear-gradient(110deg,var(--aqua),var(--foam));border:0;border-radius:999px;cursor:pointer;box-shadow:0 12px 34px -10px rgba(79,209,232,.65),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .25s var(--ease),box-shadow .25s,filter .25s}
+.btn::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%);transform:translateX(-120%);transition:transform .7s var(--ease)}
+.btn:hover:not(:disabled)::after{transform:translateX(120%)}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.btn:active:not(:disabled){transform:scale(.99)}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.quiet{color:var(--text);background:rgba(255,255,255,.07);border:1px solid var(--line);box-shadow:none}
+.btn.quiet::after{display:none}
+.link{min-height:44px;padding:4px 0;font:inherit;font-weight:600;color:var(--link);background:none;border:0;text-decoration:underline;text-underline-offset:.22em;cursor:pointer}
+.link:hover{color:#fff}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.chip{min-height:44px;min-width:64px;padding:0 20px;font:inherit;font-weight:700;color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+.chip:hover{border-color:var(--aqua)}
+.chip[aria-pressed=true]{color:#032033;background:linear-gradient(110deg,var(--aqua),var(--foam));border-color:transparent}
+
+.msg{min-height:1.5rem;margin:12px 0 0;color:var(--muted)}
+.msg.err{color:var(--danger);font-weight:700}
+
+.who{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;margin:0 0 22px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:20px}
+.who p{margin:0;font-weight:700}
+.who small{display:block;color:var(--muted);font-size:.9rem;font-weight:400}
+
+.quote{min-height:3rem;margin:10px 0 18px;color:var(--muted)}
+.quote strong{color:var(--foam);font-size:1.12em}
+
+/* The token: a meter readout, the one place that gets a different material */
+.lcd{margin:22px 0;padding:10px;background:linear-gradient(150deg,#243f55,#0e1c2b);border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 70px -10px rgba(182,243,230,.22)}
+.lcd-screen{padding:20px;color:#16220e;background:#c9d8a6;border-radius:13px;box-shadow:inset 0 2px 0 rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.12)}
+.lcd-label{margin:0 0 10px;font-size:.9rem;font-weight:700;opacity:.72}
+.lcd-digits{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:.4rem .9rem;font:500 clamp(1.25rem,6vw,2rem)/1.2 var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.lcd-digits span{opacity:0;animation:on .01s forwards;animation-delay:calc(var(--i)*110ms)}
+@keyframes on{to{opacity:1}}
+
+.facts{margin:20px 0}
+.facts div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:700;text-align:right;overflow-wrap:anywhere}
+.actions{display:grid;gap:10px;margin-top:18px}
+
+.status-dot{display:inline-block;width:11px;height:11px;margin-right:10px;border-radius:50%;background:var(--foam);box-shadow:0 0 14px rgba(182,243,230,.8);vertical-align:baseline}
+.status-dot.live{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+.recent h2{font-size:1.2rem}
+.recent ul{margin:0;padding:0;list-style:none}
+.recent li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+.recent li:last-child{border-bottom:0}
+.recent small{display:block;color:var(--muted);font-size:.88rem}
+
+.site-foot{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+.site-foot p{margin:0 0 8px}
+.site-foot nav{display:flex;flex-wrap:wrap;gap:4px 18px}
+
+/* Motion: the headline settles in once on load, and each screen eases in when you move to it */
+@media(prefers-reduced-motion:no-preference){
+  header{animation:rise .9s var(--ease) both}
+  #view-login,#view-pw,#view-pay,#view-wait,#view-token{animation:rise .55s var(--ease) both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+}
+@media(prefers-reduced-motion:reduce){.lcd-digits span{animation:none;opacity:1}.status-dot.live{animation:none}}
+
+/* Desktop: headline on the left stays in view while the glass panels change on the right */
+@media(min-width:960px){
+  main{grid-template-columns:minmax(0,1fr) minmax(0,29rem);column-gap:clamp(40px,6vw,88px);align-items:start;padding-top:clamp(56px,11vh,130px)}
+  header{grid-column:1;grid-row:1/span 3;position:sticky;top:clamp(56px,11vh,130px);margin:0}
+  main>:not(header):not(.site-foot){grid-column:2}
+  .site-foot{grid-column:1/-1}
+}
+@media(max-width:480px){
+  .who{align-items:flex-start}
+  .chip{flex:1 1 calc(50% - 8px)}
+  .facts div{align-items:flex-start}
+  .facts dd{max-width:58%}
+}
 </style>
 </head>
 <body>
@@ -40,7 +119,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
   <noscript><p class="msg err">This page needs JavaScript to run.</p></noscript>
 
   <!-- Sign in -->
-  <section id="view-login" aria-labelledby="h-login" hidden>
+  <section class="glass" id="view-login" aria-labelledby="h-login" hidden>
     <h2 id="h-login" tabindex="-1">Sign in</h2>
     <form id="loginForm" novalidate>
       <div class="field">
@@ -53,12 +132,13 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
         <p class="hint">Your password comes from <span class="bizName"></span>. If you don't have one, ask them.</p>
       </div>
       <button class="btn" id="loginBtn" type="submit">Sign in</button>
+      <p class="hint">By signing in you agree to the <a href="/terms">Terms and Conditions</a> and the <a href="/privacy">Privacy Policy</a>.</p>
       <p class="msg" id="loginMsg" role="alert"></p>
     </form>
   </section>
 
   <!-- Choose a new password -->
-  <section id="view-pw" aria-labelledby="h-pw" hidden>
+  <section class="glass" id="view-pw" aria-labelledby="h-pw" hidden>
     <h2 id="h-pw" tabindex="-1">Choose your own password</h2>
     <p>You are using a password you were given. Replace it before you continue.</p>
     <form id="pwForm" novalidate>
@@ -77,7 +157,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
   </section>
 
   <!-- Amount and phone -->
-  <section id="view-pay" aria-labelledby="h-pay" hidden>
+  <section class="glass" id="view-pay" aria-labelledby="h-pay" hidden>
     <h2 id="h-pay" tabindex="-1">How much?</h2>
     <div class="who">
       <p><span id="whoMeter"></span><small id="whoLabel"></small></p>
@@ -101,13 +181,14 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
         <p class="hint">You will get a payment prompt on this phone.</p>
       </div>
       <button class="btn" id="payBtn" type="submit">Pay with M-Pesa</button>
+      <p class="hint">By paying you agree to the <a href="/terms">Terms and Conditions</a>. Your phone number is shared with Safaricom to send the M-Pesa prompt. See the <a href="/privacy">Privacy Policy</a>.</p>
       <p class="msg" id="payMsg" role="alert"></p>
     </form>
     <p style="margin-top:.5rem"><button class="link" id="changePw" type="button">Change password</button></p>
   </section>
 
   <!-- Waiting / problems -->
-  <section id="view-wait" aria-labelledby="h-wait" hidden>
+  <section class="glass" id="view-wait" aria-labelledby="h-wait" hidden>
     <h2 id="h-wait" tabindex="-1"><span class="status-dot live" id="dot" aria-hidden="true"></span><span id="waitTitle"></span></h2>
     <p id="waitBody" aria-live="polite"></p>
     <div class="actions" id="waitActions" hidden>
@@ -117,7 +198,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
   </section>
 
   <!-- Token -->
-  <section id="view-token" aria-labelledby="h-token" hidden>
+  <section class="glass" id="view-token" aria-labelledby="h-token" hidden>
     <h2 id="h-token" tabindex="-1">Your token is ready</h2>
     <p>Enter these 20 digits on the meter keypad.</p>
     <div class="lcd">
@@ -137,10 +218,19 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
     </div>
   </section>
 
-  <section class="recent" id="recent" hidden aria-labelledby="h-recent">
+  <section class="recent glass" id="recent" hidden aria-labelledby="h-recent">
     <h2 id="h-recent">Your recent top-ups</h2>
     <ul id="recentList"></ul>
   </section>
+
+  <footer class="site-foot">
+    <p>&copy; <span id="yr">2026</span> <span class="bizName">Mauriskade Apartments</span>. All rights reserved.</p>
+    <nav aria-label="Legal pages">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms and Conditions</a>
+      <a href="/copyright">Copyright</a>
+    </nav>
+  </footer>
 </main>
 
 <script>
@@ -499,6 +589,7 @@ input::placeholder{color:#829ab5}input:focus{border-color:var(--accent);backgrou
 
   /* ---------- start ---------- */
   (async () => {
+    $('#yr').textContent = new Date().getFullYear();
     try {
       cfg = await api('/api/config');
       $('#biz').textContent = cfg.businessName;
