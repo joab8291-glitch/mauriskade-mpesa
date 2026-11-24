@@ -375,7 +375,7 @@ const app = express();
 app.set('trust proxy', 1); // behind Render/nginx; req.ip and req.secure are then the real client's
 app.use(express.json({ limit: '100kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 
 const lightLimit = rateLimit({ windowMs: 60000, max: 40 });
 const loginLimit = rateLimit({ windowMs: 10 * 60000, max: 20 });
