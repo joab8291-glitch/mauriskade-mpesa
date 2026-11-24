@@ -459,10 +459,15 @@ app.post('/api/auth/change-password', requireUser, wrap(async (req, res) => {
   if (next.length < 8 || next.length > 100) {
     return res.status(400).json({ ok: false, message: 'Your new password must be at least 8 characters.' });
   }
-  if (next === current) return res.status(400).json({ ok: false, message: 'Choose a password different from the current one.' });
   const row = (await pool.query(`SELECT password_hash FROM users WHERE id=$1`, [req.user.id])).rows[0];
-  if (!(await verifyPassword(current, row.password_hash))) {
+  if (!row || !(await verifyPassword(current, row.password_hash))) {
     return res.status(400).json({ ok: false, message: 'The current password is not right.' });
+  }
+  // Compare the proposed password against the stored hash, not the two
+  // submitted strings. This also catches browser autofill/current-password
+  // field mixups without rejecting a genuinely new password incorrectly.
+  if (await verifyPassword(next, row.password_hash)) {
+    return res.status(400).json({ ok: false, message: 'Choose a password different from the current one.' });
   }
   await pool.query(`UPDATE users SET password_hash=$2, must_change=false WHERE id=$1`, [req.user.id, await hashPassword(next)]);
   await pool.query(`DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2`, [req.user.id, req.user.token_hash]);
