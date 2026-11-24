@@ -216,11 +216,14 @@ async function pullHydroMeters() {
     if (!res || res.code !== 0 || !res.data) {
       throw new Error(`page ${pageNum} failed (${res && res.code}: ${res && res.msg})`);
     }
-    const list = res.data.list || [];
-    // Defensive: keep only our company's meters even if the filter were ignored.
-    out.push(...list.filter((m) => Number(m.companyId) === Number(HYDRO_COMPANY_ID)));
+    const list = Array.isArray(res.data.list) ? res.data.list : [];
+    // The documented meter-list response does not include companyId on each
+    // row. Scope the query by companyId in the request and trust that filtered
+    // result; filtering rows by a missing companyId silently drops every meter.
+    out.push(...list);
     const size = Number(res.data.pageSize) || 100;
-    if (list.length === 0 || list.length < size) return out;
+    const pages = Number(res.data.pages) || 0;
+    if (list.length === 0 || (pages > 0 ? pageNum >= pages : list.length < size)) return out;
   }
   throw new Error('more than 300 pages, refusing to continue');
 }
