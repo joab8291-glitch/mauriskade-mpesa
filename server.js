@@ -311,8 +311,8 @@ const stkPassword = (t) => Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${t}`)
 // One validated entry point for every M-Pesa STK request.
 async function stkPush({ amount, phone, meter }) {
   if (!Number.isInteger(amount) || amount < 1) throw new Error('Invalid STK amount.');
-  if (!/^254[17]\\d{8}$/.test(String(phone))) throw new Error('Invalid Safaricom phone number.');
-  if (!/^\\d{13}$/.test(String(meter))) throw new Error('Invalid meter reference.');
+  if (!/^254[17]\d{8}$/.test(String(phone))) throw new Error('Invalid Safaricom phone number.');
+  if (!/^\d{13}$/.test(String(meter))) throw new Error('Invalid meter reference.');
 
   const t = timestamp();
   const response = await darajaPost('/mpesa/stkpush/v1/processrequest', {
