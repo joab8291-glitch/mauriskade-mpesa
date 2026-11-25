@@ -289,20 +289,33 @@ async function darajaToken() {
 }
 
 async function darajaPost(apiPath, body) {
-  const r = await fetch(`${DARAJA}${apiPath}`, {
+  const r = await fetch(`${DARA}${apiPath}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${await darajaToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20000),
   });
-  return r.json();
+
+  const raw = await r.text();
+  let data;
+  try { data = JSON.parse(raw); }
+  catch { throw new Error(`Daraja returned an invalid response (HTTP ${r.status}).`); }
+  if (!r.ok) {
+    throw new Error(data.errorMessage || data.ResponseDescription || `Daraja request failed (HTTP ${r.status}).`);
+  }
+  return data;
 }
 
 const stkPassword = (t) => Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${t}`).toString('base64');
 
-function stkPush({ amount, phone, meter }) {
+// One validated entry point for every M-Pesa STK request.
+async function stkPush({ amount, phone, meter }) {
+  if (!Number.isInteger(amount) || amount < 1) throw new Error('Invalid STK amount.');
+  if (!/^254[17]\\d{8}$/.test(String(phone))) throw new Error('Invalid Safaricom phone number.');
+  if (!/^\\d{13}$/.test(String(meter))) throw new Error('Invalid meter reference.');
+
   const t = timestamp();
-  return darajaPost('/mpesa/stkpush/v1/processrequest', {
+  const response = await darajaPost('/mpesa/stkpush/v1/processrequest', {
     BusinessShortCode: MPESA_SHORTCODE,
     Password: stkPassword(t),
     Timestamp: t,
@@ -312,13 +325,16 @@ function stkPush({ amount, phone, meter }) {
     PartyB: MPESA_SHORTCODE,
     PhoneNumber: phone,
     CallBackURL: `${CALLBACK_BASE_URL}/api/mpesa/callback/${CALLBACK_SECRET}`,
-    // Daraja caps AccountReference at 12 characters. Meters are 13 digits starting 0317,
-    // so the last 12 digits are still unique.
+    // Daraja allows 12 AccountReference characters; the meter suffix is unique.
     AccountReference: meter.slice(-12),
     TransactionDesc: 'Water token',
   });
-}
 
+  if (String(response.ResponseCode) !== '0') {
+    throw new Error(response.errorMessage || response.ResponseDescription || 'Daraja rejected the STK request.');
+  }
+  return response;
+}
 function stkQuery(checkoutRequestId) {
   const t = timestamp();
   return darajaPost('/mpesa/stkpushquery/v1/query', {
@@ -364,11 +380,6 @@ async function startPayment({ meter, phone, amount }) {
     return { status: 502, body: { ok: false, message: 'We could not reach M-Pesa. Try again in a moment.' } };
   }
 
-  if (String(stk.ResponseCode) !== '0') {
-    await pool.query(`UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1`,
-      [id, stk.errorMessage || stk.ResponseDescription || 'STK push rejected']);
-    return { status: 502, body: { ok: false, message: 'M-Pesa did not accept the request. Check the number and try again.' } };
-  }
 
   await pool.query(
     `UPDATE transactions SET checkout_request_id=$2, merchant_request_id=$3, updated_at=now() WHERE id=$1`,
