@@ -75,3 +75,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS username text;
 UPDATE users SET username = meter_code WHERE username IS NULL OR btrim(username) = '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users (username);
 ALTER TABLE users ALTER COLUMN username SET NOT NULL;
+
+-- Record of sensitive admin actions (manual recharges, admin-sent M-Pesa prompts).
+CREATE TABLE IF NOT EXISTS admin_actions (
+  id           bigserial PRIMARY KEY,
+  action       text NOT NULL,
+  meter_number text,
+  status       text NOT NULL DEFAULT 'DONE',   -- STARTED, DONE, REFUSED, AMBIGUOUS
+  detail       jsonb NOT NULL DEFAULT '{}',
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
