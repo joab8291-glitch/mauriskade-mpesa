@@ -922,7 +922,7 @@ const intOrNull = (v) => (v === '' || v == null || !Number.isInteger(Number(v)) 
 
 async function audit(action, meter, detail, status = 'DONE') {
   const r = await pool.query(
-    \`INSERT INTO admin_actions (action, meter_number, detail, status) VALUES ($1,$2,$3,$4) RETURNING id\`,
+    `INSERT INTO admin_actions (action, meter_number, detail, status) VALUES ($1,$2,$3,$4) RETURNING id`,
     [action, meter || null, JSON.stringify(detail || {}), status]);
   return r.rows[0].id;
 }
@@ -946,7 +946,7 @@ app.post('/api/admin/hydro/meters', wrap(async (req, res) => {
     ...(q ? { meterCode: q } : {}),
     ...(status !== undefined ? { deviceStatus: status } : {}),
   });
-  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: \`Hydro: \${r && r.msg || 'no answer'}\` });
+  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: `Hydro: ${r && r.msg || 'no answer'}` });
   res.json({ ok: true, total: r.data.total ?? null, pages: r.data.pages ?? null, list: r.data.list || [] });
 }));
 
@@ -983,7 +983,7 @@ app.post('/api/admin/hydro/records', wrap(async (req, res) => {
   if (b.paymentMethod) body.paymentMethod = String(b.paymentMethod).slice(0, 30);
   for (const k of ['startTime', 'endTime']) if (b[k]) body[k] = String(b[k]).slice(0, 19);
   const r = await hydro('POST', '/business/recharge/stsRecord/queryPage', body);
-  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: \`Hydro: \${r && r.msg || 'no answer'}\` });
+  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: `Hydro: ${r && r.msg || 'no answer'}` });
   res.json({ ok: true, total: r.data.total ?? null, list: r.data.list || [] });
 }));
 
@@ -992,11 +992,11 @@ app.get('/api/admin/transactions', wrap(async (req, res) => {
   const status = String(req.query.status || '');
   const offset = Math.max(0, Number(req.query.offset) || 0);
   const { rows } = await pool.query(
-    \`SELECT id, meter_number, phone, amount, status, mpesa_receipt, result_desc, last_error, token, water_volume, created_at
+    `SELECT id, meter_number, phone, amount, status, mpesa_receipt, result_desc, last_error, token, water_volume, created_at
        FROM transactions
       WHERE ($1 = '' OR meter_number ILIKE '%' || $1 || '%' OR phone LIKE '%' || $1 || '%' OR mpesa_receipt ILIKE '%' || $1 || '%')
         AND ($2 = '' OR status = $2)
-      ORDER BY created_at DESC LIMIT 101 OFFSET $3\`, [q, status, offset]);
+      ORDER BY created_at DESC LIMIT 101 OFFSET $3`, [q, status, offset]);
   res.json({ ok: true, items: rows.slice(0, 100), more: rows.length > 100 });
 }));
 
@@ -1007,7 +1007,7 @@ app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
   const phone = normPhone(req.body && req.body.phone);
   const amount = Number(req.body && req.body.amount);
   if (!phone) return res.status(400).json({ ok: false, message: 'Enter a valid Safaricom number, like 0712 345 678.' });
-  if (!validAmount(amount)) return res.status(400).json({ ok: false, message: \`Enter a whole amount from KSh \${MIN_AMOUNT} to KSh \${MAX_AMOUNT}.\` });
+  if (!validAmount(amount)) return res.status(400).json({ ok: false, message: `Enter a whole amount from KSh ${MIN_AMOUNT} to KSh ${MAX_AMOUNT}.` });
   if (!CODE.test(meter) || !(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1', [meter])).rowCount) {
     return res.status(404).json({ ok: false, message: 'That meter is not in the Mauriskade registry.' });
   }
@@ -1020,7 +1020,7 @@ app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
   }
   if (!owned) {
     await audit('mpesa_prompt', meter, { amount, outcome: 'meter_not_found' }, 'REFUSED');
-    return res.status(409).json({ ok: false, message: \`Your meter is not available on the system right now. Contact \${BUSINESS_NAME}.\` });
+    return res.status(409).json({ ok: false, message: `Your meter is not available on the system right now. Contact ${BUSINESS_NAME}.` });
   }
 
   const client = await pool.connect();
@@ -1029,9 +1029,9 @@ app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [meter]);
     const dup = await client.query(
-      \`SELECT 1 FROM transactions
+      `SELECT 1 FROM transactions
         WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'
-        LIMIT 1\`, [meter]);
+        LIMIT 1`, [meter]);
     if (dup.rowCount) {
       await client.query('ROLLBACK');
       await audit('mpesa_prompt', meter, { amount, outcome: 'duplicate_pending' }, 'REFUSED');
@@ -1056,12 +1056,12 @@ app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
   } catch (e) {
     if (e.definitive) {
       await pool.query("UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1",
-        [id, \`STK request rejected: \${e.message}\`]);
+        [id, `STK request rejected: ${e.message}`]);
       await audit('mpesa_prompt', meter, { amount, transactionId: id, outcome: 'rejected' }, 'REFUSED');
       return res.status(502).json({ ok: false, message: 'M-Pesa rejected the payment request. Please check the number and try again.' });
     }
     await pool.query("UPDATE transactions SET status='NEEDS_REVIEW', last_error=$2, updated_at=now() WHERE id=$1",
-      [id, \`STK submission outcome unknown: \${e.message}\`]);
+      [id, `STK submission outcome unknown: ${e.message}`]);
     await audit('mpesa_prompt', meter, { amount, transactionId: id, outcome: 'ambiguous' }, 'AMBIGUOUS');
     log('ADMIN_STK_SUBMISSION_UNKNOWN', id, e.message);
     return res.status(202).json({ ok: true, transactionId: id, pending: true, message: 'We are checking whether M-Pesa received your request. Please do not try again yet.' });
@@ -1099,7 +1099,7 @@ app.post('/api/admin/recharge', wrap(async (req, res) => {
   const maxVol = Math.floor((Number(MAX_AMOUNT) / Number(PRICE_PER_M3)) * 100) / 100;
   if (byVolume ? !(value >= 0.01 && value <= maxVol && Math.abs(value * 100 - Math.round(value * 100)) < 1e-9)
                : !(Number.isInteger(value) && value >= 1 && value <= Number(MAX_AMOUNT))) {
-    return res.status(400).json({ ok: false, message: byVolume ? \`Volume must be 0.01 to \${maxVol} m³, two decimals at most.\` : \`Amount must be a whole number from 1 to \${MAX_AMOUNT}.\` });
+    return res.status(400).json({ ok: false, message: byVolume ? `Volume must be 0.01 to ${maxVol} m³, two decimals at most.` : `Amount must be a whole number from 1 to ${MAX_AMOUNT}.` });
   }
   const busy = await pool.query("SELECT 1 FROM transactions WHERE meter_number=$1 AND status IN ('PAID','ISSUING','RETRY','NEEDS_REVIEW')", [meter]);
   if (busy.rowCount) return res.status(409).json({ ok: false, message: 'A customer payment for this meter is still being processed or reviewed. Finish that first.' });
@@ -1115,8 +1115,8 @@ app.post('/api/admin/recharge', wrap(async (req, res) => {
       await pool.query("UPDATE admin_actions SET status='DONE', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ token: String(r.data) })]);
       return res.json({ ok: true, token: String(r.data) });
     }
-    await pool.query("UPDATE admin_actions SET status='REFUSED', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ error: \`\${r.code}: \${r.msg}\` })]);
-    return res.status(502).json({ ok: false, message: \`Hydro refused it (\${r.code}): \${r.msg}\` });
+    await pool.query("UPDATE admin_actions SET status='REFUSED', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ error: `${r.code}: ${r.msg}` })]);
+    return res.status(502).json({ ok: false, message: `Hydro refused it (${r.code}): ${r.msg}` });
   } catch (e) {
     await pool.query("UPDATE admin_actions SET status='AMBIGUOUS', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ error: e.message })]);
     return res.status(504).json({ ok: false, message: 'No clear answer from Hydro. A token may have been issued. Check STS records for this meter before trying again.' });
