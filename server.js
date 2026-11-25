@@ -375,9 +375,10 @@ async function startPayment({ meter, phone, amount }) {
   try {
     stk = await stkPush({ amount, phone, meter });
   } catch (e) {
+    log('STK_PUSH_FAILED', { transactionId: id, meter: String(meter).slice(-4), phone: String(phone).slice(0, 5) + '****' + String(phone).slice(-3), error: e.message });
     await pool.query(`UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1`,
       [id, `stk push error: ${e.message}`]);
-    return { status: 502, body: { ok: false, message: 'We could not reach M-Pesa. Try again in a moment.' } };
+    return { status: 502, body: { ok: false, message: 'M-Pesa could not start this payment. Please check the number and try once more. If it still fails, contact the property office.' } };
   }
 
 
@@ -1021,6 +1022,17 @@ app.get('/api/admin/audit', wrap(async (_req, res) => {
 }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Safe, non-payment Daraja connectivity check. Never exposes credentials or sends an STK prompt.
+app.get('/health/mpesa', async (_req, res) => {
+  try {
+    await darajaToken();
+    res.json({ ok: true, darajaAuth: true });
+  } catch (e) {
+    log('DARAJA_AUTH_CHECK_FAILED', e.message);
+    res.status(503).json({ ok: false, darajaAuth: false });
+  }
+});
 
 /* ------------------- background worker: retries + reconcile ------------------- */
 
