@@ -75,3 +75,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS username text;
 UPDATE users SET username = meter_code WHERE username IS NULL OR btrim(username) = '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users (username);
 ALTER TABLE users ALTER COLUMN username SET NOT NULL;
+
+-- Audit trail for privileged admin operations (including manually issued STS tokens).
+CREATE TABLE IF NOT EXISTS admin_actions (
+  id           bigserial PRIMARY KEY,
+  action       text NOT NULL,
+  meter_number text,
+  status       text NOT NULL DEFAULT 'DONE',
+  detail       jsonb NOT NULL DEFAULT '{}',
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
