@@ -289,7 +289,7 @@ async function darajaToken() {
 }
 
 async function darajaPost(apiPath, body) {
-  const r = await fetch(`${DARA}${apiPath}`, {
+  const r = await fetch(`${DARAJA}${apiPath}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${await darajaToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
