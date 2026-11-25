@@ -913,6 +913,222 @@ app.post('/api/admin/review/:id', wrap(async (req, res) => {
   res.json({ ok: true, message: 'Queued. The worker will issue the token within 30 seconds.' });
 }));
 
+
+/* ------------------- admin: Hydro app features ------------------- */
+
+const ADMIN_RECHARGE_ENABLED = String(process.env.ADMIN_RECHARGE_ENABLED || '').toLowerCase() === 'true';
+const CODE = /^\d{6,20}$/;
+const intOrNull = (v) => (v === '' || v == null || !Number.isInteger(Number(v)) ? null : Number(v));
+
+async function audit(action, meter, detail, status = 'DONE') {
+  const r = await pool.query(
+    \`INSERT INTO admin_actions (action, meter_number, detail, status) VALUES ($1,$2,$3,$4) RETURNING id\`,
+    [action, meter || null, JSON.stringify(detail || {}), status]);
+  return r.rows[0].id;
+}
+
+app.get('/api/admin/features', (_req, res) => {
+  res.json({ ok: true, rechargeEnabled: ADMIN_RECHARGE_ENABLED, pricePerM3: Number(PRICE_PER_M3),
+    minAmount: Number(MIN_AMOUNT), maxAmount: Number(MAX_AMOUNT), companyId: HYDRO_COMPANY_ID, mpesaEnv: MPESA_ENV });
+});
+
+// Live meter list from Hydro. The STS API's /stsMeter/queryPage is scoped by companyId.
+app.post('/api/admin/hydro/meters', wrap(async (req, res) => {
+  const b = req.body || {};
+  const q = String(b.meterCode || '').trim();
+  if (q && !/^\d{1,20}$/.test(q)) return res.status(400).json({ ok: false, message: 'Meter search must be digits only.' });
+  const status = [0, 1, 2, 3].includes(Number(b.deviceStatus)) && b.deviceStatus !== '' && b.deviceStatus != null
+    ? Number(b.deviceStatus) : undefined;
+  const r = await hydro('POST', '/stsMeter/queryPage', {
+    pageNum: Math.max(1, intOrNull(b.pageNum) || 1),
+    pageSize: Math.min(50, Math.max(1, intOrNull(b.pageSize) || 20)),
+    companyId: Number(HYDRO_COMPANY_ID),
+    ...(q ? { meterCode: q } : {}),
+    ...(status !== undefined ? { deviceStatus: status } : {}),
+  });
+  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: \`Hydro: \${r && r.msg || 'no answer'}\` });
+  res.json({ ok: true, total: r.data.total ?? null, pages: r.data.pages ?? null, list: r.data.list || [] });
+}));
+
+app.get('/api/admin/hydro/stats', wrap(async (_req, res) => {
+  const all = await pullHydroMeters();
+  const by = { 0: 0, 1: 0, 2: 0, 3: 0 };
+  for (const m of all) if (by[m.deviceStatus] !== undefined) by[m.deviceStatus]++;
+  res.json({ ok: true, total: all.length, offline: by[0], online: by[1], fault: by[2], maintenance: by[3] });
+}));
+
+app.get('/api/admin/hydro/meter/:code', wrap(async (req, res) => {
+  const code = req.params.code;
+  const known = CODE.test(code) && (await pool.query('SELECT 1 FROM meters WHERE meter_code=$1', [code])).rowCount;
+  if (!known) return res.status(404).json({ ok: false, message: 'That meter is not in the Mauriskade registry.' });
+  const m = await lookupOwnedMeter(code);
+  if (!m) return res.status(404).json({ ok: false, message: 'Hydro does not return this meter.' });
+  res.json({ ok: true, meter: m });
+}));
+
+app.post('/api/admin/hydro/records', wrap(async (req, res) => {
+  const b = req.body || {};
+  const body = {
+    pageNum: Math.max(1, intOrNull(b.pageNum) || 1),
+    pageSize: Math.min(50, Math.max(1, intOrNull(b.pageSize) || 20)),
+    companyId: Number(HYDRO_COMPANY_ID),
+    orderType: 0,
+  };
+  if (b.meterCode) {
+    if (!/^\d{1,20}$/.test(String(b.meterCode))) return res.status(400).json({ ok: false, message: 'Meter search must be digits only.' });
+    body.meterCode = String(b.meterCode);
+  }
+  const st = intOrNull(b.rechargeStatus);
+  if (st !== null && st >= 0 && st <= 3) body.rechargeStatus = st;
+  if (b.paymentMethod) body.paymentMethod = String(b.paymentMethod).slice(0, 30);
+  for (const k of ['startTime', 'endTime']) if (b[k]) body[k] = String(b[k]).slice(0, 19);
+  const r = await hydro('POST', '/business/recharge/stsRecord/queryPage', body);
+  if (!r || r.code !== 0 || !r.data) return res.status(502).json({ ok: false, message: \`Hydro: \${r && r.msg || 'no answer'}\` });
+  res.json({ ok: true, total: r.data.total ?? null, list: r.data.list || [] });
+}));
+
+app.get('/api/admin/transactions', wrap(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const status = String(req.query.status || '');
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const { rows } = await pool.query(
+    \`SELECT id, meter_number, phone, amount, status, mpesa_receipt, result_desc, last_error, token, water_volume, created_at
+       FROM transactions
+      WHERE ($1 = '' OR meter_number ILIKE '%' || $1 || '%' OR phone LIKE '%' || $1 || '%' OR mpesa_receipt ILIKE '%' || $1 || '%')
+        AND ($2 = '' OR status = $2)
+      ORDER BY created_at DESC LIMIT 101 OFFSET $3\`, [q, status, offset]);
+  res.json({ ok: true, items: rows.slice(0, 100), more: rows.length > 100 });
+}));
+
+// Admin-originated prompts use the SAME stable Daraja primitives and callback lifecycle.
+// This intentionally mirrors the stable customer route's DB advisory lock and ambiguous-outcome handling.
+app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
+  const meter = String((req.body && req.body.meterNumber) || '');
+  const phone = normPhone(req.body && req.body.phone);
+  const amount = Number(req.body && req.body.amount);
+  if (!phone) return res.status(400).json({ ok: false, message: 'Enter a valid Safaricom number, like 0712 345 678.' });
+  if (!validAmount(amount)) return res.status(400).json({ ok: false, message: \`Enter a whole amount from KSh \${MIN_AMOUNT} to KSh \${MAX_AMOUNT}.\` });
+  if (!CODE.test(meter) || !(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1', [meter])).rowCount) {
+    return res.status(404).json({ ok: false, message: 'That meter is not in the Mauriskade registry.' });
+  }
+
+  let owned;
+  try { owned = await lookupOwnedMeter(meter); }
+  catch (e) {
+    await audit('mpesa_prompt', meter, { amount, outcome: 'hydro_lookup_error', error: e.message }, 'REFUSED');
+    return res.status(502).json({ ok: false, message: 'We could not reach the meter system. Try again in a moment.' });
+  }
+  if (!owned) {
+    await audit('mpesa_prompt', meter, { amount, outcome: 'meter_not_found' }, 'REFUSED');
+    return res.status(409).json({ ok: false, message: \`Your meter is not available on the system right now. Contact \${BUSINESS_NAME}.\` });
+  }
+
+  const client = await pool.connect();
+  let id;
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [meter]);
+    const dup = await client.query(
+      \`SELECT 1 FROM transactions
+        WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'
+        LIMIT 1\`, [meter]);
+    if (dup.rowCount) {
+      await client.query('ROLLBACK');
+      await audit('mpesa_prompt', meter, { amount, outcome: 'duplicate_pending' }, 'REFUSED');
+      return res.status(429).json({ ok: false, message: 'A payment prompt is already open for this meter. Approve it on your phone or wait a minute.' });
+    }
+    const ins = await client.query(
+      'INSERT INTO transactions (meter_number, phone, amount) VALUES ($1,$2,$3) RETURNING id',
+      [meter, phone, amount]);
+    id = ins.rows[0].id;
+    await client.query('COMMIT');
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch { /* transaction may already be closed */ }
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  let stk;
+  try {
+    log('ADMIN_STK_PUSH_START', id, 'phone-ending', phone.slice(-3), 'amount', amount, 'env', MPESA_ENV);
+    stk = await stkPush({ amount, phone, meter });
+  } catch (e) {
+    if (e.definitive) {
+      await pool.query("UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1",
+        [id, \`STK request rejected: \${e.message}\`]);
+      await audit('mpesa_prompt', meter, { amount, transactionId: id, outcome: 'rejected' }, 'REFUSED');
+      return res.status(502).json({ ok: false, message: 'M-Pesa rejected the payment request. Please check the number and try again.' });
+    }
+    await pool.query("UPDATE transactions SET status='NEEDS_REVIEW', last_error=$2, updated_at=now() WHERE id=$1",
+      [id, \`STK submission outcome unknown: \${e.message}\`]);
+    await audit('mpesa_prompt', meter, { amount, transactionId: id, outcome: 'ambiguous' }, 'AMBIGUOUS');
+    log('ADMIN_STK_SUBMISSION_UNKNOWN', id, e.message);
+    return res.status(202).json({ ok: true, transactionId: id, pending: true, message: 'We are checking whether M-Pesa received your request. Please do not try again yet.' });
+  }
+
+  if (String(stk.ResponseCode) !== '0') {
+    await pool.query("UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1",
+      [id, stk.errorMessage || stk.ResponseDescription || 'STK push rejected']);
+    await audit('mpesa_prompt', meter, { amount, transactionId: id, outcome: 'rejected' }, 'REFUSED');
+    return res.status(502).json({ ok: false, message: 'M-Pesa did not accept the request. Check the number and try again.' });
+  }
+
+  await pool.query(
+    'UPDATE transactions SET checkout_request_id=$2, merchant_request_id=$3, updated_at=now() WHERE id=$1',
+    [id, stk.CheckoutRequestID, stk.MerchantRequestID]);
+  await pool.query('UPDATE meters SET phone=$2 WHERE meter_code=$1 AND phone IS NULL', [meter, phone]);
+  await audit('mpesa_prompt', meter, { amount, transactionId: id, phone: phone.slice(0, 5) + '****' + phone.slice(-3) }, 'DONE');
+  res.json({ ok: true, transactionId: id });
+}));
+
+// Manual token issuance is disabled unless explicitly enabled in the Render environment.
+// The STS API can issue a real token; never exercise this route as a connectivity test.
+app.post('/api/admin/recharge', wrap(async (req, res) => {
+  if (!ADMIN_RECHARGE_ENABLED) return res.status(403).json({ ok: false, message: 'Manual recharge is switched off. Set ADMIN_RECHARGE_ENABLED=true on the backend to use it.' });
+  const b = req.body || {};
+  const meter = String(b.meterNumber || '');
+  const reason = String(b.reason || '').trim();
+  const byVolume = b.mode === 'volume';
+  const value = Number(b.value);
+  if (!CODE.test(meter) || !(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1', [meter])).rowCount) {
+    return res.status(404).json({ ok: false, message: 'That meter is not in the Mauriskade registry.' });
+  }
+  if (String(b.confirmMeter || '') !== meter) return res.status(400).json({ ok: false, message: 'Type the meter number again to confirm.' });
+  if (reason.length < 8) return res.status(400).json({ ok: false, message: 'Give a reason of at least 8 characters.' });
+  const maxVol = Math.floor((Number(MAX_AMOUNT) / Number(PRICE_PER_M3)) * 100) / 100;
+  if (byVolume ? !(value >= 0.01 && value <= maxVol && Math.abs(value * 100 - Math.round(value * 100)) < 1e-9)
+               : !(Number.isInteger(value) && value >= 1 && value <= Number(MAX_AMOUNT))) {
+    return res.status(400).json({ ok: false, message: byVolume ? \`Volume must be 0.01 to \${maxVol} m³, two decimals at most.\` : \`Amount must be a whole number from 1 to \${MAX_AMOUNT}.\` });
+  }
+  const busy = await pool.query("SELECT 1 FROM transactions WHERE meter_number=$1 AND status IN ('PAID','ISSUING','RETRY','NEEDS_REVIEW')", [meter]);
+  if (busy.rowCount) return res.status(409).json({ ok: false, message: 'A customer payment for this meter is still being processed or reviewed. Finish that first.' });
+  const owned = await lookupOwnedMeter(meter).catch(() => null);
+  if (!owned) return res.status(409).json({ ok: false, message: 'Hydro does not return this meter right now.' });
+
+  const auditId = await audit('sts_recharge', meter, { mode: byVolume ? 'volume' : 'amount', value, reason: reason.slice(0, 300) }, 'STARTED');
+  try {
+    const r = byVolume
+      ? await hydro('POST', '/api/recharge/sts/stsRecharge', { meterNumber: meter, waterVolume: value })
+      : await hydro('POST', '/api/recharge/sts/amountRecharge', { meterNumber: meter, rechargeAmount: value });
+    if (r.code === 0 && /^\d{20}$/.test(String(r.data))) {
+      await pool.query("UPDATE admin_actions SET status='DONE', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ token: String(r.data) })]);
+      return res.json({ ok: true, token: String(r.data) });
+    }
+    await pool.query("UPDATE admin_actions SET status='REFUSED', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ error: \`\${r.code}: \${r.msg}\` })]);
+    return res.status(502).json({ ok: false, message: \`Hydro refused it (\${r.code}): \${r.msg}\` });
+  } catch (e) {
+    await pool.query("UPDATE admin_actions SET status='AMBIGUOUS', detail = detail || $2::jsonb WHERE id=$1", [auditId, JSON.stringify({ error: e.message })]);
+    return res.status(504).json({ ok: false, message: 'No clear answer from Hydro. A token may have been issued. Check STS records for this meter before trying again.' });
+  }
+}));
+
+app.get('/api/admin/audit', wrap(async (_req, res) => {
+  const { rows } = await pool.query('SELECT id, action, meter_number, status, detail, created_at FROM admin_actions ORDER BY created_at DESC LIMIT 50');
+  res.json({ ok: true, items: rows });
+}));
+
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 /* ------------------- background worker: retries + reconcile ------------------- */
