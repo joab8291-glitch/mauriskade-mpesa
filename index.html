@@ -479,7 +479,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
         const strong = document.createElement('strong');
         strong.textContent = q.volume.toFixed(2) + ' m³';
         el.append('You will get about ', strong, ' at KSh ' + fmt(q.pricePerM3) + ' per m³.');
-        if (q.unused > 0) el.append(' KSh ' + q.unused.toFixed(2) + ' remains because water volume is rounded down to 2 decimal places.');
+
       } catch { el.textContent = ''; }
     }, 250);
   }
