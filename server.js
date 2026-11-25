@@ -24,7 +24,7 @@ const {
   MPESA_TXN_TYPE = 'CustomerPayBillOnline',
   CALLBACK_BASE_URL,
   CALLBACK_SECRET,
-  MIN_AMOUNT = '10',
+  MIN_AMOUNT = '60',
   MAX_AMOUNT = '20000',
   ADMIN_KEY,
   SESSION_DAYS = '7',
