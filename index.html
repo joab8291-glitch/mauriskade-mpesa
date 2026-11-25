@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Buy water credit</title>
+<title>Mauriskade Water Bill Payment | M-Pesa Water Top-Up</title>
+<meta name="description" content="Pay your Mauriskade Apartments water bill securely with M-Pesa and top up your water meter credit. Choose an amount, approve the payment prompt and receive your water token.">
+<link rel="canonical" href="https://mauriskade.co.ke/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mauriskade Water Bill Payment">
+<meta property="og:description" content="Top up your Mauriskade water meter using M-Pesa and receive your water token online.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
@@ -150,7 +155,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
 <main>
   <header>
     <p class="biz" id="biz"></p>
-    <h1>Buy water credit</h1>
+    <h1>Top Up Water Credit</h1>
     <p class="lede">Pay with M-Pesa. Your token appears on this page. Enter it on the meter keypad.</p>
   </header>
 
@@ -195,7 +200,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
 
   <!-- Amount and phone -->
   <section id="view-pay" aria-labelledby="h-pay" hidden>
-    <h2 id="h-pay" tabindex="-1">How much?</h2>
+    <h2 id="h-pay" tabindex="-1">Choose your top-up amount</h2>
     <div class="who">
       <p><span id="whoMeter"></span><small id="whoLabel"></small></p>
       <button class="link" id="signOut" type="button">Sign out</button>
@@ -267,7 +272,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   const $ = (s) => document.querySelector(s);
   const fmt = (n) => Number(n).toLocaleString('en-KE');
 
-  let cfg = { businessName: '', pricePerM3: 120, minAmount: 10, maxAmount: 20000 };
+  let cfg = { businessName: '', pricePerM3: 120, minAmount: 60, maxAmount: 20000 };
   let me = null;
   let lastToken = '';
   let pollTimer = null;
