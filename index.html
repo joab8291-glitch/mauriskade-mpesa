@@ -205,10 +205,10 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
       <div class="field">
         <span class="label" id="amtLabel">Amount in KSh</span>
         <div class="chips" role="group" aria-labelledby="amtLabel" id="chips">
-          <button class="chip" type="button" data-amt="50" aria-pressed="false">50</button>
-          <button class="chip" type="button" data-amt="100" aria-pressed="false">100</button>
-          <button class="chip" type="button" data-amt="200" aria-pressed="false">200</button>
-          <button class="chip" type="button" data-amt="500" aria-pressed="false">500</button>
+          <button class="chip" type="button" data-amt="60" aria-pressed="false">60</button>
+          <button class="chip" type="button" data-amt="120" aria-pressed="false">120</button>
+          <button class="chip" type="button" data-amt="240" aria-pressed="false">240</button>
+          <button class="chip" type="button" data-amt="480" aria-pressed="false">480</button>
         </div>
         <input id="amount" inputmode="numeric" autocomplete="off" aria-labelledby="amtLabel" placeholder="Or type an amount">
         <p class="quote" id="quote" aria-live="polite"></p>
@@ -277,7 +277,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   const $ = (s) => document.querySelector(s);
   const fmt = (n) => Number(n).toLocaleString('en-KE');
 
-  let cfg = { businessName: '', pricePerM3: 120, minAmount: 10, maxAmount: 20000 };
+  let cfg = { businessName: '', pricePerM3: 120, minAmount: 60, maxAmount: 20000, packageStep: 60 };
   let me = null;
   let lastToken = '';
   let pollTimer = null;
@@ -468,8 +468,8 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
     const raw = $('#amount').value;
     const a = Number(raw);
     if (!raw) { el.textContent = 'Pick an amount to see how much water it buys.'; return; }
-    if (!Number.isInteger(a) || a < cfg.minAmount || a > cfg.maxAmount) {
-      el.textContent = 'Enter a whole amount from KSh ' + fmt(cfg.minAmount) + ' to KSh ' + fmt(cfg.maxAmount) + '.';
+    if (!Number.isSafeInteger(a) || a < cfg.minAmount || a > cfg.maxAmount || a % (cfg.packageStep || 60) !== 0) {
+      el.textContent = 'Choose an amount in KSh 60 blocks (60, 120, 240, 480, etc.), up to KSh ' + fmt(cfg.maxAmount) + '.';
       return;
     }
     quoteTimer = setTimeout(async () => {
@@ -490,8 +490,8 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
     msg('#payMsg', '');
     const amount = Number($('#amount').value);
     const phone = $('#phone').value.replace(/[\s-]/g, '');
-    if (!Number.isInteger(amount) || amount < cfg.minAmount || amount > cfg.maxAmount) {
-      return msg('#payMsg', 'Enter a whole amount from KSh ' + fmt(cfg.minAmount) + ' to KSh ' + fmt(cfg.maxAmount) + '.', true);
+    if (!Number.isSafeInteger(amount) || amount < cfg.minAmount || amount > cfg.maxAmount || amount % (cfg.packageStep || 60) !== 0) {
+      return msg('#payMsg', 'Choose an amount in KSh 60 blocks (60, 120, 240, 480, etc.), up to KSh ' + fmt(cfg.maxAmount) + '.', true);
     }
     if (!/^(?:\+?254|0)?[17]\d{8}$/.test(phone)) {
       return msg('#payMsg', 'Enter a valid Safaricom number, like 0712 345 678.', true);
