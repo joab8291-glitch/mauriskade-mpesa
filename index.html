@@ -18,7 +18,7 @@
 /* Customer portal layout. Colours, buttons, cards, chips and tables come from /theme.css. */
 
 /* ---- header band, user menu and meter badge ---- */
-.hero{position:relative;padding:24px 0 96px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--blue))}
+.hero{position:relative;z-index:20;padding:24px 0 96px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--blue))}
 .hero-in{position:relative;z-index:3;width:min(100% - 32px,1100px);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .notch{position:absolute;z-index:1;top:0;right:0;width:min(380px,38%);height:214px;background:linear-gradient(120deg,var(--navy),var(--blue));border-bottom-left-radius:40px}
 .badge-wrap{position:absolute;z-index:3;top:86px;right:max(16px,calc((100vw - 1100px) / 2))}
@@ -41,7 +41,7 @@ body[data-state=login] .notch,body[data-state=pw] .notch{display:none}
 .user-panel button:hover{background:var(--sky-50)}
 
 /* ---- page grid ---- */
-main{position:relative;z-index:4;width:min(100% - 32px,1100px);margin:-64px auto 0;padding-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+main{position:relative;z-index:1;width:min(100% - 32px,1100px);margin:-64px auto 0;padding-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
 .col{display:grid;gap:22px;min-width:0}
 main[data-state=login],main[data-state=pw]{grid-template-columns:minmax(0,28rem);justify-content:center}
 .wide{grid-column:1/-1}
