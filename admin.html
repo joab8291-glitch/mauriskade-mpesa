@@ -4,66 +4,131 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a4f82">
 <title>Property Management | Mauriskade Apartments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
 <style>
-:root{color-scheme:dark;--bg:#061326;--panel:rgba(17,39,65,.72);--line:rgba(176,211,247,.17);--text:#f1f7ff;--muted:#a7bdd7;--blue:#79caff;--green:#55e0b4;--red:#ff8997;--amber:#ffd080;--shadow:0 22px 65px rgba(0,0,0,.28)}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,rgba(31,112,180,.34),transparent 40%),radial-gradient(ellipse at 90% 15%,rgba(20,150,153,.19),transparent 34%),linear-gradient(145deg,#06101f,#0a1b31 58%,#071426);background-attachment:fixed;color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,sans-serif}
-main{max-width:1240px;margin:auto;padding:30px 20px 70px}.top{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:26px}.eyebrow{color:var(--blue);font-size:.75rem;font-weight:850;letter-spacing:.16em;text-transform:uppercase}h1{font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.04em;margin:.2rem 0}.sub,.muted{color:var(--muted)}
-.panel{background:linear-gradient(145deg,rgba(27,57,88,.78),rgba(10,27,48,.78));border:1px solid var(--line);border-radius:20px;padding:22px;margin:16px 0;box-shadow:var(--shadow);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%)}
-#authPanel{max-width:690px;margin:clamp(32px,8vh,88px) auto 24px;padding:clamp(24px,5vw,38px);background:linear-gradient(145deg,rgba(64,111,153,.38),rgba(12,30,54,.78));border-color:rgba(191,224,255,.27);box-shadow:0 30px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12)}
-#authPanel:before{content:"SECURE ADMINISTRATOR ACCESS";display:block;margin-bottom:14px;color:#8bd2ff;font-size:.72rem;font-weight:850;letter-spacing:.16em}
-.auth{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}.field{display:grid;gap:7px}label{font-size:.84rem;color:#d7e8fa;font-weight:650}input,select,button,textarea{font:inherit}input,select,textarea{width:100%;min-height:46px;background:rgba(4,17,32,.64);color:var(--text);border:1px solid rgba(173,207,241,.24);border-radius:12px;padding:11px 13px;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(85,167,255,.14)}:focus-visible{outline:3px solid #8bd2ff;outline-offset:3px}
-button{min-height:43px;border:0;border-radius:12px;padding:10px 16px;font-weight:750;cursor:pointer;background:linear-gradient(110deg,#7bcaff,#58dfc5);color:#06172a;transition:transform .18s,filter .18s}button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06)}button.secondary{background:rgba(255,255,255,.075);border:1px solid var(--line);color:var(--text)}button.danger{background:rgba(164,55,75,.3);border:1px solid rgba(255,137,151,.25);color:#ffdce1}button:disabled{opacity:.5;cursor:wait}
-.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stat{background:rgba(3,18,34,.48);border:1px solid var(--line);border-radius:16px;padding:17px}.stat strong{display:block;font-size:2rem;letter-spacing:-.04em}.stat span{font-size:.82rem;color:var(--muted)}
-.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:minmax(180px,1fr) 180px auto;gap:10px;margin:16px 0}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;padding:13px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;background:rgba(3,17,32,.58)}tr:last-child td{border-bottom:0}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 9px;color:var(--muted);font-size:.75rem;background:rgba(255,255,255,.035)}.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.notice{padding:12px 14px;border-radius:13px;background:rgba(3,17,32,.5);border:1px solid var(--line);color:var(--muted);white-space:pre-wrap}.hidden{display:none!important}.small{font-size:.82rem}.row-actions{display:flex;gap:6px;flex-wrap:wrap}.row-actions button{font-size:.78rem;padding:7px 10px;min-height:36px}.empty{text-align:center;color:var(--muted);padding:30px}.modal{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.section-title{margin:0;font-size:1.15rem}.token{font-family:ui-monospace,monospace;letter-spacing:.08em}.foot{color:var(--muted);font-size:.8rem;margin-top:28px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}.tabs button{background:rgba(255,255,255,.075);border:1px solid var(--line);color:var(--text)}.tabs button[aria-selected=true]{background:linear-gradient(110deg,#7bcaff,#58dfc5);color:#06172a;border-color:transparent}.form{display:grid;gap:14px;max-width:520px;margin-top:14px}.tabs button{min-height:44px}
-@media(max-width:760px){main{padding:22px 12px 50px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.auth{grid-template-columns:1fr}.filters{grid-template-columns:1fr 1fr}.filters button{grid-column:1/-1}.panel{padding:16px}.modal{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}@media(max-width:420px){.grid{grid-template-columns:1fr 1fr}.stat{padding:12px}.stat strong{font-size:1.55rem}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+/* Admin dashboard layout. Colours, tables, pills and notices come from /theme.css. */
+body{font-size:15px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.token{font-family:var(--mono);font-size:.9em;letter-spacing:.01em}
+.good{color:var(--green-700)}.warn{color:var(--amber)}.bad{color:var(--red)}
+.empty{text-align:center;color:var(--muted);padding:28px 16px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.section-title{font-size:1.15rem;font-weight:700}
+h3.section-title{font-size:1.05rem}
 
-/* ===== Mauriskade Aqua / admin workspace refresh ===== */
-:root{--bg:#041321;--panel:rgba(10,39,61,.78);--line:rgba(143,222,235,.17);--text:#effbff;--muted:#a5c0d1;--blue:#78e8ef;--green:#67e7c2;--red:#ff9eaa;--amber:#ffd58a;--shadow:0 24px 70px rgba(0,0,0,.3)}
-body{background:radial-gradient(ellipse at 10% 0%,rgba(23,143,179,.25),transparent 42%),radial-gradient(ellipse at 92% 12%,rgba(28,196,174,.14),transparent 34%),linear-gradient(145deg,#03101d,#08253a 56%,#041522);font-family:"Schibsted Grotesk",Inter,ui-sans-serif,system-ui,sans-serif}
-main{max-width:1360px;padding:clamp(20px,4vw,42px) clamp(12px,3vw,28px) 72px}
-.top{position:relative;isolation:isolate;overflow:hidden;min-height:210px;padding:clamp(24px,4vw,42px);border:1px solid rgba(158,232,239,.2);border-radius:28px;background:linear-gradient(112deg,rgba(5,29,49,.96),rgba(8,71,91,.78) 64%,rgba(8,113,117,.48));box-shadow:0 28px 80px -38px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.16)}
-.top:before{content:"";position:absolute;z-index:-1;width:300px;height:300px;right:11%;top:-190px;border:1px solid rgba(183,255,247,.2);border-radius:50%;box-shadow:0 0 0 22px rgba(115,235,239,.04),0 0 0 48px rgba(115,235,239,.025),0 0 80px rgba(68,218,233,.2);animation:admin-ripple 9s ease-in-out infinite}
-.top:after{content:"";position:absolute;z-index:-1;right:clamp(24px,8vw,110px);top:50%;width:clamp(62px,9vw,102px);height:clamp(62px,9vw,102px);transform:translateY(-50%) rotate(-45deg);border-radius:52% 52% 52% 8%;background:linear-gradient(145deg,rgba(218,255,249,.92),rgba(72,220,231,.78) 42%,rgba(9,108,149,.3));border:1px solid rgba(226,255,255,.7);box-shadow:inset -10px -12px 24px rgba(2,53,89,.38),inset 7px 7px 18px rgba(255,255,255,.4),0 0 44px rgba(68,220,238,.38);animation:admin-drop 6s ease-in-out infinite}
-@keyframes admin-drop{0%,100%{margin-top:0}50%{margin-top:-12px}}
-@keyframes admin-ripple{0%,100%{transform:scale(.95);opacity:.6}50%{transform:scale(1.06);opacity:1}}
-.top>div{max-width:820px}.top h1{font-size:clamp(2rem,5vw,3.25rem);letter-spacing:-.06em;margin:.25rem 0 .5rem}.eyebrow{color:#9af5e6;letter-spacing:.18em}
-.top .sub{max-width:680px;color:#c0d9e7;font-size:1.02rem}
-.panel{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(17,59,83,.8),rgba(5,27,46,.84) 70%);border:1px solid rgba(143,222,235,.17);border-radius:22px;padding:clamp(17px,2.5vw,26px);margin:16px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 24px 60px -38px rgba(0,0,0,.9);backdrop-filter:blur(20px) saturate(145%)}
-#authPanel{max-width:760px;margin:clamp(24px,5vh,52px) auto;padding:clamp(22px,4vw,38px);background:linear-gradient(145deg,rgba(25,92,115,.42),rgba(5,27,47,.88));border-color:rgba(170,240,243,.24);box-shadow:0 30px 90px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.16)}
-#authPanel:before{color:#9af5e6;letter-spacing:.19em}
-input,select,textarea{min-height:48px;background:rgba(2,17,30,.72);border:1px solid rgba(153,220,232,.2);border-radius:13px;color:var(--text)}
-input:focus,select:focus,textarea:focus{border-color:#79e8ef;box-shadow:0 0 0 4px rgba(98,230,239,.13),0 0 24px rgba(98,230,239,.07)}
-button{min-height:44px;border-radius:13px;padding:10px 17px;background:linear-gradient(115deg,#7debef,#baffeb);box-shadow:0 8px 24px -14px rgba(90,230,224,.6);transition:transform .2s,box-shadow .2s,filter .2s}
-button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 12px 28px -12px rgba(90,230,224,.55)}
-button.secondary{background:rgba(115,217,226,.08);border:1px solid rgba(143,222,235,.2);color:#e9fbff;box-shadow:none}
-button.secondary:hover:not(:disabled){background:rgba(115,217,226,.15);border-color:rgba(143,222,235,.38)}
-button.danger{background:rgba(164,55,75,.2);border:1px solid rgba(255,137,151,.28);color:#ffdce1;box-shadow:none}
-.grid{gap:14px}
-.stat{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(16,71,91,.55),rgba(3,25,43,.75));border:1px solid rgba(143,222,235,.16);border-radius:18px;padding:19px}
-.stat:after{content:"";position:absolute;width:72px;height:72px;right:-32px;top:-32px;border-radius:50%;background:rgba(95,226,225,.1);box-shadow:0 0 35px rgba(95,226,225,.12)}
-.stat strong{font-size:clamp(1.6rem,3vw,2.15rem);letter-spacing:-.05em}
-.stat span{color:#aac6d5}
-.tabs{position:sticky;top:8px;z-index:5;gap:8px;padding:9px;margin:16px 0 14px;border:1px solid rgba(143,222,235,.14);border-radius:18px;background:rgba(3,20,35,.84);backdrop-filter:blur(18px)}
-.tabs button{min-height:43px;border-radius:12px;background:rgba(115,217,226,.07);border-color:rgba(143,222,235,.14);color:#c8e5ed}
-.tabs button[aria-selected=true]{background:linear-gradient(115deg,#7debef,#baffeb);color:#052033;box-shadow:0 7px 20px rgba(80,220,220,.16)}
-.section-title{font-size:1.2rem;letter-spacing:-.035em}
-.filters{gap:10px;margin:18px 0}
-.table-wrap{border:1px solid rgba(143,222,235,.16);border-radius:16px;background:rgba(2,17,30,.28)}
-table{min-width:760px}
-th{background:rgba(4,27,44,.92);color:#a8cad8;letter-spacing:.1em}
-td{border-bottom-color:rgba(143,222,235,.1)}
-tr:hover td{background:rgba(112,216,224,.035)}
-.pill{border-color:rgba(143,222,235,.2);background:rgba(115,217,226,.07);color:#c1e1e9;padding:5px 10px}
-.notice{background:rgba(2,19,33,.56);border:1px solid rgba(143,222,235,.16);border-radius:15px;color:#c1dce5;padding:14px 16px}
-.good{color:#7df0c9}.warn{color:#ffd58a}.bad{color:#ff9eaa}
-.foot{padding-top:18px;border-top:1px solid rgba(143,222,235,.13);color:#91b2c1}
-:focus-visible{outline:3px solid #8cf2ed;outline-offset:3px}
-@media(max-width:760px){.top{min-height:230px;padding:24px 20px;border-radius:22px}.top:after{width:54px;height:54px;right:25px;top:31%;opacity:.78}.top:before{right:-90px}.top>div{max-width:100%}.top h1{max-width:82%;font-size:clamp(1.85rem,8vw,2.6rem)}.top .sub{max-width:95%;font-size:.94rem}.tabs{position:relative;top:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.tabs button{flex:0 0 auto}.panel{border-radius:18px}.filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}}
-@media(max-width:420px){main{padding-left:10px;padding-right:10px}.grid{gap:9px}.stat{padding:12px}.stat strong{font-size:1.5rem}.tabs{margin-left:-2px;margin-right:-2px}}
-@media(prefers-reduced-motion:reduce){.top:before,.top:after{animation:none}}
+/* Buttons: plain <button> is the primary action; .secondary and .danger are quieter */
+button{min-height:42px;padding:9px 16px;font:inherit;font-weight:600;color:#fff;background:var(--blue);border:0;border-radius:10px;cursor:pointer;transition:filter .15s,transform .15s,background .15s}
+button:hover:not(:disabled){filter:brightness(1.08)}
+button:disabled{opacity:.5;cursor:wait}
+button.secondary{color:var(--navy);background:#fff;border:1.5px solid var(--sky-100)}
+button.secondary:hover:not(:disabled){background:var(--sky-50);filter:none}
+button.danger{color:var(--red);background:var(--red-50);border:1.5px solid #f6cdd1}
+
+/* Sign-in */
+#authPanel{min-height:100vh;background:linear-gradient(180deg,var(--navy) 0,var(--blue) 280px,var(--bg) 280px)}
+.auth-top{width:min(100% - 32px,520px);margin:0 auto;padding:28px 0 0}
+.auth-card{width:min(100% - 32px,520px);margin:34px auto 0;padding:26px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.auth-card .eyebrow{margin:0 0 6px;color:var(--teal);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.auth-card h1{font-size:1.6rem;margin:0 0 18px}
+.auth{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.field{display:grid;gap:7px;margin:0}
+.auth-card p{margin:14px 0 0}
+
+/* Shell: sidebar + content */
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;align-self:start;height:100vh;display:flex;flex-direction:column;gap:18px;padding:20px 14px;background:#fff;border-right:1px solid var(--line)}
+.side .brand{color:var(--ink);padding:0 8px}
+.side .brand .ico{fill:var(--blue)}
+.side .brand small{display:block;margin-top:2px;color:var(--muted);font:500 .75rem var(--font);letter-spacing:0}
+#tabs{display:flex;flex-direction:column;gap:3px;flex:1;overflow:auto}
+#tabs button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:44px;padding:0 14px;font-weight:600;color:var(--ink);background:none;border:0;border-radius:10px;text-align:left}
+#tabs button:hover{background:var(--bg);filter:none}
+#tabs button[aria-selected=true]{color:var(--teal);background:var(--teal-50)}
+#tabs .ico{width:20px;height:20px}
+#tabs .count{margin-left:auto;min-width:22px;padding:1px 7px;font-size:.75rem;font-weight:700;color:#fff;background:var(--red);border-radius:999px;text-align:center}
+.side-foot{padding:0 4px}
+.side-foot button{width:100%}
+
+.content{min-width:0;padding:22px clamp(14px,2.4vw,30px) 50px}
+.topbar{display:flex;align-items:center;gap:12px;margin:0 0 18px}
+.search{position:relative;flex:1;max-width:520px}
+.search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{padding-left:42px;background:#fff}
+.month{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;font-weight:600;white-space:nowrap;color:var(--ink);background:#fff;border:1.5px solid var(--sky-100);border-radius:10px}
+.top-actions{margin-left:auto;display:flex;gap:9px}
+#message{margin:0 0 18px}
+
+/* Cards */
+.panel{margin:0 0 18px;padding:clamp(16px,2.2vw,24px);background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel-title{font-size:1.1rem;font-weight:700}
+#reviews .panel{margin:12px 0 0;box-shadow:none;background:#fff}
+.filters{display:grid;grid-template-columns:minmax(180px,1fr) 190px auto;gap:10px;margin:16px 0}
+.form{display:grid;gap:14px;max-width:520px;margin-top:14px}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+.row-actions button{min-height:36px;padding:6px 11px;font-size:.82rem}
+.table-wrap table{min-width:720px}
+
+/* KPI cards */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.kpi-label{color:var(--ink);font-weight:600;font-size:.95rem}
+.kpi-val-row{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.kpi-val{font-size:clamp(1.5rem,2.4vw,2rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;overflow-wrap:anywhere}
+.kpi-unit{font-size:1.05rem;font-weight:600}
+.kpi-sub{margin-top:auto;color:var(--muted);font-size:.85rem}
+.spark{display:block;width:100%;height:34px;margin:4px 0}
+.stat{padding:16px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.stat strong{display:block;font-size:1.7rem;letter-spacing:-.03em;font-weight:800}
+.stat span{color:var(--muted);font-size:.85rem}
+
+/* Overview rows */
+.two{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;margin:18px 0 0}
+.two .panel{margin:0}
+.seg{display:inline-flex;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.seg button{min-height:34px;padding:4px 12px;font-size:.85rem;color:var(--muted);background:none;border-radius:8px}
+.seg button[aria-pressed=true]{color:var(--navy);background:#fff;box-shadow:0 1px 3px rgba(16,42,67,.15)}
+#trendChart{margin-top:12px}
+#trendChart svg{display:block;width:100%;height:auto}
+.ax{font:500 11px var(--font);fill:#6b8094}
+.donut{width:150px;margin:6px auto 4px}
+.d-num{font:800 20px var(--font);fill:var(--ink)}
+.d-lbl{font:500 9px var(--font);fill:var(--muted)}
+.legend{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.legend li{display:flex;align-items:center;gap:10px}
+.legend i{width:12px;height:12px;border-radius:50%}
+.legend b{margin-left:auto}
+#ovRows td,#ovRows th{padding:11px 14px}
+.overview-table{margin-top:18px}
+
+.foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+
+@media(max-width:1080px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{min-width:0}
+  .side{position:sticky;z-index:20;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border-right:0;border-bottom:1px solid var(--line)}
+  .side .brand small{display:none}
+  .side-foot{margin-left:auto}
+  .side-foot button{width:auto}
+  #tabs{order:3;flex:1 0 100%;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:2px}
+  #tabs button{flex:0 0 auto;width:auto;white-space:nowrap}
+  .search{flex:1 1 0;min-width:0;max-width:none}
+  .month{display:none}
+}
+@media(max-width:640px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{padding:14px}.kpi-val{font-size:1.35rem}
+  .filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}
+  .auth{grid-template-columns:1fr}
+}
 
 </style>
 <style>
@@ -125,35 +190,101 @@ tr:hover td{background:#f7fbfc}
 </style>
 </head>
 <body>
-<main>
-<header class="top"><div><div class="eyebrow">Mauriskade Apartments</div><h1>Property Management</h1><div class="sub">Manage water meters, resident access and payment activity from one secure workspace.</div></div><span class="pill">Administrator workspace</span></header>
-<section class="panel" id="authPanel"><div class="auth"><div class="field"><label for="adminKey">Admin access key</label><input id="adminKey" type="password" autocomplete="current-password" placeholder="Enter ADMIN_KEY configured on the backend"></div><button id="connect">Connect securely</button></div><p class="muted small">The key is kept only in this page's memory and is not written to the URL or browser storage.</p></section>
-<div id="app" class="hidden">
-<section class="panel"><div class="bar"><h2 class="section-title">Overview</h2><div class="actions"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="logout">Disconnect</button></div></div><div class="grid" id="stats" style="margin-top:14px"></div></section>
-<nav class="tabs" id="tabs" role="tablist" aria-label="Admin sections"><button role="tab" data-t="registry" aria-selected="true">Meter registry</button><button role="tab" data-t="devices" aria-selected="false">Device info</button><button role="tab" data-t="pay" aria-selected="false">M-Pesa payment</button><button role="tab" data-t="mpesa" aria-selected="false">M-Pesa records</button><button role="tab" data-t="recharge" aria-selected="false">STS recharge</button><button role="tab" data-t="records" aria-selected="false">STS records</button><button role="tab" data-t="pricing" aria-selected="false">Pricing</button></nav>
-<section class="panel" data-tab="registry"><div class="bar"><div><h2 class="section-title">Meter registry</h2><p class="muted small">Sync reads Mauriskade's meter list from Hydro company 10185.</p></div><button id="sync">Check for new meters</button></div><div class="filters"><input id="search" placeholder="Search meter, flat or tenant"><select id="filter"><option value="">All meters</option><option value="nologin">No customer login</option></select><button class="secondary" id="searchBtn">Search</button></div><div class="table-wrap"><table><thead><tr><th>Meter / location</th><th>Tenant details</th><th>Customer login</th><th>Actions</th></tr></thead><tbody id="meters"><tr><td colspan="4" class="empty">Connect to load meters.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="meterInfo" class="muted small"></span><button class="secondary" id="more" hidden>Load more</button></div></section>
-<section class="panel" data-tab="registry"><div class="bar"><div><h2 class="section-title">Transactions needing review</h2><p class="muted small">Check Hydro recharge records before adopting a token or retrying.</p></div><button class="secondary" id="loadReview">Load review queue</button></div><div id="reviews" class="notice" style="margin-top:12px">No review data loaded.</div></section>
-<section class="panel hidden" data-tab="devices"><div class="bar"><div><h2 class="section-title">Device info</h2><p class="muted small">Live from Hydro, Mauriskade meters only.</p></div><button class="secondary" id="devStats">Load totals</button></div><div id="devTotals" class="grid" style="margin-top:12px"></div><div class="filters"><input id="devQ" inputmode="numeric" placeholder="Search meter number"><select id="devStatus"><option value="">All</option><option value="1">Online</option><option value="0">Offline</option><option value="2">Fault</option><option value="3">Maintenance</option></select><button class="secondary" id="devGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Meter</th><th>Status</th><th>Last reading</th><th>Last contact</th><th>Battery / signal</th></tr></thead><tbody id="devRows"><tr><td colspan="5" class="empty">Press Search to load meters.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="devInfo" class="muted small"></span><div class="actions"><button class="secondary" id="devPrev" disabled>Previous</button><button class="secondary" id="devNext" disabled>Next</button></div></div></section>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.5C8 8 5.5 11.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 11.2 16 8 12 2.5z"/></symbol>
+  <symbol id="a-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="a-gauge" viewBox="0 0 24 24"><path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/></symbol>
+  <symbol id="a-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="a-send" viewBox="0 0 24 24"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></symbol>
+  <symbol id="a-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+  <symbol id="a-bolt" viewBox="0 0 24 24"><path d="M13 2L5 13h6l-1 9 8-11h-6z"/></symbol>
+  <symbol id="a-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></symbol>
+  <symbol id="a-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/></symbol>
+  <symbol id="a-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="a-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+</svg>
 
-<section class="panel hidden" data-tab="pay"><h2 class="section-title">Send M-Pesa prompt</h2><p class="muted small">Sends the same payment prompt a resident gets. When it is paid, the token is issued and shows in the resident's portal.</p><div class="form"><div class="field"><label for="payMeter">Meter</label><input id="payMeter" list="meterList" inputmode="numeric" placeholder="Meter number"><datalist id="meterList"></datalist></div><div class="field"><label for="payPhone">Customer phone</label><input id="payPhone" inputmode="tel" placeholder="0712 345 678"></div><div class="field"><label for="payAmt">Amount (KSh)</label><input id="payAmt" inputmode="numeric" placeholder="Amount"></div><div class="actions"><button class="secondary" data-amt="60">60</button><button class="secondary" data-amt="120">120</button><button class="secondary" data-amt="240">240</button><button class="secondary" data-amt="480">480</button></div><div class="actions"><button id="paySend">Send M-Pesa prompt</button></div></div><div id="payMsg" class="notice" style="margin-top:12px" role="status">Nothing sent yet.</div></section>
-
-<section class="panel hidden" data-tab="mpesa"><div class="bar"><div><h2 class="section-title">M-Pesa records</h2><p class="muted small">Payments made through this portal.</p></div></div><div class="filters"><input id="txQ" placeholder="Meter, phone or receipt"><select id="txStatus"><option value="">All statuses</option><option>TOKEN_ISSUED</option><option>PENDING_PAYMENT</option><option>PAID</option><option>ISSUING</option><option>RETRY</option><option>NEEDS_REVIEW</option><option>FAILED</option></select><button class="secondary" id="txGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Phone</th><th>Amount</th><th>Status</th><th>Receipt / detail</th></tr></thead><tbody id="txRows"><tr><td colspan="6" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="txInfo" class="muted small"></span><button class="secondary" id="txMore" hidden>Load more</button></div></section>
-
-<section class="panel hidden" data-tab="recharge"><h2 class="section-title">STS recharge</h2><div id="rcOff" class="notice hidden">Manual recharge is switched off. It issues water without an M-Pesa payment, so it stays off until ADMIN_RECHARGE_ENABLED=true is set on the backend.</div><div id="rcForm"><p class="muted small">Issues a token straight from Hydro with no payment. Every attempt is written to the audit log below.</p><div class="form"><div class="field"><label for="rcMeter">Meter</label><input id="rcMeter" list="meterList" inputmode="numeric" placeholder="Meter number"></div><div class="field"><label for="rcMode">Recharge by</label><select id="rcMode"><option value="amount">Amount (KSh)</option><option value="volume">Water volume (m³)</option></select></div><div class="field"><label for="rcVal" id="rcValL">Amount (KSh)</label><input id="rcVal" inputmode="decimal"></div><div class="field"><label for="rcReason">Reason</label><input id="rcReason" maxlength="300" placeholder="For example: cash paid at office, receipt 123"></div><div class="field"><label for="rcConfirm">Type the meter number again to confirm</label><input id="rcConfirm" inputmode="numeric" autocomplete="off"></div><div class="actions"><button class="danger" id="rcGo">Issue token</button></div></div></div><div id="rcOut" class="notice" style="margin-top:12px" role="status">No recharge made.</div><div class="bar" style="margin-top:18px"><h3 class="section-title">Audit log</h3><button class="secondary" id="auditGo">Load</button></div><div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>Time</th><th>Action</th><th>Meter</th><th>Status</th><th>Detail</th></tr></thead><tbody id="auditRows"><tr><td colspan="5" class="empty">Press Load.</td></tr></tbody></table></div></section>
-
-<section class="panel hidden" data-tab="records"><div class="bar"><div><h2 class="section-title">STS records</h2><p class="muted small">Hydro's recharge history for Mauriskade meters.</p></div><button class="secondary" id="rcExport">Download CSV (this page)</button></div><div class="filters"><input id="recQ" inputmode="numeric" placeholder="Meter number"><select id="recStatus"><option value="">Any status</option><option value="1">Success</option><option value="0">Processing</option><option value="2">Failed</option><option value="3">Refunded</option></select><button class="secondary" id="recGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Amount</th><th>Volume</th><th>Balance after</th><th>Status</th><th>Token</th></tr></thead><tbody id="recRows"><tr><td colspan="7" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="recInfo" class="muted small"></span><div class="actions"><button class="secondary" id="recPrev" disabled>Previous</button><button class="secondary" id="recNext" disabled>Next</button></div></div></section>
-
-<section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing policy</h2><div id="priceBox" class="notice">Loading…</div><p class="muted small">Read only. Hydro sets the real price per meter; this is the rate used for the estimate residents see. Change it in the backend settings (PRICE_PER_M3), and keep it equal to the Hydro price.</p></section>
-
-<div id="message" class="notice" role="status" aria-live="polite">Connect with your admin key to begin.</div>
+<!-- Sign in -->
+<div id="authPanel">
+  <div class="auth-top"><a class="brand" href="/admin"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Water</span></a></div>
+  <div class="auth-card">
+    <p class="eyebrow">Secure administrator access</p>
+    <h1>Property Management</h1>
+    <div class="auth"><div class="field"><label for="adminKey">Admin access key</label><input id="adminKey" type="password" autocomplete="current-password" placeholder="Enter ADMIN_KEY configured on the backend"></div><button id="connect">Connect securely</button></div>
+    <p class="muted small">The key is kept only in this page's memory and is not written to the URL or browser storage.</p>
+  </div>
 </div>
-<p class="foot">Security: never share this page's access key. Customer passwords are generated once, displayed only when created or reset, and stored hashed on the server.</p>
-</main>
+
+<div class="shell hidden" id="app">
+  <aside class="side">
+    <a class="brand" href="/admin"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade<small>Property management</small></span></a>
+    <nav id="tabs" role="tablist" aria-label="Admin sections">
+      <button role="tab" data-t="overview" aria-selected="true"><svg class="ico" aria-hidden="true"><use href="#a-grid"/></svg>Overview<span class="count hidden" id="reviewBadge" title="Transactions needing review">0</span></button>
+      <button role="tab" data-t="registry" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-gauge"/></svg>Meter registry</button>
+      <button role="tab" data-t="devices" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-chip"/></svg>Device info</button>
+      <button role="tab" data-t="pay" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-send"/></svg>M-Pesa payment</button>
+      <button role="tab" data-t="mpesa" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-receipt"/></svg>M-Pesa records</button>
+      <button role="tab" data-t="recharge" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-bolt"/></svg>STS recharge</button>
+      <button role="tab" data-t="records" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-list"/></svg>STS records</button>
+      <button role="tab" data-t="pricing" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-tag"/></svg>Pricing</button>
+    </nav>
+    <div class="side-foot"><button class="secondary" id="logout">Disconnect</button></div>
+  </aside>
+
+  <div class="content">
+    <div class="topbar">
+      <div class="search"><svg class="ico" aria-hidden="true"><use href="#a-search"/></svg><label class="sr-only" for="globalSearch">Search meters</label><input id="globalSearch" placeholder="Search meters, flats, tenants…"></div>
+      <span class="month"><svg class="ico" aria-hidden="true"><use href="#a-cal"/></svg><span id="monthLabel"></span></span>
+      <div class="top-actions"><button class="secondary" id="refresh">Refresh</button></div>
+    </div>
+
+    <div id="message" class="notice" role="status" aria-live="polite">Connect with your admin key to begin.</div>
+
+    <section data-tab="overview" aria-label="Overview">
+      <div class="grid" id="stats"></div>
+      <div class="two">
+        <div class="panel">
+          <div class="bar"><h2 class="panel-title">Daily top-ups, last 14 days</h2>
+            <div class="seg" id="trendMetric" role="group" aria-label="Chart measure"><button type="button" data-m="amount" aria-pressed="true">KSh</button><button type="button" data-m="volume" aria-pressed="false">m³</button><button type="button" data-m="topups" aria-pressed="false">Count</button></div>
+          </div>
+          <div id="trendChart"><p class="empty">Loading…</p></div>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Meter status overview</h2>
+          <p class="muted small" style="margin:4px 0 0">Live from Hydro</p>
+          <div id="statusBox"><p class="empty">Loading…</p></div>
+        </div>
+      </div>
+      <div class="panel overview-table">
+        <div class="bar"><h2 class="panel-title">Recent M-Pesa payments</h2><button class="secondary" id="ovAll">View all</button></div>
+        <div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Time</th><th>Meter</th><th>Amount</th><th>Status</th><th>Receipt</th></tr></thead><tbody id="ovRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel hidden" data-tab="registry"><div class="bar"><div><h2 class="section-title">Meter registry</h2><p class="muted small">Sync reads Mauriskade's meter list from Hydro company 10185.</p></div><button id="sync">Check for new meters</button></div><div class="filters"><input id="search" placeholder="Search meter, flat or tenant"><select id="filter"><option value="">All meters</option><option value="nologin">No customer login</option></select><button class="secondary" id="searchBtn">Search</button></div><div class="table-wrap"><table><thead><tr><th>Meter / location</th><th>Tenant details</th><th>Customer login</th><th>Actions</th></tr></thead><tbody id="meters"><tr><td colspan="4" class="empty">Connect to load meters.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="meterInfo" class="muted small"></span><button class="secondary" id="more" hidden>Load more</button></div></section>
+    <section class="panel hidden" data-tab="registry"><div class="bar"><div><h2 class="section-title">Transactions needing review</h2><p class="muted small">Check Hydro recharge records before adopting a token or retrying.</p></div><button class="secondary" id="loadReview">Load review queue</button></div><div id="reviews" class="notice" style="margin-top:12px">No review data loaded.</div></section>
+    <section class="panel hidden" data-tab="devices"><div class="bar"><div><h2 class="section-title">Device info</h2><p class="muted small">Live from Hydro, Mauriskade meters only.</p></div><button class="secondary" id="devStats">Load totals</button></div><div id="devTotals" class="grid" style="margin-top:12px"></div><div class="filters"><input id="devQ" inputmode="numeric" placeholder="Search meter number"><select id="devStatus"><option value="">All</option><option value="1">Online</option><option value="0">Offline</option><option value="2">Fault</option><option value="3">Maintenance</option></select><button class="secondary" id="devGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Meter</th><th>Status</th><th>Last reading</th><th>Last contact</th><th>Battery / signal</th></tr></thead><tbody id="devRows"><tr><td colspan="5" class="empty">Press Search to load meters.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="devInfo" class="muted small"></span><div class="actions"><button class="secondary" id="devPrev" disabled>Previous</button><button class="secondary" id="devNext" disabled>Next</button></div></div></section>
+
+    <section class="panel hidden" data-tab="pay"><h2 class="section-title">Send M-Pesa prompt</h2><p class="muted small">Sends the same payment prompt a resident gets. When it is paid, the token is issued and shows in the resident's portal.</p><div class="form"><div class="field"><label for="payMeter">Meter</label><input id="payMeter" list="meterList" inputmode="numeric" placeholder="Meter number"><datalist id="meterList"></datalist></div><div class="field"><label for="payPhone">Customer phone</label><input id="payPhone" inputmode="tel" placeholder="0712 345 678"></div><div class="field"><label for="payAmt">Amount (KSh)</label><input id="payAmt" inputmode="numeric" placeholder="Amount"></div><div class="actions"><button class="secondary" data-amt="60">60</button><button class="secondary" data-amt="120">120</button><button class="secondary" data-amt="240">240</button><button class="secondary" data-amt="480">480</button></div><div class="actions"><button id="paySend">Send M-Pesa prompt</button></div></div><div id="payMsg" class="notice" style="margin-top:12px" role="status">Nothing sent yet.</div></section>
+
+    <section class="panel hidden" data-tab="mpesa"><div class="bar"><div><h2 class="section-title">M-Pesa records</h2><p class="muted small">Payments made through this portal.</p></div></div><div class="filters"><input id="txQ" placeholder="Meter, phone or receipt"><select id="txStatus"><option value="">All statuses</option><option>TOKEN_ISSUED</option><option>PENDING_PAYMENT</option><option>PAID</option><option>ISSUING</option><option>RETRY</option><option>NEEDS_REVIEW</option><option>FAILED</option></select><button class="secondary" id="txGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Phone</th><th>Amount</th><th>Status</th><th>Receipt / detail</th></tr></thead><tbody id="txRows"><tr><td colspan="6" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="txInfo" class="muted small"></span><button class="secondary" id="txMore" hidden>Load more</button></div></section>
+
+    <section class="panel hidden" data-tab="recharge"><h2 class="section-title">STS recharge</h2><div id="rcOff" class="notice hidden">Manual recharge is switched off. It issues water without an M-Pesa payment, so it stays off until ADMIN_RECHARGE_ENABLED=true is set on the backend.</div><div id="rcForm"><p class="muted small">Issues a token straight from Hydro with no payment. Every attempt is written to the audit log below.</p><div class="form"><div class="field"><label for="rcMeter">Meter</label><input id="rcMeter" list="meterList" inputmode="numeric" placeholder="Meter number"></div><div class="field"><label for="rcMode">Recharge by</label><select id="rcMode"><option value="amount">Amount (KSh)</option><option value="volume">Water volume (m³)</option></select></div><div class="field"><label for="rcVal" id="rcValL">Amount (KSh)</label><input id="rcVal" inputmode="decimal"></div><div class="field"><label for="rcReason">Reason</label><input id="rcReason" maxlength="300" placeholder="For example: cash paid at office, receipt 123"></div><div class="field"><label for="rcConfirm">Type the meter number again to confirm</label><input id="rcConfirm" inputmode="numeric" autocomplete="off"></div><div class="actions"><button class="danger" id="rcGo">Issue token</button></div></div></div><div id="rcOut" class="notice" style="margin-top:12px" role="status">No recharge made.</div><div class="bar" style="margin-top:18px"><h3 class="section-title">Audit log</h3><button class="secondary" id="auditGo">Load</button></div><div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>Time</th><th>Action</th><th>Meter</th><th>Status</th><th>Detail</th></tr></thead><tbody id="auditRows"><tr><td colspan="5" class="empty">Press Load.</td></tr></tbody></table></div></section>
+
+    <section class="panel hidden" data-tab="records"><div class="bar"><div><h2 class="section-title">STS records</h2><p class="muted small">Hydro's recharge history for Mauriskade meters.</p></div><button class="secondary" id="rcExport">Download CSV (this page)</button></div><div class="filters"><input id="recQ" inputmode="numeric" placeholder="Meter number"><select id="recStatus"><option value="">Any status</option><option value="1">Success</option><option value="0">Processing</option><option value="2">Failed</option><option value="3">Refunded</option></select><button class="secondary" id="recGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Amount</th><th>Volume</th><th>Balance after</th><th>Status</th><th>Token</th></tr></thead><tbody id="recRows"><tr><td colspan="7" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="recInfo" class="muted small"></span><div class="actions"><button class="secondary" id="recPrev" disabled>Previous</button><button class="secondary" id="recNext" disabled>Next</button></div></div></section>
+
+    <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing policy</h2><div id="priceBox" class="notice" style="margin-top:10px">Loading…</div><p class="muted small">Read only. Hydro sets the real price per meter; this is the rate used for the estimate residents see. Change it in the backend settings (PRICE_PER_M3), and keep it equal to the Hydro price.</p></section>
+
+    <p class="foot">Security: never share this page's access key. Customer passwords are generated once, displayed only when created or reset, and stored hashed on the server.</p>
+  </div>
+</div>
+
 <script>
 (() => {
 'use strict';
 const $ = (s) => document.querySelector(s);
 let key = '';
+let S = null, T = null, trendMetric = 'amount';
 let offset = 0;
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function say(s, bad=false){$('#message').textContent=s;$('#message').className='notice'+(bad?' bad':'');}
@@ -165,12 +296,12 @@ async function api(path, opts={}) {
 }
 const post=(p,b={})=>api(p,{method:'POST',body:JSON.stringify(b)});
 function showApp(on){$('#app').classList.toggle('hidden',!on);$('#authPanel').classList.toggle('hidden',on);}
-async function connect(){key=$('#adminKey').value.trim();if(!key)return say('Enter the admin key.',true);try{await loadSummary();showApp(true);$('#adminKey').value='';await loadMeters(true);say('Connected. Admin key is held in page memory only.')}catch(e){key='';say(e.message,true)}}
+async function connect(){key=$('#adminKey').value.trim();if(!key)return say('Enter the admin key.',true);try{await loadSummary();showApp(true);$('#adminKey').value='';tab('overview');loadOverview();await loadMeters(true);say('Connected. Admin key is held in page memory only.')}catch(e){key='';say(e.message,true)}}
 $('#connect').addEventListener('click',connect);
 $('#adminKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
-$('#logout').addEventListener('click',()=>{key='';showApp(false);$('#meters').textContent='';$('#reviews').textContent='Disconnected.';say('Disconnected.')});
-async function loadSummary(){const s=await api('/api/admin/summary');$('#stats').innerHTML=[['Meters',s.meters],['Customer logins',s.logins],['Without login',s.withoutLogin],['Needs review',s.needsReview]].map(([l,v])=>'<div class="stat"><strong>'+esc(v)+'</strong><span>'+l+'</span></div>').join('')}
-$('#refresh').addEventListener('click',async()=>{try{await loadSummary();await loadMeters(true);say('Dashboard refreshed.')}catch(e){say(e.message,true)}});
+$('#logout').addEventListener('click',()=>{key='';S=null;T=null;showApp(false);$('#meters').textContent='';$('#reviews').textContent='Disconnected.';say('Disconnected.')});
+async function loadSummary(){S=await api('/api/admin/summary');renderKpis()}
+$('#refresh').addEventListener('click',async()=>{try{await loadSummary();loadOverview();await loadMeters(true);say('Dashboard refreshed.')}catch(e){say(e.message,true)}});
 async function loadMeters(reset=false){if(reset)offset=0;const q=encodeURIComponent($('#search').value.trim()),f=encodeURIComponent($('#filter').value);const j=await api('/api/admin/meters?q='+q+'&filter='+f+'&offset='+offset);const body=$('#meters');if(reset)body.textContent='';for(const m of j.items){const tr=document.createElement('tr');const code=esc(m.meter_code);const tenant=esc(m.tenant_name||'—');const flat=esc(m.flat||'—');const phone=esc(m.phone||'—');const login=m.has_login?'<span class="pill good">'+(m.disabled?'Disabled':'Created')+'</span><br><span class="muted small">Username: <b>'+esc(m.username||m.meter_code)+'</b></span>'+(m.must_change?' <span class="pill warn">Password change required</span>':''):'<span class="pill warn">Not created</span>';tr.innerHTML='<td><strong class="token">'+code+'</strong><br><span class="muted small">'+esc(m.hydro_label||'No Hydro location')+'</span></td><td>'+tenant+'<br><span class="muted small">Flat '+flat+' · '+phone+'</span></td><td>'+login+'<br><span class="muted small">'+(m.last_login_at?'Last login: '+esc(new Date(m.last_login_at).toLocaleString()):'Never signed in')+'</span></td><td><div class="row-actions"><button class="secondary" data-action="edit" data-meter="'+code+'" data-flat="'+esc(m.flat||'')+'" data-tenant="'+esc(m.tenant_name||'')+'" data-phone="'+esc(m.phone||'')+'">Edit</button>'+(m.has_login?'<button class="secondary" data-action="reset" data-meter="'+code+'">Reset password</button><button class="secondary" data-action="disable" data-disabled="'+(!m.disabled)+'" data-meter="'+code+'">'+(m.disabled?'Enable':'Disable')+'</button>':'<button data-action="create" data-meter="'+code+'">Create login</button>')+'</div></td>';body.append(tr)}offset+=j.items.length;$('#meterInfo').textContent=j.items.length+' shown'+(j.more?' · more available':'');$('#more').hidden=!j.more;if(reset&&!j.items.length)body.innerHTML='<tr><td colspan="4" class="empty">No matching meters. Run a Hydro sync if this is a new meter.</td></tr>'}
 $('#searchBtn').addEventListener('click',()=>loadMeters(true).catch(e=>say(e.message,true)));
 $('#filter').addEventListener('change',()=>loadMeters(true).catch(e=>say(e.message,true)));
@@ -214,6 +345,77 @@ $('#rcExport').addEventListener('click',()=>{if(!recList.length)return say('Load
 $('#rcMode').addEventListener('change',()=>{$('#rcValL').textContent=$('#rcMode').value==='volume'?'Water volume (m³)':'Amount (KSh)'});
 $('#rcGo').addEventListener('click',async()=>{const b=$('#rcGo'),out=$('#rcOut');const meter=$('#rcMeter').value.trim(),mode=$('#rcMode').value,value=Number($('#rcVal').value);if(!confirm('Issue a token for meter '+meter+' ('+(mode==='volume'?value+' m³':'KSh '+value)+') with NO payment taken?'))return;b.disabled=true;out.className='notice';out.textContent='Asking Hydro…';try{const j=await post('/api/admin/recharge',{meterNumber:meter,mode,value,reason:$('#rcReason').value,confirmMeter:$('#rcConfirm').value.trim()});out.innerHTML='Token for meter '+esc(meter)+':<br><strong class="token">'+esc(j.token)+'</strong><br><span class="muted small">Give it to the customer to enter on the meter. It is also kept in the audit log.</span>';$('#rcConfirm').value='';$('#rcReason').value=''}catch(e){out.className='notice bad';out.textContent=e.message}finally{b.disabled=false}});
 $('#auditGo').addEventListener('click',async()=>{try{const j=await api('/api/admin/audit');$('#auditRows').innerHTML=j.items.length?j.items.map(a=>'<tr><td>'+when(a.created_at)+'</td><td>'+esc(a.action)+'</td><td class="token">'+esc(a.meter_number||'—')+'</td><td>'+esc(a.status)+'</td><td class="small">'+esc(a.detail&&a.detail.reason||a.detail&&a.detail.error||'')+'</td></tr>').join(''):'<tr><td colspan="5" class="empty">Nothing logged yet.</td></tr>'}catch(e){say(e.message,true)}});
+
+/* ---- Overview dashboard ---- */
+const fmt=n=>Number(n||0).toLocaleString('en-KE');
+const num=(n,d=0)=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:d,maximumFractionDigits:d});
+const ico=id=>'<svg class="ico" aria-hidden="true"><use href="#'+id+'"/></svg>';
+
+function spark(vals,color){
+  if(!vals||vals.length<2||!vals.some(v=>v>0))return '';
+  const w=120,h=38,max=Math.max(...vals),step=w/(vals.length-1);
+  const pts=vals.map((v,i)=>[+(i*step).toFixed(1),+(h-3-(v/max)*(h-8)).toFixed(1)]);
+  const line=pts.map(p=>p.join(',')).join(' ');
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" aria-hidden="true" preserveAspectRatio="none"><polygon points="0,'+h+' '+line+' '+w+','+h+'" fill="'+color+'" opacity=".14"/><polyline points="'+line+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+function kpi(label,value,unit,sub,tone,sp){
+  return '<div class="kpi"><span class="kpi-label">'+esc(label)+'</span><div class="kpi-val-row"><strong class="kpi-val '+tone+'">'+esc(value)+'</strong>'+(unit?'<span class="kpi-unit '+tone+'">'+esc(unit)+'</span>':'')+'</div>'+(sp||'')+'<span class="kpi-sub">'+esc(sub)+'</span></div>';
+}
+function renderKpis(){
+  if(!S)return;
+  const d=T?T.days:[];
+  const review=S.needsReview+(S.amountMismatches||0);
+  $('#stats').innerHTML=
+    kpi('Water issued this month',num(S.volumeMonth,2),'m³',num(S.topupsMonth)+' completed top-ups','',spark(d.map(x=>x.volume),'#0c6aa6'))+
+    kpi('Collected this month','KSh '+fmt(S.revenueMonth),'','M-Pesa, tokens issued','',spark(d.map(x=>x.amount),'#1e9e52'))+
+    kpi('Registered meters',fmt(S.meters),'',fmt(S.logins)+' with a login · '+fmt(S.withoutLogin)+' without',S.withoutLogin?'':'')+
+    kpi('Needs review',fmt(S.needsReview),S.needsReview?'open':'',(S.needsReview?'Open the Meter registry tab to resolve':'')+(S.needsReview&&S.amountMismatches?' · ':'')+(S.amountMismatches?fmt(S.amountMismatches)+' amount mismatch'+(S.amountMismatches>1?'es':'')+' flagged':'')||'All payments accounted for',review?'bad':'good');
+  const rb=$('#reviewBadge');rb.textContent=S.needsReview;rb.classList.toggle('hidden',!S.needsReview);
+}
+
+const METRICS={amount:{label:'Collected (KSh)',key:'amount',color:'#1e9e52',fmt:v=>'KSh '+fmt(v)},
+  volume:{label:'Water issued (m³)',key:'volume',color:'#0c6aa6',fmt:v=>num(v,2)+' m³'},
+  topups:{label:'Top-ups',key:'topups',color:'#0f9d94',fmt:v=>fmt(v)+' top-ups'}};
+async function loadTrends(){T=await api('/api/admin/trends?days=14');renderKpis();renderTrend()}
+function renderTrend(){
+  const box=$('#trendChart');
+  if(!T||!T.days.length){box.innerHTML='<p class="empty">No data yet.</p>';return}
+  const M=METRICS[trendMetric],vals=T.days.map(x=>x[M.key]);
+  if(!vals.some(v=>v>0)){box.innerHTML='<p class="empty">No completed top-ups in the last 14 days.</p>';return}
+  const W=640,H=250,L=48,R=26,Tp=14,B=30,iw=W-L-R,ih=H-Tp-B;
+  const raw=Math.max(...vals),pow=Math.pow(10,Math.floor(Math.log10(raw))),nice=[1,2,2.5,5,10].map(k=>k*pow).find(k=>k>=raw)||raw,top=nice;
+  const X=i=>L+(vals.length===1?iw/2:i*iw/(vals.length-1)),Y=v=>Tp+ih-(v/top)*ih;
+  let g='';
+  for(let k=0;k<=4;k++){const v=top*k/4,y=Y(v);g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="#dce7f1" stroke-width="1"/><text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" class="ax">'+esc(M.key==='volume'?num(v,v<10?1:0):fmt(v))+'</text>'}
+  const pts=vals.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)),line=pts.join(' ');
+  const labels=T.days.map((x,i)=>{if((vals.length-1-i)%2)return '';const dt=new Date(x.day+'T00:00:00');return '<text x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle" class="ax">'+dt.toLocaleDateString('en-KE',{day:'numeric',month:'short'})+'</text>'}).join('');
+  const dots=T.days.map((x,i)=>'<circle cx="'+X(i)+'" cy="'+Y(vals[i])+'" r="4" fill="#fff" stroke="'+M.color+'" stroke-width="2"><title>'+esc(new Date(x.day+'T00:00:00').toLocaleDateString('en-KE',{weekday:'short',day:'numeric',month:'short'})+': '+M.fmt(vals[i]))+'</title></circle>').join('');
+  box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(M.label)+' per day, last 14 days"><defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+M.color+'" stop-opacity=".32"/><stop offset="1" stop-color="'+M.color+'" stop-opacity="0"/></linearGradient></defs>'+g+
+    '<polygon points="'+X(0)+','+(Tp+ih)+' '+line+' '+X(vals.length-1)+','+(Tp+ih)+'" fill="url(#tg)"/><polyline points="'+line+'" fill="none" stroke="'+M.color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+labels+'</svg>';
+}
+$('#trendMetric').addEventListener('click',e=>{const b=e.target.closest('button[data-m]');if(!b)return;trendMetric=b.dataset.m;document.querySelectorAll('#trendMetric button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderTrend()});
+
+async function loadStatus(){
+  const box=$('#statusBox');
+  try{
+    const s=await api('/api/admin/hydro/stats');
+    const parts=[['Online',s.online,'#1e9e52'],['Maintenance',s.maintenance||0,'#0c6aa6'],['Fault',s.fault,'#e0961a'],['Offline',s.offline,'#cf3a47']];
+    const total=Number(s.total)||parts.reduce((a,p)=>a+Number(p[1]||0),0);
+    const R=42,C=2*Math.PI*R;let off=0,arcs='';
+    if(total>0)for(const [,v,c] of parts){const len=(Number(v)||0)/total*C;if(len>0){arcs+='<circle cx="60" cy="60" r="'+R+'" fill="none" stroke="'+c+'" stroke-width="16" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 60 60)"/>';off+=len}}
+    box.innerHTML='<div class="donut"><svg viewBox="0 0 120 120" role="img" aria-label="Meter status: '+parts.map(p=>p[0]+' '+(p[1]||0)).join(', ')+'"><circle cx="60" cy="60" r="'+R+'" fill="none" stroke="#e8eff6" stroke-width="16"/>'+arcs+'<text x="60" y="58" text-anchor="middle" class="d-num">'+esc(fmt(total))+'</text><text x="60" y="74" text-anchor="middle" class="d-lbl">meters</text></svg></div><ul class="legend">'+parts.map(([n,v,c])=>'<li><i style="background:'+c+'"></i><span>'+n+'</span><b>'+esc(fmt(v))+'</b></li>').join('')+'</ul>';
+  }catch(e){box.innerHTML='<p class="empty">Could not load Hydro meter status.<br><span class="small">'+esc(e.message)+'</span></p><button class="secondary" id="statusRetry">Try again</button>'}
+}
+$('#statusBox').addEventListener('click',e=>{if(e.target.id==='statusRetry')loadStatus()});
+
+async function ovLoad(){
+  const j=await api('/api/admin/transactions?offset=0');const rows=j.items.slice(0,8);
+  $('#ovRows').innerHTML=rows.length?rows.map(t=>{const c=t.status==='TOKEN_ISSUED'?'good':(t.status==='FAILED'?'bad':'warn');return '<tr><td>'+when(t.created_at)+'</td><td class="token">'+esc(t.meter_number)+'</td><td>KSh '+esc(t.amount)+'</td><td><span class="pill '+c+'">'+esc(t.status)+'</span></td><td class="token">'+esc(t.mpesa_receipt||'—')+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">No payments yet.</td></tr>';
+}
+function loadOverview(){return Promise.allSettled([loadTrends(),loadStatus(),ovLoad()]).then(r=>{const bad=r.find(x=>x.status==='rejected'&&x.reason);if(bad)say(bad.reason.message,true)})}
+$('#ovAll').addEventListener('click',()=>{tab('mpesa');txLoad(true).catch(e=>say(e.message,true))});
+$('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;$('#search').value=e.target.value.trim();tab('registry');loadMeters(true).catch(x=>say(x.message,true))});
+$('#monthLabel').textContent='This month: '+new Date().toLocaleDateString('en-KE',{month:'long',year:'numeric'});
 })();
 </script>
 </body>
