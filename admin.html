@@ -65,6 +65,8 @@ button.danger{color:var(--red);background:var(--red-50);border:1.5px solid #f6cd
 .month{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;font-weight:600;white-space:nowrap;color:var(--ink);background:#fff;border:1.5px solid var(--sky-100);border-radius:10px}
 .top-actions{margin-left:auto;display:flex;gap:9px}
 #message{margin:0 0 18px}
+#message.connected{display:flex;align-items:center;gap:9px;color:#16845f;background:#effaf5;border-color:#bfe8d3;font-weight:700}
+#message.connected:before{content:"✓";display:inline-grid;place-items:center;width:21px;height:21px;flex:none;color:#fff;background:#16845f;border-radius:50%;font-size:14px;line-height:1}
 
 /* Cards */
 .panel{margin:0 0 18px;padding:clamp(16px,2.2vw,24px);background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -285,7 +287,7 @@ let key = '';
 let S = null, T = null, trendMetric = 'amount';
 let offset = 0;
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function say(s, bad=false){$('#message').textContent=s;$('#message').className='notice'+(bad?' bad':'');}
+function say(s, bad=false){$('#message').textContent=s;$('#message').className='notice'+(bad?' bad':s==='Connected.'?' connected':'');}
 async function api(path, opts={}) {
   const r=await fetch(path,{...opts,headers:{...(opts.headers||{}),'x-admin-key':key,'Content-Type':'application/json'}});
   let j={};try{j=await r.json()}catch{}
