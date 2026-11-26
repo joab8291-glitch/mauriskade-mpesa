@@ -9,262 +9,304 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Mauriskade Water Bill Payment">
 <meta property="og:description" content="Top up your Mauriskade water meter using M-Pesa and receive your water token online.">
+<meta name="theme-color" content="#0a4f82">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/theme.css">
 <style>
-/* Portal-specific styling. Colours, background and the glass panel come from /theme.css. */
-main{width:min(100% - 28px,1080px);margin:0 auto;padding:clamp(28px,6vw,72px) 0 48px;display:grid;gap:18px}
+/* Customer portal layout. Colours, buttons, cards, chips and tables come from /theme.css. */
 
-header{margin:0 0 6px}
-.biz{display:flex;align-items:center;gap:10px;margin:0 0 20px;color:var(--foam);font-weight:600;font-size:1rem}
-.biz:empty{display:none}
-.biz::before{content:"";flex:none;width:12px;height:12px;border-radius:0 50% 50% 50%;transform:rotate(45deg);background:linear-gradient(135deg,var(--foam),var(--aqua));box-shadow:0 0 18px rgba(79,209,232,.7)}
-h1{margin:0 0 16px;font-size:clamp(2.5rem,10vw,4.6rem);line-height:1;letter-spacing:-.055em;font-weight:700;text-wrap:balance}
-h2{margin:0 0 10px;font-size:clamp(1.35rem,4vw,1.7rem);line-height:1.2;letter-spacing:-.03em;font-weight:700}
-h2:focus{outline:none}
-p{margin:0 0 12px}
-.lede{max-width:30rem;margin:0;color:var(--muted);font-size:clamp(1.02rem,2.4vw,1.15rem)}
+/* ---- header band, user menu and meter badge ---- */
+.hero{position:relative;padding:24px 0 96px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--blue))}
+.hero-in{position:relative;z-index:3;width:min(100% - 32px,1100px);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.notch{position:absolute;z-index:1;top:0;right:0;width:min(380px,38%);height:214px;background:linear-gradient(120deg,var(--navy),var(--blue));border-bottom-left-radius:40px}
+.badge-wrap{position:absolute;z-index:3;top:86px;right:max(16px,calc((100vw - 1100px) / 2))}
+.meter-badge{min-width:230px;padding:14px 18px;color:var(--ink);background:#fff;border-radius:14px;box-shadow:0 10px 30px -12px rgba(5,40,70,.5)}
+.meter-badge small{display:block;color:var(--muted);font-size:.85rem}
+.meter-badge .code{display:flex;align-items:center;justify-content:space-between;gap:14px;font:700 1.35rem/1.3 var(--font);letter-spacing:-.01em;overflow-wrap:anywhere}
+.meter-badge .live{flex:none;width:14px;height:14px;border-radius:50%;background:#2fd27a;box-shadow:0 0 0 5px rgba(47,210,122,.22)}
+.user{position:relative;min-width:0}
+.user-btn{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 6px;font:inherit;font-weight:600;color:#fff;background:none;border:0;border-radius:999px;cursor:pointer}
+.user-btn:hover{background:rgba(255,255,255,.12)}
+.user-btn{max-width:100%}
+.user-btn #userName{flex:0 1 auto;min-width:0;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand span{white-space:nowrap}
+body[data-state=login] .notch,body[data-state=pw] .notch{display:none}
+.avatar{display:grid;place-items:center;width:38px;height:38px;color:var(--navy);background:#d9e8f5;border-radius:50%}
+.avatar .ico{width:22px;height:22px;fill:currentColor;stroke:none}
+.user-panel{position:absolute;z-index:6;right:0;top:calc(100% + 8px);min-width:230px;padding:8px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px -16px rgba(5,40,70,.45)}
+.user-panel p{margin:0;padding:8px 10px;color:var(--muted);font-size:.9rem}
+.user-panel button{display:block;width:100%;min-height:42px;padding:0 10px;text-align:left;font:inherit;font-weight:600;color:var(--ink);background:none;border:0;border-radius:8px;cursor:pointer}
+.user-panel button:hover{background:var(--sky-50)}
 
-.glass{padding:clamp(22px,4vw,32px)}
+/* ---- page grid ---- */
+main{position:relative;z-index:4;width:min(100% - 32px,1100px);margin:-64px auto 0;padding-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+.col{display:grid;gap:22px;min-width:0}
+main[data-state=login],main[data-state=pw]{grid-template-columns:minmax(0,28rem);justify-content:center}
+.wide{grid-column:1/-1}
+@media(min-width:900px){
+  main:not([data-state=login]):not([data-state=pw]){grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+  /* keep the right-hand card clear of the meter badge */
+  main:not([data-state=login]):not([data-state=pw]) > .col + .col{padding-top:100px}
+}
+@media(max-width:899px){
+  main[data-state=wait] #view-pay,main[data-state=token] #view-pay{display:none}
+  #view-help{display:none}
+  .hero{padding-bottom:84px}
+  .brand{font-size:1.05rem}
+  .hero-in{gap:8px}
+  .user-btn{gap:8px}
+  .user-btn #userName{max-width:84px}
+  .notch{display:none}
+  .badge-wrap{position:static;width:min(100% - 32px,1100px);margin:14px auto 0}
+  .meter-badge{min-width:0}
+}
+#payBody[inert]{opacity:.5}
 
-label,.label{display:block;margin:0 0 8px;font-weight:600;color:var(--text)}
-.hint{margin:10px 0 0;color:var(--muted);font-size:.92rem}
-.field{margin:0 0 20px}
-input{width:100%;min-height:54px;padding:0 16px;font:inherit;color:var(--text);background:rgba(2,12,24,.55);border:1px solid rgba(255,255,255,.16);border-radius:16px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
-input::placeholder{color:#7f97ae}
-input:focus{border-color:var(--aqua);background:rgba(2,12,24,.78);box-shadow:0 0 0 4px rgba(79,209,232,.18)}
+.tariff-note{display:flex;align-items:center;gap:8px}
+.tariff-note b{font-weight:800}
+.quote{min-height:2.6rem;margin:10px 0 0;color:var(--muted);font-size:.95rem}
+.quote strong{color:var(--green-700)}
+.card-head.red{background:var(--red-50);color:var(--red)}
+.card-head .status-dot{margin-right:10px;vertical-align:middle}
+.status-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:currentColor}
+.status-dot.live{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
 
-.btn{position:relative;overflow:hidden;display:block;width:100%;min-height:54px;padding:0 22px;font:inherit;font-weight:700;color:#032033;background:linear-gradient(110deg,var(--aqua),var(--foam));border:0;border-radius:999px;cursor:pointer;box-shadow:0 12px 34px -10px rgba(79,209,232,.65),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .25s var(--ease),box-shadow .25s,filter .25s}
-.btn::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%);transform:translateX(-120%);transition:transform .7s var(--ease)}
-.btn:hover:not(:disabled)::after{transform:translateX(120%)}
-.btn:hover:not(:disabled){transform:translateY(-1px)}
-.btn:active:not(:disabled){transform:scale(.99)}
-.btn:disabled{opacity:.55;cursor:progress}
-.btn.quiet{color:var(--text);background:rgba(255,255,255,.07);border:1px solid var(--line);box-shadow:none}
-.btn.quiet::after{display:none}
-.link{min-height:44px;padding:4px 0;font:inherit;font-weight:600;color:var(--link);background:none;border:0;text-decoration:underline;text-underline-offset:.22em;cursor:pointer}
-.link:hover{color:#fff}
-
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
-.chip{min-height:44px;min-width:64px;padding:0 20px;font:inherit;font-weight:700;color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
-.chip:hover{border-color:var(--aqua)}
-.chip[aria-pressed=true]{color:#032033;background:linear-gradient(110deg,var(--aqua),var(--foam));border-color:transparent}
-
-.msg{min-height:1.5rem;margin:12px 0 0;color:var(--muted)}
-.msg.err{color:var(--danger);font-weight:700}
-
-.who{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;margin:0 0 22px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:20px}
-.who p{margin:0;font-weight:700}
-.who small{display:block;color:var(--muted);font-size:.9rem;font-weight:400}
-
-.quote{min-height:3rem;margin:10px 0 18px;color:var(--muted)}
-.quote strong{color:var(--foam);font-size:1.12em}
-
-/* The token: a meter readout, the one place that gets a different material */
-.lcd{margin:22px 0;padding:10px;background:linear-gradient(150deg,#243f55,#0e1c2b);border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 70px -10px rgba(182,243,230,.22)}
-.lcd-screen{padding:20px;color:#16220e;background:#c9d8a6;border-radius:13px;box-shadow:inset 0 2px 0 rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.12)}
-.lcd-label{margin:0 0 10px;font-size:.9rem;font-weight:700;opacity:.72}
-.lcd-digits{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:.4rem .9rem;font:500 clamp(1.25rem,6vw,2rem)/1.2 var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.lcd-digits span{opacity:0;animation:on .01s forwards;animation-delay:calc(var(--i)*110ms)}
+/* ---- token card ---- */
+.token-row{display:flex;align-items:stretch;overflow:hidden;background:#eef3f8;border:1px solid var(--line);border-radius:10px}
+.lcd-digits{flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .6rem;min-width:0;padding:14px 14px;font:600 clamp(.95rem,3.2vw,1.12rem)/1.3 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.lcd-digits span{opacity:0;animation:on .01s forwards;animation-delay:calc(var(--i)*90ms)}
 @keyframes on{to{opacity:1}}
-
-.facts{margin:20px 0}
-.facts div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
+.copy{flex:none;display:flex;align-items:center;gap:8px;padding:0 18px;font:inherit;font-weight:700;color:var(--green-700);background:#fff;border:0;border-left:1px solid var(--line);cursor:pointer}
+.copy:hover{background:var(--green-50)}
+.keypad-note{display:flex;align-items:center;gap:12px;margin:16px 0 4px;padding-top:16px;border-top:1px solid var(--line);font-weight:600}
+.step-ico{display:grid;place-items:center;width:38px;height:38px;color:var(--navy);background:var(--sky-50);border-radius:10px}
+.step-ico .ico{width:20px;height:20px}
+.keypad-note .arrow{color:var(--muted)}
+.facts{margin:14px 0 6px}
+.facts div{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}
 .facts dt{color:var(--muted)}
 .facts dd{margin:0;font-weight:700;text-align:right;overflow-wrap:anywhere}
 .actions{display:grid;gap:10px;margin-top:18px}
 
-.status-dot{display:inline-block;width:11px;height:11px;margin-right:10px;border-radius:50%;background:var(--foam);box-shadow:0 0 14px rgba(182,243,230,.8);vertical-align:baseline}
-.status-dot.live{animation:pulse 1.4s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.3}}
+/* ---- how it works ---- */
+.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{position:relative;margin:0 0 16px;padding-left:46px;counter-increment:s}
+.steps li:last-child{margin:0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;display:grid;place-items:center;width:32px;height:32px;font-weight:800;color:#fff;background:var(--blue);border-radius:50%}
+.steps b{display:block}
+.steps span{color:var(--muted);font-size:.95rem}
 
-.recent h2{font-size:1.2rem}
-.recent ul{margin:0;padding:0;list-style:none}
-.recent li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
-.recent li:last-child{border-bottom:0}
-.recent small{display:block;color:var(--muted);font-size:.88rem}
+/* ---- recent top-ups ---- */
+.recent .card-body{padding-bottom:14px}
+.recent h2{font-size:1.25rem;font-weight:700}
+.recent .table-wrap{border:0;border-top:1px solid var(--line);border-radius:0}
+.recent td small{display:block;color:var(--muted);font-size:.82rem}
+.recent .mono{font-family:var(--mono);font-size:.9rem}
+@media(max-width:640px){
+  .recent table,.recent tbody,.recent tr,.recent td{display:block}
+  .recent thead{display:none}
+  .recent tr{padding:12px 18px;border-bottom:1px solid var(--line)}
+  .recent tr:last-child{border-bottom:0}
+  .recent td{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:4px 0;border:0;text-align:right}
+  .recent td::before{content:attr(data-label);flex:none;color:var(--muted);font-weight:600;font-size:.85rem;text-align:left}
+  .recent td small{display:inline;margin-left:6px}
+  .chips{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 
-.site-foot{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
-.site-foot p{margin:0 0 8px}
-.site-foot nav{display:flex;flex-wrap:wrap;gap:4px 18px}
+.site-foot{width:min(100% - 32px,1100px);margin:8px auto 0;padding:18px 0 40px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 20px;color:var(--muted);font-size:.9rem;border-top:1px solid var(--line)}
+.site-foot p{margin:0}
+.site-foot nav{display:flex;flex-wrap:wrap;gap:6px 18px}
 
-/* Motion: the headline settles in once on load, and each screen eases in when you move to it */
 @media(prefers-reduced-motion:no-preference){
-  header{animation:rise .9s var(--ease) both}
-  #view-login,#view-pw,#view-pay,#view-wait,#view-token{animation:rise .55s var(--ease) both}
-  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+  #view-login,#view-pw,#view-pay,#view-wait,#view-token,#view-help{animation:rise .45s var(--ease) both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}}
 }
 @media(prefers-reduced-motion:reduce){.lcd-digits span{animation:none;opacity:1}.status-dot.live{animation:none}}
-
-/* Desktop: headline on the left stays in view while the glass panels change on the right */
-@media(min-width:960px){
-  main{grid-template-columns:minmax(0,1fr) minmax(0,29rem);column-gap:clamp(40px,6vw,88px);align-items:start;padding-top:clamp(56px,11vh,130px)}
-  header{grid-column:1;grid-row:1/span 3;position:sticky;top:clamp(56px,11vh,130px);margin:0}
-  main>:not(header):not(.site-foot){grid-column:2}
-  .site-foot{grid-column:1/-1}
-}
-@media(max-width:480px){
-  .who{align-items:flex-start}
-  .chip{flex:1 1 calc(50% - 8px)}
-  .facts div{align-items:flex-start}
-  .facts dd{max-width:58%}
-}
-
-/* ===== Mauriskade Aqua / customer experience refresh ===== */
-:root{--aqua:#62e6ef;--foam:#c5fff0;--link:#9cecf5;--muted:#a9c4d7;--line:rgba(151,226,239,.18);--ease:cubic-bezier(.2,.75,.25,1)}
-main{width:min(100% - 32px,1120px);padding:clamp(34px,7vw,86px) 0 52px;gap:20px}
-header{position:relative;isolation:isolate;min-height:clamp(220px,30vw,300px);display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,5vw,58px);margin:0 0 4px;border:1px solid rgba(157,238,245,.17);border-radius:34px;overflow:hidden;background:linear-gradient(115deg,rgba(6,29,51,.95),rgba(8,66,91,.78) 58%,rgba(9,112,127,.48));box-shadow:0 28px 90px -36px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.16)}
-header:before{content:"";position:absolute;z-index:-1;width:360px;height:360px;right:8%;top:-190px;border:1px solid rgba(180,255,248,.18);border-radius:50%;box-shadow:0 0 0 24px rgba(115,235,239,.035),0 0 0 52px rgba(115,235,239,.025),0 0 90px rgba(68,218,233,.22);animation:water-ripple 8s ease-out infinite}
-header:after{content:"";position:absolute;z-index:-1;right:clamp(28px,8vw,110px);top:50%;width:clamp(76px,12vw,132px);height:clamp(76px,12vw,132px);transform:translateY(-50%) rotate(-45deg);border-radius:52% 52% 52% 8%;background:linear-gradient(145deg,rgba(213,255,249,.92),rgba(74,222,235,.78) 38%,rgba(10,113,160,.3) 78%);border:1px solid rgba(226,255,255,.7);box-shadow:inset -12px -15px 28px rgba(2,53,89,.38),inset 8px 8px 20px rgba(255,255,255,.42),0 0 54px rgba(68,220,238,.42);animation:drop-float 5.5s ease-in-out infinite}
-@keyframes drop-float{0%,100%{margin-top:0;filter:drop-shadow(0 10px 12px rgba(30,190,218,.12))}50%{margin-top:-13px;filter:drop-shadow(0 22px 22px rgba(30,190,218,.24))}}
-@keyframes water-ripple{0%,100%{transform:scale(.94);opacity:.55}50%{transform:scale(1.06);opacity:1}}
-header .biz{position:relative;z-index:1;margin-bottom:16px;color:#bffff0;letter-spacing:.12em;text-transform:uppercase;font-size:.76rem}
-header h1,header .lede{position:relative;z-index:1;max-width:690px}
-header h1{font-size:clamp(2.45rem,7.6vw,5.2rem);line-height:.98;letter-spacing:-.065em;margin:0 0 18px;text-shadow:0 8px 35px rgba(0,0,0,.2)}
-header .lede{max-width:610px;font-size:clamp(1rem,2.1vw,1.14rem);line-height:1.7;color:#c3d9e8}
-.glass{padding:clamp(22px,4.2vw,36px);border-radius:26px;background:linear-gradient(145deg,rgba(14,51,75,.78),rgba(5,22,40,.78) 72%);border:1px solid rgba(160,230,239,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 26px 70px -36px rgba(0,0,0,.9);backdrop-filter:blur(22px) saturate(150%)}
-.glass h2{font-size:clamp(1.4rem,3vw,1.8rem);letter-spacing:-.04em}
-.field{margin-bottom:22px}
-input{min-height:58px;border-radius:15px;border-color:rgba(166,225,237,.2);background:rgba(1,14,27,.68);box-shadow:inset 0 1px 8px rgba(0,0,0,.16)}
-input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 24px rgba(98,230,239,.08)}
-.btn{min-height:58px;border-radius:16px;background:linear-gradient(110deg,#78eff0,#c5ffe9 55%,#7fe8d7);box-shadow:0 14px 36px -12px rgba(70,226,225,.58),inset 0 1px 0 rgba(255,255,255,.7);letter-spacing:-.01em}
-.btn:hover:not(:disabled){box-shadow:0 18px 44px -12px rgba(70,226,225,.72);transform:translateY(-2px)}
-.btn.quiet{border-radius:16px;background:rgba(130,218,228,.09);border-color:rgba(160,230,239,.22)}
-.chip{min-height:48px;border-radius:14px;background:rgba(130,218,228,.07);border-color:rgba(160,230,239,.2)}
-.chip[aria-pressed=true]{background:linear-gradient(125deg,#8cf4ee,#c7ffeb);box-shadow:0 8px 22px rgba(80,225,221,.2)}
-.who{padding:16px 18px;border-radius:16px;background:linear-gradient(100deg,rgba(90,216,224,.11),rgba(255,255,255,.035));border-color:rgba(151,226,239,.17)}
-.quote{padding:14px 16px;border-radius:14px;background:rgba(92,226,221,.07);border:1px solid rgba(142,232,231,.12)}
-.quote strong{color:#bdffeb}
-.lcd{border-radius:24px;background:linear-gradient(145deg,#2d5265,#102b42);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 65px -18px rgba(91,230,219,.3)}
-.lcd-screen{background:linear-gradient(135deg,#d9f4bd,#b8d9a0);border-radius:16px}
-.site-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 6px 0;color:#8faec2;border-top:1px solid rgba(151,226,239,.14);font-size:.88rem}
-.site-foot nav{display:flex;gap:16px;flex-wrap:wrap}
-.site-foot a{color:#a9eaf0}
-#view-wait .status-dot{box-shadow:0 0 0 7px rgba(98,230,239,.1),0 0 22px rgba(98,230,239,.65)}
-#recentList{padding:0;list-style:none}
-#recentList li{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(151,226,239,.12)}
-#recentList li:last-child{border-bottom:0}
-@media(max-width:640px){main{width:min(100% - 22px,1120px);padding-top:18px;gap:14px}header{min-height:260px;padding:26px 22px;border-radius:25px}header:after{width:58px;height:58px;right:28px;top:35%;opacity:.8}header:before{width:230px;height:230px;right:-90px;top:-110px}header h1{max-width:85%;font-size:clamp(2.25rem,11vw,3.3rem)}header .lede{max-width:100%;padding-right:4px;font-size:.98rem}.glass{border-radius:21px;padding:21px 18px}.site-foot{display:grid}.site-foot nav{gap:12px}.who{align-items:flex-start}}
-@media(prefers-reduced-motion:reduce){header:before,header:after{animation:none}}
-
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <p class="biz" id="biz"></p>
-    <h1>Top Up Water Credit</h1>
-    <p class="lede">Pay with M-Pesa. Your token appears on this page. Enter it on the meter keypad.</p>
-  </header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.5C8 8 5.5 11.2 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 11.2 16 8 12 2.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.6-4.2 3.8-6.5 8-6.5s7.4 2.3 8 6.5z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="i-touch" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10V8.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a5 5 0 0 1-4-2l-3.2-4.3a1.5 1.5 0 0 1 2.3-1.9L9 15"/></symbol>
+  <symbol id="i-keypad" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="1.7"/></g></symbol>
+</svg>
 
+<header class="hero">
+  <div class="notch" aria-hidden="true"></div>
+  <div class="hero-in">
+    <a class="brand" href="/"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Water</span></a>
+    <div class="user" id="userMenu" hidden>
+      <button class="user-btn" id="userBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="userPanel">
+        <span class="avatar" aria-hidden="true"><svg class="ico"><use href="#i-user"/></svg></span>
+        <span id="userName">My account</span>
+        <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg>
+      </button>
+      <div class="user-panel" id="userPanel" hidden>
+        <p id="whoLabel"></p>
+        <button id="changePw" type="button">Change password</button>
+        <button id="signOut" type="button">Sign out</button>
+      </div>
+    </div>
+  </div>
+  <div class="badge-wrap" id="meterBadge" hidden>
+    <div class="meter-badge">
+      <small>Meter ID Badge</small>
+      <div class="code"><span id="whoMeter"></span><span class="live" title="Signed in" aria-hidden="true"></span></div>
+    </div>
+  </div>
+</header>
+
+<main data-state="login">
   <noscript><p class="msg err">This page needs JavaScript to run.</p></noscript>
 
-  <!-- Sign in -->
-  <section id="view-login" aria-labelledby="h-login" hidden>
-    <h2 id="h-login" tabindex="-1">Sign in</h2>
-    <form id="loginForm" novalidate>
-      <div class="field">
-        <label for="loginUser">Username</label>
-        <input id="loginUser" autocomplete="username" placeholder="Username provided by the admin">
+  <div class="col">
+    <!-- Sign in -->
+    <section class="card" id="view-login" aria-labelledby="h-login" hidden>
+      <div class="card-head"><h2 id="h-login" tabindex="-1">Sign in</h2></div>
+      <div class="card-body">
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="loginUser">Username</label>
+            <input id="loginUser" autocomplete="username" placeholder="Username provided by the admin">
+          </div>
+          <div class="field">
+            <label for="loginPass">Password</label>
+            <input id="loginPass" type="password" autocomplete="current-password">
+            <p class="hint">Your password comes from <span class="bizName"></span>. If you don't have one, ask them.</p>
+          </div>
+          <button class="btn" id="loginBtn" type="submit">Sign in</button>
+          <p class="msg" id="loginMsg" role="alert"></p>
+        </form>
       </div>
-      <div class="field">
-        <label for="loginPass">Password</label>
-        <input id="loginPass" type="password" autocomplete="current-password">
-        <p class="hint">Your password comes from <span class="bizName"></span>. If you don't have one, ask them.</p>
-      </div>
-      <button class="btn" id="loginBtn" type="submit">Sign in</button>
-      <p class="msg" id="loginMsg" role="alert"></p>
-    </form>
-  </section>
+    </section>
 
-  <!-- Choose a new password -->
-  <section id="view-pw" aria-labelledby="h-pw" hidden>
-    <h2 id="h-pw" tabindex="-1">Choose your own password</h2>
-    <p>You are using a password you were given. Replace it before you continue.</p>
-    <form id="pwForm" novalidate>
-      <div class="field">
-        <label for="pwCur">Current password</label>
-        <input id="pwCur" type="password" autocomplete="current-password">
+    <!-- Choose a new password -->
+    <section class="card" id="view-pw" aria-labelledby="h-pw" hidden>
+      <div class="card-head"><h2 id="h-pw" tabindex="-1">Choose your own password</h2></div>
+      <div class="card-body">
+        <p>You are using a password you were given. Replace it before you continue.</p>
+        <form id="pwForm" novalidate>
+          <div class="field">
+            <label for="pwCur">Current password</label>
+            <input id="pwCur" type="password" autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label for="pwNew">New password</label>
+            <input id="pwNew" type="password" autocomplete="new-password">
+            <p class="hint">At least 8 characters.</p>
+          </div>
+          <button class="btn" id="pwBtn" type="submit">Save password</button>
+          <p class="msg" id="pwMsg" role="alert"></p>
+        </form>
       </div>
-      <div class="field">
-        <label for="pwNew">New password</label>
-        <input id="pwNew" type="password" autocomplete="new-password">
-        <p class="hint">At least 8 characters.</p>
-      </div>
-      <button class="btn" id="pwBtn" type="submit">Save password</button>
-      <p class="msg" id="pwMsg" role="alert"></p>
-    </form>
-  </section>
+    </section>
 
-  <!-- Amount and phone -->
-  <section id="view-pay" aria-labelledby="h-pay" hidden>
-    <h2 id="h-pay" tabindex="-1">Choose your top-up amount</h2>
-    <div class="who">
-      <p><span id="whoMeter"></span><small id="whoLabel"></small></p>
-      <button class="link" id="signOut" type="button">Sign out</button>
-    </div>
-    <form id="payForm" novalidate>
-      <div class="field">
-        <span class="label" id="amtLabel">Amount in KSh</span>
-      <p class="hint">HYDRO TARIFF · KSh 120 per m³</p>
-        <div class="chips" role="group" aria-labelledby="amtLabel" id="chips">
-          <button class="chip" type="button" data-amt="60" aria-pressed="false">60 · 0.50 m³</button>
-          <button class="chip" type="button" data-amt="120" aria-pressed="false">120 · 1.00 m³</button>
-          <button class="chip" type="button" data-amt="240" aria-pressed="false">240 · 2.00 m³</button>
-          <button class="chip" type="button" data-amt="480" aria-pressed="false">480 · 4.00 m³</button>
+    <!-- Amount and phone -->
+    <section class="card" id="view-pay" aria-labelledby="h-pay" hidden>
+      <div class="card-head"><h2 id="h-pay" tabindex="-1">Top Up Water Credit</h2></div>
+      <div class="card-strip tariff-note">TARIFF RATE: KSh <b id="tariff">120</b> per m³</div>
+      <div class="card-body" id="payBody">
+        <form id="payForm" novalidate>
+          <div class="field">
+            <span class="label" id="amtLabel">Quick-select amount</span>
+            <div class="chips" role="group" aria-labelledby="amtLabel" id="chips">
+              <button class="chip" type="button" data-amt="60" aria-pressed="false"><b>KSh 60</b><small>0.50 m³</small></button>
+              <button class="chip" type="button" data-amt="120" aria-pressed="false"><b>KSh 120</b><small>1.00 m³</small></button>
+              <button class="chip" type="button" data-amt="240" aria-pressed="false"><b>KSh 240</b><small>2.00 m³</small></button>
+              <button class="chip" type="button" data-amt="480" aria-pressed="false"><b>KSh 480</b><small>4.00 m³</small></button>
+            </div>
+            <div class="input-group">
+              <span class="addon" aria-hidden="true">KSh</span>
+              <input id="amount" inputmode="numeric" autocomplete="off" aria-labelledby="amtLabel" placeholder="Enter amount">
+            </div>
+            <p class="quote" id="quote" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="phone">M-Pesa phone number</label>
+            <div class="input-group">
+              <span class="addon" aria-hidden="true">+254</span>
+              <input id="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="712 345 678">
+            </div>
+            <p class="hint">You will get a payment prompt on this phone.</p>
+          </div>
+          <button class="btn green" id="payBtn" type="submit">Pay with M-Pesa</button>
+          <p class="msg" id="payMsg" role="alert"></p>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <!-- How it works (shown while choosing an amount) -->
+    <aside class="card" id="view-help" aria-labelledby="h-help" hidden>
+      <div class="card-head plain"><h2 id="h-help">How top-up works</h2></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><b>Choose an amount</b><span>Pick a quick amount or type your own, then enter your M-Pesa number.</span></li>
+          <li><b>Approve on your phone</b><span>A payment prompt arrives. Enter your M-Pesa PIN to confirm.</span></li>
+          <li><b>Enter your token</b><span>Your 20-digit token appears here. Type it on the meter keypad.</span></li>
+        </ol>
+      </div>
+    </aside>
+
+    <!-- Waiting / problems -->
+    <section class="card" id="view-wait" aria-labelledby="h-wait" hidden>
+      <div class="card-head plain" id="waitHead"><h2 id="h-wait" tabindex="-1"><span class="status-dot live" id="dot" aria-hidden="true"></span><span id="waitTitle"></span></h2></div>
+      <div class="card-body">
+        <p id="waitBody" aria-live="polite"></p>
+        <div class="actions" id="waitActions" hidden>
+          <button class="btn" id="tryAgain" type="button">Try again</button>
         </div>
-        <input id="amount" inputmode="numeric" autocomplete="off" aria-labelledby="amtLabel" placeholder="Or type an amount">
-        <p class="quote" id="quote" aria-live="polite"></p>
+        <p style="margin:1rem 0 0"><button class="link" id="backHome" type="button">Back to my meter</button></p>
       </div>
-      <div class="field">
-        <label for="phone">M-Pesa number</label>
-        <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0712 345 678">
-        <p class="hint">You will get a payment prompt on this phone.</p>
+    </section>
+
+    <!-- Token -->
+    <section class="card" id="view-token" aria-labelledby="h-token" hidden>
+      <div class="card-head green"><h2 id="h-token" tabindex="-1">Token Ready</h2></div>
+      <div class="card-body">
+        <p class="label" id="tokLabel">20-digit STS water meter token</p>
+        <div class="token-row">
+          <div class="lcd-digits" id="digits" role="group" aria-labelledby="tokLabel"></div>
+          <button class="copy" id="copyBtn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg><span id="copyLabel">Copy Token</span></button>
+        </div>
+        <p class="msg" id="copyMsg" aria-live="polite"></p>
+        <div class="keypad-note">
+          <span class="step-ico" aria-hidden="true"><svg class="ico"><use href="#i-touch"/></svg></span>
+          <span class="arrow" aria-hidden="true">→</span>
+          <span class="step-ico" aria-hidden="true"><svg class="ico"><use href="#i-keypad"/></svg></span>
+          <span>Enter Token via Meter Keypad</span>
+        </div>
+        <dl class="facts" id="facts"></dl>
+        <p class="hint">If the meter rejects the token, don't pay again. Contact <span class="bizName"></span> with the M-Pesa receipt above.</p>
+        <div class="actions">
+          <button class="btn quiet" id="buyMore" type="button">Buy more water</button>
+        </div>
       </div>
-      <button class="btn" id="payBtn" type="submit">Pay with M-Pesa</button>
-      <p class="msg" id="payMsg" role="alert"></p>
-    </form>
-    <p style="margin-top:.5rem"><button class="link" id="changePw" type="button">Change password</button></p>
-  </section>
+    </section>
+  </div>
 
-  <!-- Waiting / problems -->
-  <section id="view-wait" aria-labelledby="h-wait" hidden>
-    <h2 id="h-wait" tabindex="-1"><span class="status-dot live" id="dot" aria-hidden="true"></span><span id="waitTitle"></span></h2>
-    <p id="waitBody" aria-live="polite"></p>
-    <div class="actions" id="waitActions" hidden>
-      <button class="btn" id="tryAgain" type="button">Try again</button>
+  <section class="card recent wide" id="recent" hidden aria-labelledby="h-recent">
+    <div class="card-body"><h2 id="h-recent">Recent Top-Ups</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Amount (KSh)</th><th>Volume (m³)</th><th>M-Pesa Receipt Code</th><th>Token</th></tr></thead>
+        <tbody id="recentList"></tbody>
+      </table>
     </div>
-    <p style="margin-top:1rem"><button class="link" id="backHome" type="button">Back to my meter</button></p>
-  </section>
-
-  <!-- Token -->
-  <section id="view-token" aria-labelledby="h-token" hidden>
-    <h2 id="h-token" tabindex="-1">Your token is ready</h2>
-    <p>Enter these 20 digits on the meter keypad.</p>
-    <div class="lcd">
-      <div class="lcd-screen">
-        <p class="lcd-label">Token</p>
-        <div class="lcd-digits" id="digits" role="group"></div>
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn" id="copyBtn" type="button">Copy token</button>
-    </div>
-    <p class="msg" id="copyMsg" aria-live="polite"></p>
-    <dl class="facts" id="facts"></dl>
-    <p class="hint">If the meter rejects the token, don't pay again. Contact <span class="bizName"></span> with the M-Pesa receipt above.</p>
-    <div class="actions">
-      <button class="btn quiet" id="buyMore" type="button">Buy more water</button>
-    </div>
-  </section>
-
-  <section class="recent" id="recent" hidden aria-labelledby="h-recent">
-    <h2 id="h-recent">Your recent top-ups</h2>
-    <ul id="recentList"></ul>
   </section>
 </main>
+
+<footer class="site-foot">
+  <p><span class="bizName"></span> · Water credit by M-Pesa</p>
+  <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/copyright">Copyright</a></nav>
+</footer>
 
 <script>
 (() => {
@@ -298,10 +340,20 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
   });
 
+  /* The pay card stays on screen (locked) next to the waiting and token cards on wide screens. */
   const VIEWS = ['login', 'pw', 'pay', 'wait', 'token'];
   function show(name, focus = true) {
+    const side = name === 'wait' || name === 'token';
     for (const v of VIEWS) $('#view-' + v).hidden = v !== name;
-    $('#recent').hidden = !(name === 'pay' && recentCount > 0);
+    $('#view-pay').hidden = !(name === 'pay' || side);
+    $('#payBody').inert = side;
+    $('#view-help').hidden = name !== 'pay';
+    $('#recent').hidden = !((name === 'pay' || side) && recentCount > 0);
+    $('#userMenu').hidden = name === 'login';
+    $('#meterBadge').hidden = name === 'login' || !me;
+    $('main').dataset.state = name;
+    document.body.dataset.state = name;
+    menu(false);
     if (focus) $('#h-' + name).focus({ preventScroll: false });
   }
 
@@ -318,7 +370,30 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   }
 
   const shortMeter = (m) => '…' + String(m).slice(-4);
+  const dateOf = (iso) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const when = (iso) => new Date(iso).toLocaleString('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  /* ---------- header: user menu and meter badge ---------- */
+  function menu(open) {
+    $('#userPanel').hidden = !open;
+    $('#userBtn').setAttribute('aria-expanded', String(open));
+  }
+  $('#userBtn').addEventListener('click', (e) => { e.stopPropagation(); menu($('#userPanel').hidden); });
+  $('#userPanel').addEventListener('click', (e) => { if (e.target.closest('button')) menu(false); });
+  document.addEventListener('click', (e) => { if (!$('#userPanel').hidden && !$('#userMenu').contains(e.target)) menu(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#userPanel').hidden) { menu(false); $('#userBtn').focus(); }
+  });
+
+  function setWho() {
+    $('#whoMeter').textContent = me.meterCode;
+    const bits = [];
+    if (me.flat) bits.push('Flat ' + me.flat);
+    if (me.tenantName) bits.push(me.tenantName);
+    $('#whoLabel').textContent = bits.length ? bits.join(' · ') : 'Meter ' + me.meterCode;
+    $('#userName').textContent = me.tenantName || (me.flat ? 'Flat ' + me.flat : 'My account');
+  }
 
   /* ---------- sign in ---------- */
   $('#loginForm').addEventListener('submit', async (e) => {
@@ -342,6 +417,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
 
   function enter(u) {
     me = u;
+    setWho();
     if (me.mustChange) {
       msg('#pwMsg', '');
       $('#pwCur').value = ''; $('#pwNew').value = '';
@@ -388,12 +464,8 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   let recentCount = 0;
 
   async function showHome() {
-    $('#whoMeter').textContent = 'Meter ' + me.meterCode;
-    const bits = [];
-    if (me.flat) bits.push('Flat ' + me.flat);
-    if (me.tenantName) bits.push(me.tenantName);
-    $('#whoLabel').textContent = bits.join(' · ');
-    if (me.phone && !$('#phone').value) $('#phone').value = '0' + me.phone.slice(3);
+    setWho();
+    if (me.phone && !$('#phone').value) $('#phone').value = String(me.phone).replace(/^254/, '');
     msg('#payMsg', '');
     scheduleQuote();
     show('pay');
@@ -409,28 +481,64 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
     }
   }
 
+  const STATE = {
+    done: ['Token ready', 'good'],
+    payment_failed: ['Not paid', 'bad'],
+    waiting_for_payment: ['Waiting for payment', 'warn'],
+    processing: ['Token pending', 'warn'],
+  };
+
+  function cell(label, ...nodes) {
+    const td = document.createElement('td');
+    td.dataset.label = label;
+    td.append(...nodes);
+    return td;
+  }
+
   function renderRecent(items) {
     const list = items.filter((t) => t.status !== 'waiting_for_payment' || Date.now() - new Date(t.createdAt) < 30 * 60000);
     recentCount = list.length;
     $('#recent').hidden = recentCount === 0 || $('#view-pay').hidden;
-    const ul = $('#recentList');
-    ul.textContent = '';
+    const body = $('#recentList');
+    body.textContent = '';
     for (const t of list) {
-      const li = document.createElement('li');
-      const left = document.createElement('div');
-      left.append(document.createTextNode('KSh ' + fmt(t.amount)));
+      const tr = document.createElement('tr');
+
       const small = document.createElement('small');
-      const state = { done: 'Token ready', payment_failed: 'Not paid', waiting_for_payment: 'Waiting for payment', processing: 'Payment received, token pending' }[t.status];
-      small.textContent = state + ' · ' + when(t.createdAt);
-      left.append(small);
-      const b = document.createElement('button');
-      b.className = 'link';
-      b.type = 'button';
-      b.textContent = t.status === 'done' ? 'View token' : 'View';
-      b.setAttribute('aria-label', (t.status === 'done' ? 'View token for ' : 'View ') + 'top-up of KSh ' + t.amount + ' on ' + when(t.createdAt));
-      b.addEventListener('click', () => openPurchase(t));
-      li.append(left, b);
-      ul.append(li);
+      small.textContent = timeOf(t.createdAt);
+      const receipt = document.createElement('span');
+      receipt.className = 'mono';
+      receipt.textContent = t.receipt || '—';
+
+      const act = document.createElement('button');
+      act.className = 'link';
+      act.type = 'button';
+      act.addEventListener('click', () => openPurchase(t));
+      let last;
+      if (t.status === 'done' && t.token) {
+        act.textContent = String(t.token).slice(0, 4) + '…';
+        act.classList.add('mono');
+        act.setAttribute('aria-label', 'View token for top-up of KSh ' + t.amount + ' on ' + when(t.createdAt));
+        last = cell('Token', act);
+      } else {
+        const [label, tone] = STATE[t.status] || ['Unknown', ''];
+        const pill = document.createElement('span');
+        pill.className = 'pill ' + tone;
+        pill.textContent = label;
+        act.textContent = 'View';
+        act.style.marginLeft = '10px';
+        act.setAttribute('aria-label', 'View top-up of KSh ' + t.amount + ' on ' + when(t.createdAt));
+        last = cell('Token', pill, act);
+      }
+
+      tr.append(
+        cell('Date', document.createTextNode(dateOf(t.createdAt)), small),
+        cell('Amount (KSh)', document.createTextNode('KSh ' + fmt(t.amount))),
+        cell('Volume (m³)', document.createTextNode(typeof t.volume === 'number' ? t.volume.toFixed(2) : '—')),
+        cell('M-Pesa Receipt', receipt),
+        last,
+      );
+      body.append(tr);
     }
   }
 
@@ -442,6 +550,21 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   }
 
   /* ---------- amount, quote ---------- */
+  // Same rule the server uses (volume rounded down to 2 decimals); the server quote is the one shown after typing.
+  const volFor = (a) => Math.floor((a * 100) / (Number(cfg.pricePerM3) || 120) + 1e-9) / 100;
+
+  function renderChips() {
+    $('#tariff').textContent = fmt(cfg.pricePerM3);
+    for (const c of document.querySelectorAll('.chip')) {
+      const a = Number(c.dataset.amt);
+      const b = document.createElement('b'); b.textContent = 'KSh ' + fmt(a);
+      const s = document.createElement('small'); s.textContent = volFor(a).toFixed(2) + ' m³';
+      c.textContent = '';
+      c.append(b, s);
+      c.disabled = a < cfg.minAmount || a > cfg.maxAmount;
+    }
+  }
+
   function setAmount(v) {
     $('#amount').value = v;
     for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c.dataset.amt === String(v)));
@@ -449,7 +572,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   }
   $('#chips').addEventListener('click', (e) => {
     const c = e.target.closest('.chip');
-    if (c) setAmount(c.dataset.amt);
+    if (c && !c.disabled) setAmount(c.dataset.amt);
   });
   $('#amount').addEventListener('input', () => {
     $('#amount').value = $('#amount').value.replace(/\D/g, '');
@@ -474,7 +597,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
         const strong = document.createElement('strong');
         strong.textContent = q.volume.toFixed(2) + ' m³';
         el.append('You will get about ', strong, ' at KSh ' + fmt(q.pricePerM3) + ' per m³.');
-} catch { el.textContent = ''; }
+      } catch { el.textContent = ''; }
     }, 250);
   }
 
@@ -488,7 +611,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
       return msg('#payMsg', 'Enter a whole amount from KSh ' + fmt(cfg.minAmount) + ' to KSh ' + fmt(cfg.maxAmount) + '.', true);
     }
     if (!/^(?:\+?254|0)?[17]\d{8}$/.test(phone)) {
-      return msg('#payMsg', 'Enter a valid Safaricom number, like 0712 345 678.', true);
+      return msg('#payMsg', 'Enter a valid Safaricom number, like 712 345 678.', true);
     }
     const btn = $('#payBtn');
     busy(btn, true, 'Sending prompt…');
@@ -513,6 +636,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
     retry.hidden = true;
     dot.hidden = false;
     dot.classList.add('live');
+    $('#waitHead').className = 'card-head ' + (status === 'payment_failed' ? 'red' : 'plain');
     if (status === 'waiting_for_payment') {
       title.textContent = 'Approve the payment on your phone';
       body.textContent = 'Enter your M-Pesa PIN to pay KSh ' + fmt(j.amount) + ' for meter ' + shortMeter(j.meter) + '. The prompt expires after about a minute.';
@@ -602,7 +726,9 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
       dl.append(d);
     }
     msg('#copyMsg', '');
+    $('#copyLabel').textContent = 'Copy Token';
     show('token');
+    loadRecent();
   }
 
   $('#copyBtn').addEventListener('click', async () => {
@@ -615,6 +741,7 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
       t.remove();
     }
     msg('#copyMsg', 'Token copied.');
+    $('#copyLabel').textContent = 'Copied';
   });
 
   $('#buyMore').addEventListener('click', () => { setAmount(''); showHome(); });
@@ -623,10 +750,10 @@ input:focus{border-color:#72e5ee;box-shadow:0 0 0 4px rgba(98,230,239,.14),0 0 2
   (async () => {
     try {
       cfg = await api('/api/config');
-      $('#biz').textContent = cfg.businessName;
       document.querySelectorAll('.bizName').forEach((n) => { n.textContent = cfg.businessName; });
       document.title = 'Buy water credit · ' + cfg.businessName;
     } catch { /* defaults are fine */ }
+    renderChips();
     try {
       const j = await api('/api/me');
       enter(j.me);

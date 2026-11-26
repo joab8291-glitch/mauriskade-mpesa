@@ -1,15 +1,15 @@
-/* Privacy, Terms and Copyright pages. Colours, background and glass come from theme.css. */
+/* Privacy, Terms and Copyright pages. Colours, background and cards come from theme.css. */
 body{font:400 1.0625rem/1.7 var(--font)}
 
 .doc{width:min(100% - 32px,46rem);margin:0 auto;padding:clamp(20px,4vw,40px) 0 56px}
 
 .bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;padding-bottom:18px;margin-bottom:clamp(28px,6vw,52px);border-bottom:1px solid var(--line)}
 .home{font-weight:700;color:var(--text);text-decoration:none}
-.home:hover{color:var(--foam)}
-.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:5px;list-style:none;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.home:hover{color:var(--navy)}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:5px;list-style:none;background:#fff;border:1px solid var(--line);border-radius:999px}
 .tabs a{display:block;padding:8px 16px;color:var(--muted);text-decoration:none;font-weight:600;font-size:.95rem;border-radius:999px;transition:color .2s,background .2s}
 .tabs a:hover{color:var(--text)}
-.tabs a[aria-current=page]{color:#032033;background:linear-gradient(110deg,var(--aqua),var(--foam))}
+.tabs a[aria-current=page]{color:#fff;background:var(--blue)}
 
 h1{margin:0 0 10px;font-size:clamp(2.4rem,8vw,3.75rem);line-height:1.02;letter-spacing:-.055em;font-weight:700;text-wrap:balance}
 .updated{margin:0 0 32px;color:var(--muted);font-size:.95rem}
@@ -26,10 +26,10 @@ strong{font-weight:700}
 .summary ul{margin:0}
 .summary li:last-child{margin-bottom:0}
 
-.tablewrap{margin:0 0 18px;overflow-x:auto;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.03)}
+.tablewrap{margin:0 0 18px;overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
 table{width:100%;min-width:34rem;border-collapse:collapse;font-size:.97rem;line-height:1.55}
 th,td{padding:13px 15px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
-th{color:var(--muted);font-weight:600;font-size:.9rem;background:rgba(255,255,255,.05)}
+th{color:var(--muted);font-weight:600;font-size:.9rem;background:#f7fafd}
 tr:last-child td{border-bottom:0}
 td:first-child{font-weight:700;white-space:nowrap}
 

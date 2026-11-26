@@ -793,10 +793,34 @@ app.get('/api/admin/summary', wrap(async (_req, res) => {
             (SELECT count(*) FROM users)::int AS logins,
             (SELECT count(*) FROM meters m LEFT JOIN users u ON u.meter_code=m.meter_code WHERE u.id IS NULL)::int AS without_login,
             (SELECT count(*) FROM transactions WHERE status='NEEDS_REVIEW')::int AS needs_review,
-            (SELECT count(*) FROM transactions WHERE last_error LIKE 'Amount mismatch%' AND status <> 'NEEDS_REVIEW')::int AS amount_mismatches`)).rows[0];
+            (SELECT count(*) FROM transactions WHERE last_error LIKE 'Amount mismatch%' AND status <> 'NEEDS_REVIEW')::int AS amount_mismatches,
+            COALESCE(m.n, 0)::int AS topups_month, COALESCE(m.amt, 0)::bigint AS revenue_month, COALESCE(m.vol, 0)::float AS volume_month
+       FROM (SELECT 1) one
+       LEFT JOIN (SELECT count(*) AS n, sum(amount) AS amt, sum(water_volume) AS vol FROM transactions
+                   WHERE status='TOKEN_ISSUED'
+                     AND created_at >= date_trunc('month', now() AT TIME ZONE 'Africa/Nairobi') AT TIME ZONE 'Africa/Nairobi') m ON true`)).rows[0];
   // amountMismatches: tokens already issued where M-Pesa reported a different amount than requested.
+  // *Month figures count completed top-ups (token issued) since the 1st of this month, Nairobi time.
   res.json({ ok: true, meters: r.meters, logins: r.logins, withoutLogin: r.without_login, needsReview: r.needs_review,
-    amountMismatches: r.amount_mismatches });
+    amountMismatches: r.amount_mismatches, topupsMonth: r.topups_month, revenueMonth: Number(r.revenue_month),
+    volumeMonth: Number(r.volume_month) });
+}));
+
+// Completed top-ups per day (Nairobi time) for the dashboard chart. Days with none come back as zeros.
+app.get('/api/admin/trends', wrap(async (req, res) => {
+  const days = Math.min(60, Math.max(7, Number(req.query.days) || 14));
+  const { rows } = await pool.query(
+    `SELECT to_char(d::date, 'YYYY-MM-DD') AS day, COALESCE(t.n, 0)::int AS topups,
+            COALESCE(t.amt, 0)::bigint AS amount, COALESCE(t.vol, 0)::float AS volume
+       FROM generate_series(((now() AT TIME ZONE 'Africa/Nairobi')::date - ($1::int - 1))::timestamp,
+                            (now() AT TIME ZONE 'Africa/Nairobi')::date::timestamp, interval '1 day') d
+       LEFT JOIN (SELECT (created_at AT TIME ZONE 'Africa/Nairobi')::date AS day, count(*) AS n,
+                         sum(amount) AS amt, sum(water_volume) AS vol
+                    FROM transactions
+                   WHERE status='TOKEN_ISSUED' AND created_at >= now() - (($1::int + 1) * interval '1 day')
+                   GROUP BY 1) t ON t.day = d::date
+      ORDER BY d`, [days]);
+  res.json({ ok: true, days: rows.map((r) => ({ day: r.day, topups: r.topups, amount: Number(r.amount), volume: Number(r.volume) })) });
 }));
 
 // Ask Hydro for all of the company's meters and store any we have not seen before.
