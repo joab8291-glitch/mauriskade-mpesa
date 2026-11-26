@@ -609,6 +609,19 @@ app.post('/api/auth/logout', wrap(async (req, res) => {
 
 app.get('/api/me', requireUser, (req, res) => res.json({ ok: true, me: meView(req.user) }));
 
+// Total water actually issued to this signed-in meter during the current Nairobi calendar month.
+app.get('/api/me/usage', requireUser, wrap(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT COALESCE(sum(water_volume), 0)::numeric(12,2) AS volume
+       FROM transactions
+      WHERE meter_number=$1
+        AND status='TOKEN_ISSUED'
+        AND created_at >= date_trunc('month', now() AT TIME ZONE 'Africa/Nairobi') AT TIME ZONE 'Africa/Nairobi'
+        AND created_at < (date_trunc('month', now() AT TIME ZONE 'Africa/Nairobi') + interval '1 month') AT TIME ZONE 'Africa/Nairobi'`,
+    [req.user.meter_code]);
+  res.json({ ok: true, meter: req.user.meter_code, monthVolume: Number(rows[0].volume) });
+}));
+
 app.post('/api/auth/change-password', requireUser, wrap(async (req, res) => {
   const current = String((req.body && req.body.current) || '');
   const next = String((req.body && req.body.next) || '');
