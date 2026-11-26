@@ -465,7 +465,9 @@ async function issueToken(id) {
     if (res.code === 0 && /^\d{20}$/.test(String(res.data))) {
       const token = String(res.data);
       await pool.query(
-        `UPDATE transactions SET status='TOKEN_ISSUED', token=$2, last_error=NULL, updated_at=now() WHERE id=$1`,
+        `UPDATE transactions SET status='TOKEN_ISSUED', token=$2,
+                last_error = CASE WHEN last_error LIKE 'Amount mismatch%' THEN last_error ELSE NULL END,
+                updated_at=now() WHERE id=$1`,
         [id, token]);
       log('token issued', id);
       enrichFromRecords(id, tx.meter_number, token).catch(() => {});
@@ -746,6 +748,27 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
       `UPDATE transactions SET mpesa_receipt=$2 WHERE checkout_request_id=$1 AND mpesa_receipt IS NULL`,
       [checkoutId, receipt]);
 
+    // The reconciler confirms payment through an STK query, which carries no amount. When this
+    // callback arrives second, it is the first time the paid amount can be checked, so do it now.
+    // If no token has gone out yet, stop it and send the row to review. If one already has, it
+    // cannot be taken back: flag the row (it keeps its status, so the customer still sees the token).
+    if (!claim.rows[0] && Number.isFinite(paid)) {
+      const late = await pool.query(
+        `UPDATE transactions
+            SET status = CASE WHEN status IN ('PAID','RETRY') THEN 'NEEDS_REVIEW' ELSE status END,
+                last_error = 'Amount mismatch, M-Pesa paid ' || $3::text || ' but ' || amount::text || ' was requested (found after the payment was confirmed)',
+                updated_at = now()
+          WHERE checkout_request_id = $1
+            AND status IN ('PAID','ISSUING','RETRY','TOKEN_ISSUED','NEEDS_REVIEW')
+            AND amount <> $2::numeric
+            AND (last_error IS NULL OR last_error NOT LIKE 'Amount mismatch%')
+        RETURNING id, status`,
+        [checkoutId, paid, String(paid)]);
+      if (late.rows[0]) {
+        log('AMOUNT_MISMATCH after confirmation', { transactionId: late.rows[0].id, status: late.rows[0].status, receipt, paid });
+      }
+    }
+
     if (claim.rows[0] && claim.rows[0].status === 'PAID') await issueToken(claim.rows[0].id);
   } catch (e) {
     log('callback processing error', e.message); // the reconciler picks it up via STK query
@@ -769,8 +792,11 @@ app.get('/api/admin/summary', wrap(async (_req, res) => {
     `SELECT (SELECT count(*) FROM meters)::int AS meters,
             (SELECT count(*) FROM users)::int AS logins,
             (SELECT count(*) FROM meters m LEFT JOIN users u ON u.meter_code=m.meter_code WHERE u.id IS NULL)::int AS without_login,
-            (SELECT count(*) FROM transactions WHERE status='NEEDS_REVIEW')::int AS needs_review`)).rows[0];
-  res.json({ ok: true, meters: r.meters, logins: r.logins, withoutLogin: r.without_login, needsReview: r.needs_review });
+            (SELECT count(*) FROM transactions WHERE status='NEEDS_REVIEW')::int AS needs_review,
+            (SELECT count(*) FROM transactions WHERE last_error LIKE 'Amount mismatch%' AND status <> 'NEEDS_REVIEW')::int AS amount_mismatches`)).rows[0];
+  // amountMismatches: tokens already issued where M-Pesa reported a different amount than requested.
+  res.json({ ok: true, meters: r.meters, logins: r.logins, withoutLogin: r.without_login, needsReview: r.needs_review,
+    amountMismatches: r.amount_mismatches });
 }));
 
 // Ask Hydro for all of the company's meters and store any we have not seen before.
