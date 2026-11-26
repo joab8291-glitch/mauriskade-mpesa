@@ -273,9 +273,7 @@ tr:hover td{background:#f7fbfc}
 
     <section class="panel hidden" data-tab="records"><div class="bar"><div><h2 class="section-title">STS records</h2><p class="muted small">Hydro's recharge history for Mauriskade meters.</p></div><button class="secondary" id="rcExport">Download CSV (this page)</button></div><div class="filters"><input id="recQ" inputmode="numeric" placeholder="Meter number"><select id="recStatus"><option value="">Any status</option><option value="1">Success</option><option value="0">Processing</option><option value="2">Failed</option><option value="3">Refunded</option></select><button class="secondary" id="recGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Amount</th><th>Volume</th><th>Balance after</th><th>Status</th><th>Token</th></tr></thead><tbody id="recRows"><tr><td colspan="7" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="recInfo" class="muted small"></span><div class="actions"><button class="secondary" id="recPrev" disabled>Previous</button><button class="secondary" id="recNext" disabled>Next</button></div></div></section>
 
-    <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing policy</h2><div id="priceBox" class="notice" style="margin-top:10px">Loading…</div><p class="muted small">Read only. Hydro sets the real price per meter; this is the rate used for the estimate residents see. Change it in the backend settings (PRICE_PER_M3), and keep it equal to the Hydro price.</p></section>
 
-    <p class="foot">Security: never share this page's access key. Customer passwords are generated once, displayed only when created or reset, and stored hashed on the server.</p>
   </div>
 </div>
 
@@ -296,7 +294,7 @@ async function api(path, opts={}) {
 }
 const post=(p,b={})=>api(p,{method:'POST',body:JSON.stringify(b)});
 function showApp(on){$('#app').classList.toggle('hidden',!on);$('#authPanel').classList.toggle('hidden',on);}
-async function connect(){key=$('#adminKey').value.trim();if(!key)return say('Enter the admin key.',true);try{await loadSummary();showApp(true);$('#adminKey').value='';tab('overview');loadOverview();await loadMeters(true);say('Connected. Admin key is held in page memory only.')}catch(e){key='';say(e.message,true)}}
+async function connect(){key=$('#adminKey').value.trim();if(!key)return say('Enter the admin key.',true);try{await loadSummary();showApp(true);$('#adminKey').value='';tab('overview');loadOverview();await loadMeters(true);say('Connected.')}catch(e){key='';say(e.message,true)}}
 $('#connect').addEventListener('click',connect);
 $('#adminKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
 $('#logout').addEventListener('click',()=>{key='';S=null;T=null;showApp(false);$('#meters').textContent='';$('#reviews').textContent='Disconnected.';say('Disconnected.')});
