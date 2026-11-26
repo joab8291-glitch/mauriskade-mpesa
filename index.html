@@ -69,6 +69,7 @@ main[data-state=login],main[data-state=pw]{grid-template-columns:minmax(0,28rem)
 .quote{min-height:2.6rem;margin:10px 0 0;color:var(--muted);font-size:.95rem}
 .quote strong{color:var(--green-700)}
 .card-head.red{background:var(--red-50);color:var(--red)}
+.pw-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.pw-head h2{margin:0}.pw-back{flex:none;min-height:38px;padding:8px 14px}
 .card-head .status-dot{margin-right:10px;vertical-align:middle}
 .status-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:currentColor}
 .status-dot.live{animation:pulse 1.4s ease-in-out infinite}
@@ -239,7 +240,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
 
     <!-- Choose a new password -->
     <section class="card" id="view-pw" aria-labelledby="h-pw" hidden>
-      <div class="card-head"><h2 id="h-pw" tabindex="-1">Choose your own password</h2></div>
+      <div class="card-head pw-head"><h2 id="h-pw" tabindex="-1">Choose your own password</h2><button class="btn quiet pw-back" id="pwBack" type="button" hidden>Back</button></div>
       <div class="card-body">
         <p>You are using a password you were given. Replace it before you continue.</p>
         <form id="pwForm" novalidate>
@@ -401,6 +402,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
     $('#view-help').hidden = name !== 'pay';
     $('#recent').hidden = !((name === 'pay' || side) && recentCount > 0);
     $('#userMenu').hidden = name === 'login';
+    $('#pwBack').hidden = !(name === 'pw' && me && !me.mustChange);
     $('#meterBadge').hidden = name === 'login' || !me;
     $('main').dataset.state = name;
     document.body.dataset.state = name;
@@ -495,6 +497,10 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
     } finally {
       busy(btn, false);
     }
+  });
+
+  $('#pwBack').addEventListener('click', () => {
+    if (me && !me.mustChange) showHome();
   });
 
   $('#changePw').addEventListener('click', () => {
