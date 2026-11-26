@@ -66,6 +66,63 @@ tr:hover td{background:rgba(112,216,224,.035)}
 @media(prefers-reduced-motion:reduce){.top:before,.top:after{animation:none}}
 
 </style>
+<style>
+/* ===== Mauriskade admin: clean light SaaS workspace ===== */
+:root{color-scheme:light;--bg:#f3f7f9;--panel:#fff;--line:#e1e9ed;--text:#17364b;--muted:#6c8291;--blue:#087f9b;--green:#15966a;--red:#c94352;--amber:#a86a12;--shadow:0 12px 34px rgba(26,67,88,.07)}
+html{background:#f3f7f9}
+body{color:#17364b;background:#f3f7f9;font-family:"Schibsted Grotesk",Inter,ui-sans-serif,system-ui,sans-serif}
+main{max-width:none;width:100%;padding:26px 34px 64px 292px}
+.top{min-height:174px;padding:30px 36px;border:0;border-radius:24px 24px 54px 24px;background:linear-gradient(112deg,#073e63,#086d8b 66%,#078c8b);box-shadow:0 18px 42px -28px rgba(5,62,91,.42)}
+.top:before{border-color:rgba(255,255,255,.18);box-shadow:0 0 0 22px rgba(255,255,255,.035),0 0 0 48px rgba(255,255,255,.025)}
+.top:after{width:76px;height:76px;background:linear-gradient(145deg,#fff,#b8f5e9 60%,#62d5df);box-shadow:inset -8px -10px 20px rgba(4,83,117,.18),0 12px 30px rgba(0,0,0,.12)}
+.top h1{color:#fff;font-size:clamp(2rem,3.5vw,2.8rem)}
+.top .sub{color:#d4eaf2}
+.eyebrow{color:#baffeb}
+.top .pill{color:#eafff9;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.1)}
+.panel{background:#fff;border:1px solid #e2eaee;border-radius:18px;padding:22px;margin:16px 0;box-shadow:0 12px 34px rgba(26,67,88,.055);backdrop-filter:none}
+#authPanel{background:#fff;border-color:#dfe9ed;box-shadow:0 18px 46px rgba(26,67,88,.09)}
+#authPanel:before{color:#087f9b}
+label{color:#35566b}
+input,select,textarea{color:#17364b;background:#f7fafb;border:1px solid #d9e4e9;border-radius:11px}
+input:focus,select:focus,textarea:focus{border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,145,167,.1)}
+button{color:#fff;background:linear-gradient(110deg,#087f9b,#079b91);border-radius:11px;box-shadow:0 6px 16px rgba(8,127,155,.13)}
+button.secondary{color:#31566b;background:#f2f7f9;border:1px solid #dce7eb;box-shadow:none}
+button.secondary:hover:not(:disabled){background:#eaf3f6;border-color:#b9d1da}
+button.danger{color:#a52f42;background:#fff1f2;border:1px solid #f0cdd2;box-shadow:none}
+.stat{background:linear-gradient(145deg,#fff,#f7fbfc);border:1px solid #e1eaee;border-radius:16px;padding:20px;box-shadow:0 6px 20px rgba(26,67,88,.035)}
+.stat:after{background:rgba(8,143,155,.07);box-shadow:none}
+.stat strong{color:#123d56}
+.stat span{color:#718797}
+.tabs{position:fixed;z-index:20;left:16px;top:16px;bottom:16px;width:246px;display:flex;flex-direction:column;align-items:stretch;gap:7px;overflow-y:auto;margin:0;padding:16px 12px;border:1px solid #e0e9ed;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(26,67,88,.08);backdrop-filter:none}
+.tabs:before{content:"MAURISKADE WATER";display:block;padding:12px 10px 18px;color:#0b617d;font-size:.75rem;font-weight:850;letter-spacing:.14em}
+.tabs button{width:100%;min-height:46px;text-align:left;padding:11px 14px;color:#526f81;background:transparent;border:1px solid transparent;border-radius:11px;box-shadow:none}
+.tabs button:before{display:inline-block;width:23px;color:#07849b;font-weight:800}
+.tabs button[data-t="registry"]:before{content:"▦"}
+.tabs button[data-t="devices"]:before{content:"◉"}
+.tabs button[data-t="pay"]:before{content:"↗"}
+.tabs button[data-t="mpesa"]:before{content:"▤"}
+.tabs button[data-t="recharge"]:before{content:"＋"}
+.tabs button[data-t="records"]:before{content:"≡"}
+.tabs button[data-t="pricing"]:before{content:"◇"}
+.tabs button[aria-selected=true]{color:#075c76;background:#e8f6f7;border-color:#d0eaeb;box-shadow:inset 3px 0 #0a91a0}
+.tabs button:hover:not(:disabled){color:#075c76;background:#f1f8f9;transform:none;box-shadow:none}
+.section-title{color:#183d53;font-size:1.16rem}
+.muted,.sub{color:#6c8291}
+.filters{gap:10px}
+.table-wrap{border:1px solid #e1eaee;border-radius:13px;background:#fff}
+table{min-width:760px}
+th{color:#617b8b;background:#f3f7f9;border-bottom:1px solid #e1eaee}
+td{color:#29495d;border-bottom-color:#edf1f3}
+tr:hover td{background:#f7fbfc}
+.pill{color:#567486;background:#f1f7f8;border-color:#dce8ec}
+.good{color:#16845f}.warn{color:#9b6818}.bad{color:#c43e50}
+.notice{color:#526e7f;background:#f5f9fa;border:1px solid #e0e9ed;border-radius:12px}
+.foot{color:#8194a0}
+:focus-visible{outline:3px solid #0b91a7;outline-offset:3px}
+@media(max-width:900px){main{padding:18px 18px 48px}.tabs{position:sticky;top:8px;left:auto;bottom:auto;width:auto;flex-direction:row;align-items:center;overflow-x:auto;white-space:nowrap;margin:14px 0;padding:8px;border-radius:14px}.tabs:before{display:none}.tabs button{width:auto;flex:0 0 auto;text-align:center}.tabs button:before{display:none}}
+@media(max-width:560px){main{padding:12px 10px 40px}.top{min-height:190px;padding:23px 20px;border-radius:20px 20px 38px 20px}.top:after{width:50px;height:50px;right:22px;top:30%}.top h1{max-width:78%;font-size:1.9rem}.panel{padding:16px;border-radius:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:13px}.stat strong{font-size:1.55rem}.tabs{margin-left:0;margin-right:0}.tabs button{font-size:.8rem;padding:9px 11px}.filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){.top:before,.top:after{animation:none}}
+</style>
 </head>
 <body>
 <main>
