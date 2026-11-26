@@ -22,6 +22,7 @@ const {
   MPESA_SHORTCODE,
   MPESA_PASSKEY,
   MPESA_TXN_TYPE = 'CustomerPayBillOnline',
+  MPESA_PARTYB, // Till number for CustomerBuyGoodsOnline; defaults to MPESA_SHORTCODE (Paybill)
   CALLBACK_BASE_URL,
   CALLBACK_SECRET,
   MIN_AMOUNT = '60',
@@ -51,6 +52,8 @@ const DARAJA = MPESA_ENV === 'production'
 const MAX_ATTEMPTS = 6;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COOKIE = 'hp_session';
+const CODE = /^\d{6,20}$/; // meter code
+const UNCONFIRMED_STK = 'stk push unconfirmed'; // result_desc prefix: prompt may have reached the phone
 
 /* ------------------------------ helpers ------------------------------ */
 
@@ -89,7 +92,10 @@ function failReason(desc) {
   const d = String(desc || '').toLowerCase();
   if (d.includes('cancel')) return 'You cancelled the payment on your phone.';
   if (d.includes('insufficient') || d.includes('balance')) return 'Your M-Pesa balance was too low for this payment.';
-  if (d.includes('timeout') || d.includes('timed out') || d.includes('did not')) return 'The M-Pesa prompt timed out before it was approved.';
+  if (d.includes('timeout') || d.includes('timed out') || d.includes('did not') || d.includes('unreachable') || d.includes('cannot be reached')) {
+    return 'The M-Pesa prompt timed out before it was approved.';
+  }
+  if (d.includes('initiator') || d.includes('pin')) return 'The M-Pesa PIN was not accepted. Try again and enter your PIN carefully.';
   return 'M-Pesa could not complete the payment. No money was taken.';
 }
 
@@ -209,7 +215,7 @@ async function hydro(method, apiPath, body) {
 
 // Returns the meter object only if it belongs to our client, otherwise null.
 async function lookupOwnedMeter(code) {
-  if (!/^\d{6,20}$/.test(code)) return null;
+  if (!CODE.test(code)) return null;
   const res = await hydro('GET', `/stsMeter/code/${encodeURIComponent(code)}`);
   // Meter detail uses the same documented fields as the archive list and may
   // omit companyId. The meter was already registered from the companyId-scoped
@@ -275,8 +281,8 @@ async function enrichFromRecords(id, meter, token) {
 /* ------------------------------- Daraja ------------------------------- */
 
 let darajaTok = { value: null, exp: 0 };
-async function darajaToken() {
-  if (darajaTok.value && Date.now() < darajaTok.exp) return darajaTok.value;
+async function darajaToken(force = false) {
+  if (!force && darajaTok.value && Date.now() < darajaTok.exp) return darajaTok.value;
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
   const r = await fetch(`${DARAJA}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${auth}` },
@@ -284,24 +290,36 @@ async function darajaToken() {
   });
   if (!r.ok) throw new Error(`Daraja auth failed (${r.status})`);
   const j = await r.json();
-  darajaTok = { value: j.access_token, exp: Date.now() + (Number(j.expires_in) - 60) * 1000 };
+  if (!j.access_token) throw new Error('Daraja auth returned no access token.');
+  const ttl = Number(j.expires_in);
+  // Refresh a minute early; fall back to 50 minutes if expires_in is missing or odd.
+  darajaTok = { value: j.access_token, exp: Date.now() + (ttl > 120 ? ttl - 60 : 3000) * 1000 };
   return darajaTok.value;
 }
 
-async function darajaPost(apiPath, body) {
+// Errors with `definite = true` mean Daraja answered and refused the request, so nothing was sent
+// to the customer's phone. Anything else (timeout, network, unreadable reply) is ambiguous: the
+// prompt may still have reached the phone.
+const darajaError = (msg, definite) => Object.assign(new Error(msg), { definite });
+
+async function darajaPost(apiPath, body, retriedAuth = false) {
   const r = await fetch(`${DARAJA}${apiPath}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${await darajaToken()}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${await darajaToken(retriedAuth)}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20000),
   });
 
+  // An expired or revoked token is rejected before Daraja acts on the request, so one retry is safe.
+  if (r.status === 401 && !retriedAuth) return darajaPost(apiPath, body, true);
+
   const raw = await r.text();
   let data;
   try { data = JSON.parse(raw); }
-  catch { throw new Error(`Daraja returned an invalid response (HTTP ${r.status}).`); }
+  catch { throw darajaError(`Daraja returned an invalid response (HTTP ${r.status}).`, false); }
   if (!r.ok) {
-    throw new Error(data.errorMessage || data.ResponseDescription || `Daraja request failed (HTTP ${r.status}).`);
+    throw darajaError(data.errorMessage || data.ResponseDescription || `Daraja request failed (HTTP ${r.status}).`,
+      r.status >= 400 && r.status < 500);
   }
   return data;
 }
@@ -310,9 +328,9 @@ const stkPassword = (t) => Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${t}`)
 
 // One validated entry point for every M-Pesa STK request.
 async function stkPush({ amount, phone, meter }) {
-  if (!Number.isInteger(amount) || amount < 1) throw new Error('Invalid STK amount.');
-  if (!/^254[17]\d{8}$/.test(String(phone))) throw new Error('Invalid Safaricom phone number.');
-  if (!/^\d{13}$/.test(String(meter))) throw new Error('Invalid meter reference.');
+  if (!Number.isInteger(amount) || amount < 1) throw darajaError('Invalid STK amount.', true);
+  if (!/^254[17]\d{8}$/.test(String(phone))) throw darajaError('Invalid Safaricom phone number.', true);
+  if (!CODE.test(String(meter))) throw darajaError('Invalid meter reference.', true);
 
   const t = timestamp();
   const response = await darajaPost('/mpesa/stkpush/v1/processrequest', {
@@ -322,7 +340,7 @@ async function stkPush({ amount, phone, meter }) {
     TransactionType: MPESA_TXN_TYPE,
     Amount: amount,
     PartyA: phone,
-    PartyB: MPESA_SHORTCODE,
+    PartyB: MPESA_PARTYB || MPESA_SHORTCODE,
     PhoneNumber: phone,
     CallBackURL: `${CALLBACK_BASE_URL}/api/mpesa/callback/${CALLBACK_SECRET}`,
     // Daraja allows 12 AccountReference characters; the meter suffix is unique.
@@ -331,8 +349,9 @@ async function stkPush({ amount, phone, meter }) {
   });
 
   if (String(response.ResponseCode) !== '0') {
-    throw new Error(response.errorMessage || response.ResponseDescription || 'Daraja rejected the STK request.');
+    throw darajaError(response.errorMessage || response.ResponseDescription || 'Daraja rejected the STK request.', true);
   }
+  if (!response.CheckoutRequestID) throw darajaError('Daraja accepted the STK request but returned no CheckoutRequestID.', false);
   return response;
 }
 function stkQuery(checkoutRequestId) {
@@ -358,29 +377,44 @@ async function startPayment({ meter, phone, amount }) {
     return { status: 409, body: { ok: false, message: `Your meter is not available on the system right now. Contact ${BUSINESS_NAME}.` } };
   }
 
-  const dup = await pool.query(
-    `SELECT 1 FROM transactions
-      WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'`,
-    [meter]);
-  if (dup.rowCount) {
-    return { status: 429, body: { ok: false, message: 'A payment prompt is already open for this meter. Approve it on your phone or wait a minute.' } };
+  // Check-then-insert under a per-meter lock, so a double click cannot open two prompts.
+  let id;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`stk:${meter}`]);
+    const dup = await client.query(
+      `SELECT 1 FROM transactions
+        WHERE meter_number=$1 AND status='PENDING_PAYMENT' AND created_at > now() - interval '2 minutes'`,
+      [meter]);
+    if (dup.rowCount) {
+      await client.query('ROLLBACK');
+      return { status: 429, body: { ok: false, message: 'A payment prompt is already open for this meter. Approve it on your phone or wait a minute.' } };
+    }
+    const ins = await client.query(
+      `INSERT INTO transactions (meter_number, phone, amount) VALUES ($1,$2,$3) RETURNING id`,
+      [meter, phone, amount]);
+    id = ins.rows[0].id;
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
-
-  const ins = await pool.query(
-    `INSERT INTO transactions (meter_number, phone, amount) VALUES ($1,$2,$3) RETURNING id`,
-    [meter, phone, amount]);
-  const id = ins.rows[0].id;
 
   let stk;
   try {
     stk = await stkPush({ amount, phone, meter });
   } catch (e) {
-    log('STK_PUSH_FAILED', { transactionId: id, meter: String(meter).slice(-4), phone: String(phone).slice(0, 5) + '****' + String(phone).slice(-3), error: e.message });
+    const unconfirmed = e.definite !== true;
+    log('STK_PUSH_FAILED', { transactionId: id, unconfirmed, meter: String(meter).slice(-4), phone: String(phone).slice(0, 5) + '****' + String(phone).slice(-3), error: e.message });
     await pool.query(`UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now() WHERE id=$1`,
-      [id, `stk push error: ${e.message}`]);
-    return { status: 502, body: { ok: false, message: 'M-Pesa could not start this payment. Please check the number and try once more. If it still fails, contact the property office.' } };
+      [id, `${unconfirmed ? UNCONFIRMED_STK : 'stk push error'}: ${e.message}`]);
+    return { status: 502, body: { ok: false, message: unconfirmed
+      ? 'We could not confirm that the M-Pesa prompt was sent. If a prompt appears on your phone, approve it and your token will still be issued. Otherwise try again in a minute.'
+      : 'M-Pesa could not start this payment. Please check the number and try once more. If it still fails, contact the property office.' } };
   }
-
 
   await pool.query(
     `UPDATE transactions SET checkout_request_id=$2, merchant_request_id=$3, updated_at=now() WHERE id=$1`,
@@ -388,6 +422,26 @@ async function startPayment({ meter, phone, amount }) {
   await pool.query(`UPDATE meters SET phone=$2 WHERE meter_code=$1 AND phone IS NULL`, [meter, phone]);
 
   return { status: 200, body: { ok: true, transactionId: id } };
+}
+
+// A callback whose CheckoutRequestID matches no row. This happens when the prompt reached the phone
+// but we never stored its id (the STK reply timed out, or the callback beat our own UPDATE). Match
+// it to the recent transaction for the same phone and amount that is still missing an id.
+async function adoptUnmatchedCallback(checkoutId, phone, amount) {
+  if (!phone || !Number.isInteger(amount)) return false;
+  const r = await pool.query(
+    `UPDATE transactions
+        SET checkout_request_id=$1, status='PENDING_PAYMENT', result_desc=NULL, updated_at=now()
+      WHERE id = (
+        SELECT id FROM transactions
+         WHERE checkout_request_id IS NULL AND phone=$2 AND amount=$3
+           AND created_at > now() - interval '15 minutes'
+           AND (status='PENDING_PAYMENT' OR (status='FAILED' AND result_desc LIKE $4))
+         ORDER BY created_at DESC LIMIT 1
+         FOR UPDATE SKIP LOCKED)
+      RETURNING id`,
+    [checkoutId, phone, amount, `${UNCONFIRMED_STK}%`]);
+  return r.rowCount > 0;
 }
 
 /* ------------------------- token issuing (core) ------------------------- */
@@ -643,35 +697,49 @@ app.get('/api/me/transactions', requireUser, requireReady, wrap(async (req, res)
 
 // Safaricom callback
 app.post('/api/mpesa/callback/:secret', async (req, res) => {
-  if (req.params.secret !== CALLBACK_SECRET) return res.sendStatus(403);
+  const given = Buffer.from(String(req.params.secret));
+  const want = Buffer.from(CALLBACK_SECRET);
+  if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) return res.sendStatus(403);
   res.json({ ResultCode: 0, ResultDesc: 'Accepted' }); // answer fast, process after
 
   try {
     const cb = req.body && req.body.Body && req.body.Body.stkCallback;
     if (!cb || !cb.CheckoutRequestID) return;
-    const checkoutId = cb.CheckoutRequestID;
+    const checkoutId = String(cb.CheckoutRequestID);
+    const code = Number(cb.ResultCode);
+    if (!Number.isFinite(code)) { log('callback without ResultCode', checkoutId); return; }
 
-    if (cb.ResultCode !== 0) {
+    if (code !== 0) {
       await pool.query(
         `UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now()
           WHERE checkout_request_id=$1 AND status='PENDING_PAYMENT'`,
-        [checkoutId, cb.ResultDesc]);
+        [checkoutId, cb.ResultDesc || `ResultCode ${code}`]);
       return;
     }
 
     const items = Object.fromEntries(((cb.CallbackMetadata || {}).Item || []).map((i) => [i.Name, i.Value]));
-    const receipt = items.MpesaReceiptNumber;
+    const receipt = items.MpesaReceiptNumber ? String(items.MpesaReceiptNumber) : null;
     const paid = Number(items.Amount);
+    const payer = items.PhoneNumber != null ? String(items.PhoneNumber) : null;
+
+    // A success callback we cannot match to a row would otherwise mean money taken and no token.
+    const known = (await pool.query(`SELECT 1 FROM transactions WHERE checkout_request_id=$1`, [checkoutId])).rowCount > 0
+      || await adoptUnmatchedCallback(checkoutId, payer, paid);
+    if (!known) {
+      log('ORPHAN_PAYMENT: paid but no matching transaction, reconcile by receipt',
+        { checkoutId, receipt, amount: items.Amount, phone: payer && payer.slice(0, 5) + '****' + payer.slice(-3) });
+      return;
+    }
 
     // Idempotent claim: a retried callback finds status != PENDING_PAYMENT and does nothing
     const claim = await pool.query(
       `UPDATE transactions
-          SET status = CASE WHEN amount = $3 THEN 'PAID' ELSE 'NEEDS_REVIEW' END,
-              last_error = CASE WHEN amount = $3 THEN last_error ELSE 'Amount mismatch, M-Pesa paid ' || $4 END,
+          SET status = CASE WHEN amount = $3::numeric THEN 'PAID' ELSE 'NEEDS_REVIEW' END,
+              last_error = CASE WHEN amount = $3::numeric THEN last_error ELSE 'Amount mismatch, M-Pesa paid ' || $4::text END,
               mpesa_receipt = $2, updated_at = now()
         WHERE checkout_request_id = $1 AND status = 'PENDING_PAYMENT'
         RETURNING id, status`,
-      [checkoutId, receipt, paid, String(paid)]);
+      [checkoutId, receipt, Number.isFinite(paid) ? paid : null, Number.isFinite(paid) ? String(paid) : 'unknown']);
 
     // If the reconciler already marked it paid, still record the receipt
     await pool.query(
@@ -884,7 +952,6 @@ app.post('/api/admin/review/:id', wrap(async (req, res) => {
 /* ------------------- admin: Hydro app features (meters, recharge, records) ------------------- */
 
 const ADMIN_RECHARGE_ENABLED = String(process.env.ADMIN_RECHARGE_ENABLED || '').toLowerCase() === 'true';
-const CODE = /^\d{6,20}$/;
 const intOrNull = (v) => (v === '' || v == null || !Number.isInteger(Number(v)) ? null : Number(v));
 
 async function audit(action, meter, detail, status = 'DONE') {
@@ -1041,6 +1108,18 @@ async function worker() {
   if (working) return;
   working = true;
   try {
+    // 0a. Paid but the process stopped before asking Hydro (restart or deploy between the two steps).
+    //     Nothing was sent to Hydro yet, so issuing now is safe.
+    const stuckPaid = await pool.query(
+      `SELECT id FROM transactions WHERE status='PAID' AND updated_at < now() - interval '1 minute' LIMIT 10`);
+    for (const r of stuckPaid.rows) await issueToken(r.id);
+
+    // 0b. Stuck in ISSUING: the process stopped while the Hydro call was in flight. A token may or
+    //     may not exist, so a person checks the Hydro records instead of us retrying blindly.
+    await pool.query(
+      `UPDATE transactions SET status='NEEDS_REVIEW', last_error='ambiguous: stopped while issuing the token', updated_at=now()
+        WHERE status='ISSUING' AND updated_at < now() - interval '3 minutes'`);
+
     // 1. retry transactions Hydro told us to retry
     const due = await pool.query(
       `SELECT id FROM transactions WHERE status='RETRY' AND next_retry_at <= now() LIMIT 10`);
@@ -1051,7 +1130,7 @@ async function worker() {
       `SELECT id, checkout_request_id FROM transactions
         WHERE status='PENDING_PAYMENT' AND checkout_request_id IS NOT NULL
           AND created_at < now() - interval '90 seconds' AND created_at > now() - interval '30 minutes'
-        LIMIT 20`);
+        ORDER BY created_at LIMIT 20`);
     for (const r of stale.rows) {
       try {
         const q = await stkQuery(r.checkout_request_id);
@@ -1066,7 +1145,10 @@ async function worker() {
             `UPDATE transactions SET status='FAILED', result_desc=$2, updated_at=now()
               WHERE id=$1 AND status='PENDING_PAYMENT'`, [r.id, q.ResultDesc || 'Payment not completed']);
         }
-      } catch (e) { /* try again next tick */ }
+      } catch (e) {
+        // "Still being processed" comes back as an HTTP error; anything else is worth a log line.
+        if (!/being processed/i.test(e.message)) log('stk query failed', r.id, e.message);
+      }
     }
 
     // 3. anything unresolved after 30 minutes goes to a person
