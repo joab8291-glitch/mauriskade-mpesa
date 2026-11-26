@@ -43,9 +43,9 @@ Open `http://localhost:3000/` for the customer portal and `http://localhost:3000
 - `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`.
 - `CALLBACK_BASE_URL` — public HTTPS backend URL used to construct the Safaricom callback URL.
 - `CALLBACK_SECRET` — long random secret in the callback path.
-- `ADMIN_KEY` — at least 20 characters; required to use the admin API/dashboard.
+- `ADMIN_KEY` — at least 12 characters (20+ recommended); required to use the admin API/dashboard.
 
-Optional settings: `PORT`, `BUSINESS_NAME`, `PRICE_PER_M3` (default 120 KSh), `MIN_AMOUNT` (default 10), `MAX_AMOUNT` (default 20000), `MPESA_TXN_TYPE`, `SESSION_DAYS`, `CONTACT_EMAIL` and `CONTACT_PHONE`.
+Optional settings: `PORT`, `BUSINESS_NAME`, `PRICE_PER_M3` (default 120 KSh), `MIN_AMOUNT` (default 60), `MAX_AMOUNT` (default 20000), `MPESA_TXN_TYPE`, `MPESA_PARTYB` (Till number, only with `CustomerBuyGoodsOnline`), `SESSION_DAYS`, `CONTACT_EMAIL` and `CONTACT_PHONE`.
 
 ## Legal pages
 
@@ -117,8 +117,12 @@ The current application uses the amount recharge endpoint because M-Pesa collect
 ## Payment safety
 
 - The backend checks meter ownership against company 10185 before starting a payment.
-- A second pending prompt for the same meter is blocked.
+- A second pending prompt for the same meter is blocked, including two requests that arrive at the same moment (per-meter database lock).
 - Callback processing is idempotent and checks the paid amount against the requested amount.
+- If the STK request times out and we cannot tell whether the prompt reached the phone, the transaction is marked failed as "unconfirmed". A later success callback is matched back to it by phone and amount, so a paid customer still gets a token.
+- If the worker's STK query confirms a payment before the callback arrives, the amount is checked when the callback does arrive. A mismatch stops a token that has not been issued yet and sends the row to `NEEDS_REVIEW`. If the token is already out, the row keeps its status, gets an `Amount mismatch…` note in `last_error`, and is counted in `amountMismatches` on `/api/admin/summary`.
+- A success callback that matches no transaction at all is logged as `ORPHAN_PAYMENT` with the M-Pesa receipt, so it can be reconciled against the Paybill statement.
+- The worker picks up payments left in `PAID` by a restart, and moves anything stuck in `ISSUING` to `NEEDS_REVIEW` instead of retrying blindly.
 - Hydro's duplicate pending recharge response is retried with backoff.
 - A timeout or ambiguous token-issuance result is moved to `NEEDS_REVIEW`; the worker does not blindly issue a second token.
 - The admin must check Hydro recharge records before adopting a token or retrying.
