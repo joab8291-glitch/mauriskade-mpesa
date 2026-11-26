@@ -203,12 +203,12 @@ const meView = (u) => ({
 
 /* --------------------------- Hydro IoT client --------------------------- */
 
-async function hydro(method, apiPath, body) {
+async function hydro(method, apiPath, body, timeoutMs = 20000) {
   const r = await fetch(`${HYDRO_BASE_URL}${apiPath}`, {
     method,
     headers: { Authorization: `Bearer ${HYDRO_TOKEN}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   return r.json(); // throws if the body is not JSON, callers treat that as ambiguous
 }
@@ -233,7 +233,7 @@ async function pullHydroMeters() {
   for (let pageNum = 1; pageNum <= 300; pageNum++) {
     const res = await hydro('POST', '/stsMeter/queryPage', {
       pageNum, pageSize: 100, companyId: Number(HYDRO_COMPANY_ID), searchCount: false,
-    });
+    }, 45000);
     if (!res || res.code !== 0 || !res.data) {
       throw new Error(`page ${pageNum} failed (${res && res.code}: ${res && res.msg})`);
     }
