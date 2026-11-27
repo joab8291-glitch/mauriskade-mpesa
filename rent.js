@@ -272,7 +272,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  }));
  app.post(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
   const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});
-  const title=String(req.body&&req.body.title||'Tenancy Agreement').trim().slice(0,120),mime=String(req.body&&req.body.mime||'').toLowerCase(),name=String(req.body&&req.body.name||'').replace(/[\\r\\n"\\\\]/g,'_').slice(0,180),encoded=String(req.body&&req.body.data||'').replace(/^data:[^,]+;base64,/,'');
+  const title=String(req.body&&req.body.title||'Tenancy Agreement').trim().slice(0,120),mime=String(req.body&&req.body.mime||'').toLowerCase(),name=String(req.body&&req.body.name||'').replace(/[\\r\\n"|\\\\]/g,'_').slice(0,180),encoded=String(req.body&&req.body.data||'').replace(/^data:[^,]+;base64,/,'');
   if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(mime))return res.status(400).json({ok:false,message:'Upload a PDF, JPG, PNG or WebP file.'});
   if(!name||!encoded||encoded.length>Math.ceil(5*1024*1024*4/3)+8||!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded))return res.status(400).json({ok:false,message:'Choose a valid agreement file up to 5 MB.'});
   const bytes=Buffer.from(encoded,'base64');if(!bytes.length||bytes.length>5*1024*1024)return res.status(400).json({ok:false,message:'Agreement file must be 5 MB or smaller.'});
