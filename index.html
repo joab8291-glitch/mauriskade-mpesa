@@ -1299,17 +1299,27 @@ button,.btn{border-radius:10px}
   $('#buyMore').addEventListener('click', () => { setAmount(''); showHome(); });
 
   /* ---------- start ---------- */
+  // Paint the login immediately, then resolve configuration and the saved session
+  // together. The customer page is static on Vercel while its API is on Render;
+  // parallel requests avoid paying two separate cross-region round trips (and
+  // ensure both requests share the same Render cold start when the API is idle).
+  show('login', false);
   (async () => {
-    try {
-      cfg = await api('/api/config');
+    const [configResult, sessionResult] = await Promise.allSettled([
+      api('/api/config'),
+      api('/api/me'),
+    ]);
+
+    if (configResult.status === 'fulfilled') {
+      cfg = configResult.value;
       document.querySelectorAll('.bizName').forEach((n) => { n.textContent = cfg.businessName; });
       document.title = 'Buy water credit · ' + cfg.businessName;
-    } catch { /* defaults are fine */ }
+    }
     renderChips();
-    try {
-      const j = await api('/api/me');
-      enter(j.me);
-    } catch {
+
+    if (sessionResult.status === 'fulfilled') {
+      enter(sessionResult.value.me);
+    } else {
       show('login', false);
     }
   })();
