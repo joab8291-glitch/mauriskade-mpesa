@@ -198,6 +198,52 @@ tr:hover td{background:#f7fbfc}
 .rent-feature-nav button[aria-current=page]{color:#fff;background:#087f9b;border-color:#087f9b}
 .rent-view{min-height:300px}
 @media(max-width:640px){.rent-feature-nav{overflow-x:auto;flex-wrap:nowrap}}
+/* Homepage overview: unified rent + water executive dashboard */
+.dashboard-welcome{display:flex;justify-content:space-between;align-items:center;gap:22px;margin:2px 0 28px;padding:28px 30px;border-radius:22px;color:#fff;background:radial-gradient(circle at 85% 20%,rgba(65,219,205,.24),transparent 28%),linear-gradient(112deg,#083c60 0%,#086c85 58%,#087f7b 100%);box-shadow:0 18px 40px rgba(6,74,99,.16);overflow:hidden;position:relative}
+.dashboard-welcome:after{content:"";position:absolute;width:230px;height:230px;border:1px solid rgba(255,255,255,.12);border-radius:50%;right:14%;top:-155px;box-shadow:0 0 0 28px rgba(255,255,255,.035),0 0 0 58px rgba(255,255,255,.025);pointer-events:none}
+.welcome-eyebrow,.section-kicker{display:block;font-size:.68rem;font-weight:850;letter-spacing:.15em;color:#8de9dc}
+.dashboard-welcome h1{margin:8px 0 5px;font-size:clamp(1.65rem,3vw,2.25rem);letter-spacing:-.04em;color:#fff}
+.dashboard-welcome p{margin:0;color:#d3eaf0;font-size:.94rem}
+.welcome-actions{display:flex;align-items:center;gap:12px;z-index:1}
+.live-chip{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(255,255,255,.1);font-size:.8rem;font-weight:700;white-space:nowrap}
+.live-chip i{width:7px;height:7px;border-radius:50%;background:#73f0b8;box-shadow:0 0 0 4px rgba(115,240,184,.15)}
+.welcome-refresh{display:inline-flex;align-items:center;gap:8px;color:#0a5871;background:#fff;box-shadow:none;white-space:nowrap}
+.welcome-refresh .ico{width:17px;height:17px}
+.home-section-heading{display:flex;justify-content:space-between;align-items:end;gap:18px;margin:0 0 14px}
+.home-section-heading h2{margin:4px 0;font-size:1.35rem;letter-spacing:-.035em;color:#173e55}
+.home-section-heading p{margin:0;color:#708594;font-size:.88rem}
+.section-kicker{color:#078b91;font-size:.65rem}
+.home-link{display:inline-flex;align-items:center;gap:9px;padding:8px 0;color:#087f91;background:none;border:0;box-shadow:none;font-size:.86rem;font-weight:750;white-space:nowrap}
+.home-link:hover{background:none;filter:none;color:#075a70}
+.home-link span{font-size:1.2rem}
+.home-rent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.home-metric{display:grid;grid-template-columns:42px minmax(0,1fr);column-gap:12px;align-items:center;padding:16px 17px;background:#fff;border:1px solid #e3ebef;border-radius:16px;box-shadow:0 7px 22px rgba(26,67,88,.045);min-width:0}
+.home-metric-icon{grid-row:span 2;display:grid;place-items:center;width:42px;height:42px;border-radius:13px}
+.home-metric-icon .ico{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.home-metric-icon.indigo{color:#5266c8;background:#eef0ff}.home-metric-icon.green{color:#14845d;background:#e8f8f0}.home-metric-icon.amber{color:#a76a12;background:#fff5e4}.home-metric-icon.rose{color:#c54b62;background:#fff0f2}.home-metric-icon.teal{color:#078a8b;background:#e7f8f6}.home-metric-icon.blue{color:#1475ad;background:#eaf5ff}
+.home-metric-label{font-size:.78rem;font-weight:650;color:#6b8190}
+.home-metric strong{display:block;min-width:0;overflow-wrap:anywhere;font-size:1.34rem;line-height:1.2;letter-spacing:-.035em;color:#173e55}
+.home-metric small{grid-column:2;color:#8798a2;font-size:.72rem;margin-top:3px}
+.home-report-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-bottom:30px}
+.home-report-card{min-width:0;padding:18px 18px 12px;border:1px solid #e2eaee;border-radius:17px;background:#fff;box-shadow:0 7px 22px rgba(26,67,88,.04)}
+.home-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.home-card-head h3{margin:0;color:#1c4359;font-size:.98rem}
+.home-card-head p{margin:4px 0 0;color:#83939d;font-size:.78rem}
+.home-card-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;color:#087f91;background:#eaf7f7;flex:none}
+.home-card-icon.rose{color:#c54b62;background:#fff0f2}
+.home-card-icon .ico{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.home-report-card .table-wrap{border:0;border-radius:0;overflow-x:auto}
+.home-report-card table{min-width:440px;font-size:.8rem}
+.home-report-card th{font-size:.7rem;white-space:nowrap}
+.home-report-card td,.home-report-card th{padding:10px 9px}
+.water-heading{margin-top:8px}
+#stats .kpi{position:relative;overflow:hidden;border-radius:16px;min-height:145px}
+#stats .kpi:after{content:"";position:absolute;width:95px;height:95px;border-radius:50%;right:-42px;top:-44px;background:rgba(8,143,155,.045)}
+#stats .kpi-label{font-size:.84rem;color:#647d8d}
+#trendChart,#statusBox{min-height:180px}
+@media(max-width:1120px){.home-rent-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.dashboard-welcome{align-items:flex-start;flex-direction:column;padding:23px 20px}.welcome-actions{width:100%;justify-content:space-between}.home-section-heading{align-items:flex-start;flex-direction:column;gap:8px}.home-report-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.home-rent-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.home-metric{grid-template-columns:34px minmax(0,1fr);padding:12px 10px;gap:8px}.home-metric-icon{width:34px;height:34px;border-radius:10px}.home-metric-icon .ico{width:18px;height:18px}.home-metric strong{font-size:1.05rem}.home-metric-label{font-size:.7rem}.home-metric small{font-size:.65rem}.welcome-actions{flex-wrap:wrap}.welcome-refresh{font-size:.78rem;padding:8px 10px}}
 </style>
 </head>
 <body>
@@ -213,6 +259,15 @@ tr:hover td{background:#f7fbfc}
   <symbol id="a-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/></symbol>
   <symbol id="a-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
   <symbol id="a-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="a-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.7-2L20 12M4 12l2.7 5a7 7 0 0 0 11.7-2"/></symbol>
+  <symbol id="a-wallet" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 9h18M16 14h2"/></symbol>
+  <symbol id="a-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+  <symbol id="a-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="a-alert" viewBox="0 0 24 24"><path d="M12 3 2.8 19h18.4z"/><path d="M12 9v4M12 16.5h.01"/></symbol>
+  <symbol id="a-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 2 6-7"/></symbol>
+  <symbol id="a-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M10 21v-5h4v5"/></symbol>
+  <symbol id="a-unlink" viewBox="0 0 24 24"><path d="m10 13 4-4M8 16l-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M16 8l2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0) scale(.92)"/></symbol>
+  <symbol id="a-coins" viewBox="0 0 24 24"><ellipse cx="9" cy="6" rx="6" ry="3"/><path d="M3 6v5c0 1.7 2.7 3 6 3M15 6v3M3 11v5c0 1.7 2.7 3 6 3"/><ellipse cx="16" cy="15" rx="5" ry="2.5"/><path d="M11 15v4c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5v-4"/></symbol>
 </svg>
 
 <!-- Sign in -->
@@ -253,6 +308,23 @@ tr:hover td{background:#f7fbfc}
     <div id="message" class="notice" role="status" aria-live="polite">Connect with your admin key to begin.</div>
 
     <section data-tab="overview" aria-label="Overview">
+      <div class="dashboard-welcome"><div><span class="welcome-eyebrow">MAURISKADE MANAGEMENT · ADMIN WORKSPACE</span><h1>Management overview</h1><p>Live water operations, rent collection and property performance in one place.</p></div><div class="welcome-actions"><span class="live-chip"><i></i> Live operations</span><button class="welcome-refresh" id="homeRefresh" type="button"><svg class="ico"><use href="#a-refresh"/></svg>Refresh dashboard</button></div></div>
+      <div class="home-section-heading"><div><span class="section-kicker">PROPERTY FINANCE</span><h2>Rent dashboard &amp; reports</h2><p>Collection performance, tenant balances and occupancy at a glance.</p></div><button class="home-link" type="button" data-home-tab="rent" data-home-page="reports">Open rent reports <span>→</span></button></div>
+      <div class="home-rent-grid">
+        <article class="home-metric"><span class="home-metric-icon indigo"><svg class="ico"><use href="#a-wallet"/></svg></span><span class="home-metric-label">Expected rent</span><strong id="homeRentExpected">—</strong><small>Scheduled this month</small></article>
+        <article class="home-metric"><span class="home-metric-icon green"><svg class="ico"><use href="#a-check-circle"/></svg></span><span class="home-metric-label">Rent collected</span><strong id="homeRentCollected">—</strong><small>Confirmed payments</small></article>
+        <article class="home-metric"><span class="home-metric-icon amber"><svg class="ico"><use href="#a-clock"/></svg></span><span class="home-metric-label">Outstanding rent</span><strong id="homeRentOutstanding">—</strong><small>Unpaid rent charges</small></article>
+        <article class="home-metric"><span class="home-metric-icon rose"><svg class="ico"><use href="#a-alert"/></svg></span><span class="home-metric-label">Overdue rent</span><strong id="homeRentOverdue">—</strong><small>Past due date</small></article>
+        <article class="home-metric"><span class="home-metric-icon teal"><svg class="ico"><use href="#a-chart"/></svg></span><span class="home-metric-label">Collection rate</span><strong id="homeRentPerformance">—</strong><small>Collected vs expected</small></article>
+        <article class="home-metric"><span class="home-metric-icon blue"><svg class="ico"><use href="#a-building"/></svg></span><span class="home-metric-label">Occupancy</span><strong id="homeRentOccupancy">—</strong><small id="homeRentVacancy">Vacancies —</small></article>
+        <article class="home-metric"><span class="home-metric-icon amber"><svg class="ico"><use href="#a-unlink"/></svg></span><span class="home-metric-label">Unmatched payments</span><strong id="homeRentUnmatched">—</strong><small>Needs account matching</small></article>
+        <article class="home-metric"><span class="home-metric-icon teal"><svg class="ico"><use href="#a-coins"/></svg></span><span class="home-metric-label">Unallocated credit</span><strong id="homeRentCredit">—</strong><small>Customer credit available</small></article>
+      </div>
+      <div class="home-report-grid">
+        <article class="home-report-card"><div class="home-card-head"><div><h3>Monthly rent collections</h3><p>Expected against confirmed payments</p></div><span class="home-card-icon"><svg class="ico"><use href="#a-chart"/></svg></span></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>Expected</th><th>Collected</th><th>Rate</th></tr></thead><tbody id="homeRentMonthRows"><tr><td colspan="4" class="empty">Loading rent report…</td></tr></tbody></table></div></article>
+        <article class="home-report-card"><div class="home-card-head"><div><h3>Tenants in arrears</h3><p>Accounts with unpaid overdue rent</p></div><span class="home-card-icon rose"><svg class="ico"><use href="#a-alert"/></svg></span></div><div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Account</th><th>Balance</th></tr></thead><tbody id="homeRentArrearsRows"><tr><td colspan="3" class="empty">Loading arrears…</td></tr></tbody></table></div></article>
+      </div>
+      <div class="home-section-heading water-heading"><div><span class="section-kicker">SMART METER OPERATIONS</span><h2>Water dashboard &amp; reports</h2><p>Hydro meter activity, water issued, payments and device health.</p></div><button class="home-link" type="button" data-home-tab="devices">Open water reports <span>→</span></button></div>
       <div class="grid" id="stats"></div>
       <div class="two">
         <div class="panel">
@@ -389,7 +461,9 @@ $('#connect').addEventListener('click',connect);
 $('#adminKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
 $('#logout').addEventListener('click',()=>{key='';S=null;T=null;showApp(false);$('#meters').textContent='';$('#reviews').textContent='Disconnected.';say('Disconnected.')});
 async function loadSummary(){S=await api('/api/admin/summary');renderKpis()}
-$('#refresh').addEventListener('click',async()=>{try{await loadSummary();loadOverview();await loadMeters(true);say('Dashboard refreshed.')}catch(e){say(e.message,true)}});
+$('#refresh').addEventListener('click',async()=>{try{await loadSummary();await Promise.all([loadOverview(),loadMeters(true)]);say('Dashboard refreshed.')}catch(e){say(e.message,true)}});
+$('#homeRefresh').addEventListener('click',()=>$('#refresh').click());
+document.querySelectorAll('[data-home-tab]').forEach(b=>b.addEventListener('click',()=>{const n=b.dataset.homeTab;tab(n);if(n==='rent'&&b.dataset.homePage)rentPage(b.dataset.homePage)}));
 async function loadMeters(reset=false){if(reset)offset=0;const q=encodeURIComponent($('#search').value.trim()),f=encodeURIComponent($('#filter').value);const j=await api('/api/admin/meters?q='+q+'&filter='+f+'&offset='+offset);const body=$('#meters');if(reset)body.textContent='';for(const m of j.items){const tr=document.createElement('tr');const code=esc(m.meter_code);const tenant=esc(m.tenant_name||'—');const flat=esc(m.flat||'—');const phone=esc(m.phone||'—');const refs='<br><span class="muted small">Rent: <b>'+esc(m.rent_account_ref||'Not set')+'</b> · Water: <b>'+esc(m.water_account_ref||'Not set')+'</b></span>';const login=m.has_login?'<span class="pill good">'+(m.disabled?'Disabled':'Created')+'</span><br><span class="muted small">Username: <b>'+esc(m.username||m.meter_code)+'</b></span>'+(m.must_change?' <span class="pill warn">Password change required</span>':''):'<span class="pill warn">Not created</span>';tr.innerHTML='<td><strong class="token">'+code+'</strong><br><span class="muted small">'+esc(m.hydro_label||'No Hydro location')+'</span></td><td>'+tenant+'<br><span class="muted small">Flat '+flat+' · '+phone+'</span>'+refs+'</td><td>'+login+'<br><span class="muted small">'+(m.last_login_at?'Last login: '+esc(new Date(m.last_login_at).toLocaleString()):'Never signed in')+'</span></td><td><div class="row-actions"><button class="secondary" data-action="edit" data-meter="'+code+'" data-flat="'+esc(m.flat||'')+'" data-tenant="'+esc(m.tenant_name||'')+'" data-phone="'+esc(m.phone||'')+'">Edit</button>'+(m.has_login?'<button class="secondary" data-action="reset" data-meter="'+code+'">Reset password</button><button class="secondary" data-action="disable" data-disabled="'+(!m.disabled)+'" data-meter="'+code+'">'+(m.disabled?'Enable':'Disable')+'</button>':'<button data-action="create" data-meter="'+code+'">Create login</button>')+'</div></td>';body.append(tr)}offset+=j.items.length;$('#meterInfo').textContent=j.items.length+' shown'+(j.more?' · more available':'');$('#more').hidden=!j.more;if(reset&&!j.items.length)body.innerHTML='<tr><td colspan="4" class="empty">No matching meters. Run a Hydro sync if this is a new meter.</td></tr>'}
 $('#searchBtn').addEventListener('click',()=>loadMeters(true).catch(e=>say(e.message,true)));
 $('#filter').addEventListener('change',()=>loadMeters(true).catch(e=>say(e.message,true)));
@@ -410,6 +484,10 @@ async function loadRentReports(){
  const range=rentReportRange();const q=new URLSearchParams();if(range.from)q.set('from',range.from);if(range.to)q.set('to',range.to);
  const j=await api('/api/admin/rent/reports?'+q.toString()),m=j.summary;
  $('#rentExpected').textContent='KSh '+fmt(m.expected);$('#rentCollected').textContent='KSh '+fmt(m.collected);$('#rentOutstanding').textContent='KSh '+fmt(m.outstanding);$('#rentOverdue').textContent='KSh '+fmt(m.overdue);$('#rentPerformance').textContent=Number(m.collectionRate).toFixed(2)+'%';$('#rentOccupancy').textContent=m.occupied+' / '+m.units;$('#rentVacancy').textContent='Vacant units: '+m.vacant;$('#rentUnmatchedCount').textContent=m.unmatched_payments;$('#rentPartialCount').textContent=m.partial_payments;$('#rentExcessCredit').textContent='KSh '+fmt(m.excess_credit);
+ const homeSet=(id,value)=>{const el=$('#'+id);if(el)el.textContent=value};
+ homeSet('homeRentExpected','KSh '+fmt(m.expected));homeSet('homeRentCollected','KSh '+fmt(m.collected));homeSet('homeRentOutstanding','KSh '+fmt(m.outstanding));homeSet('homeRentOverdue','KSh '+fmt(m.overdue));homeSet('homeRentPerformance',Number(m.collectionRate).toFixed(1)+'%');homeSet('homeRentOccupancy',m.occupied+' / '+m.units);homeSet('homeRentVacancy','Vacant units: '+m.vacant);homeSet('homeRentUnmatched',fmt(m.unmatched_payments));homeSet('homeRentCredit','KSh '+fmt(m.excess_credit));
+ const hm=$('#homeRentMonthRows');if(hm)hm.innerHTML=j.months.slice(-4).map(x=>'<tr><td>'+esc(x.month_label)+'</td><td>KSh '+fmt(x.expected)+'</td><td>KSh '+fmt(x.collected)+'</td><td>'+(Number(x.expected)?(Number(x.collected)/Number(x.expected)*100).toFixed(1):'0.0')+'%</td></tr>').join('')||'<tr><td colspan="4" class="empty">No rent activity recorded yet.</td></tr>';
+ const ha=$('#homeRentArrearsRows');if(ha)ha.innerHTML=j.arrears.slice(0,5).map(x=>'<tr><td><b>'+esc(x.tenant_name)+'</b><br><span class="muted small">'+esc(x.unit_label)+'</span></td><td>'+esc(x.rent_account_ref)+'</td><td><b>KSh '+fmt(x.balance)+'</b></td></tr>').join('')||'<tr><td colspan="3" class="empty">No overdue tenant accounts.</td></tr>';
  $('#rentMonthRows').innerHTML=j.months.map(x=>'<tr><td>'+esc(x.month_label)+'</td><td>KSh '+fmt(x.expected)+'</td><td>KSh '+fmt(x.collected)+'</td><td>'+(Number(x.expected)?(Number(x.collected)/Number(x.expected)*100).toFixed(1):'0.0')+'%</td></tr>').join('')||'<tr><td colspan="4">No monthly data.</td></tr>';
  $('#rentArrearsRows').innerHTML=j.arrears.map(x=>'<tr><td>'+esc(x.tenant_name)+' / '+esc(x.unit_label)+'</td><td>'+esc(x.rent_account_ref)+'</td><td>'+esc(String(x.oldest_due).slice(0,10))+'</td><td>KSh '+fmt(x.balance)+'</td></tr>').join('')||'<tr><td colspan="4">No overdue accounts.</td></tr>';$('#rentReconciliationRows').innerHTML=j.reconciliations.map(x=>'<tr><td>'+esc(new Date(x.created_at).toLocaleDateString())+'</td><td>'+esc((x.tenant_name||'Unmatched')+' / '+(x.rent_account_ref||'—'))+'</td><td>KSh '+fmt(x.amount)+'</td><td>KSh '+fmt(x.allocated)+'</td><td>KSh '+fmt(x.unallocated)+'</td><td>'+esc(x.method)+' / '+esc(x.mpesa_receipt||'—')+'</td><td>'+esc(x.status)+'</td></tr>').join('')||'<tr><td colspan="7">No payments in this period.</td></tr>';
 }
@@ -515,7 +593,7 @@ async function ovLoad(){
   const j=await api('/api/admin/transactions?offset=0');const rows=j.items.slice(0,8);
   $('#ovRows').innerHTML=rows.length?rows.map(t=>{const c=t.status==='TOKEN_ISSUED'?'good':(t.status==='FAILED'?'bad':'warn');return '<tr><td>'+when(t.created_at)+'</td><td class="token">'+esc(t.meter_number)+'</td><td>KSh '+esc(t.amount)+'</td><td><span class="pill '+c+'">'+esc(t.status)+'</span></td><td class="token">'+esc(t.mpesa_receipt||'—')+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">No payments yet.</td></tr>';
 }
-function loadOverview(){return Promise.allSettled([loadTrends(),loadStatus(),ovLoad()]).then(r=>{const bad=r.find(x=>x.status==='rejected'&&x.reason);if(bad)say(bad.reason.message,true)})}
+function loadOverview(){return Promise.allSettled([loadTrends(),loadStatus(),ovLoad(),loadRentReports()]).then(r=>{const bad=r.find(x=>x.status==='rejected'&&x.reason);if(bad)say(bad.reason.message,true)})}
 $('#ovAll').addEventListener('click',()=>{tab('mpesa');txLoad(true).catch(e=>say(e.message,true))});
 $('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;$('#search').value=e.target.value.trim();tab('registry');loadMeters(true).catch(x=>say(x.message,true))});
 $('#monthLabel').textContent='This month: '+new Date().toLocaleDateString('en-KE',{month:'long',year:'numeric'});
