@@ -547,8 +547,14 @@ body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
     $('#meterBadge').hidden = name === 'login' || !me;
     $('main').dataset.state = name;
     document.body.dataset.state = name;
-    if(name === 'login' || name === 'pw') $('main').dataset.portalTab='';
-    else if(side || name === 'pay') setPortalTab('water');
+    if(name === 'login' || name === 'pw') {
+      $('main').dataset.portalTab='';
+      const contentCol=$('main').querySelector(':scope > .col');
+      if(contentCol)contentCol.hidden=false;
+      $('#portal-overview').hidden=true;
+      $('#portal-payments').hidden=true;
+      $('#portal-agreement').hidden=true;
+    } else if(side || name === 'pay') setPortalTab('water');
     menu(false);
     if (focus && $('#h-' + name)) $('#h-' + name).focus({ preventScroll: false });
   }
@@ -570,7 +576,7 @@ body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
     const contentCol=main.querySelector(':scope > .col');
     if(contentCol)contentCol.hidden=standalone;
     $('#view-pay').hidden=name!=='water';
-    $('#view-help').hidden=name!=='water';
+    $('#view-help').hidden=name!=='water'||main.dataset.state!=='pay';
     $('#view-rent').hidden=name!=='rent';
     $('#recent').hidden=true;
 
