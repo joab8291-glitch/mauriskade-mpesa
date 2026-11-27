@@ -400,6 +400,10 @@ input::placeholder{color:#647987}
 :root{--tenant-shell:#18272d;--tenant-accent:#129dce;--tenant-canvas:#f4f6f9;--tenant-ink:#202b32;--tenant-muted:#71818b;--tenant-line:#e5eaf0}
 html,body{background:var(--tenant-canvas);color:var(--tenant-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 body{display:grid;grid-template-columns:252px minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto);min-height:100svh}
+body:has(main[data-state="login"]){grid-template-columns:minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto)}
+body:has(main[data-state="login"]) .hero{grid-column:1}
+body:has(main[data-state="login"]) main{grid-column:1}
+.portal-nav[hidden]{display:none!important}
 .hero{grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:30;min-height:78px;padding:0 30px;background:#fff;border:0;border-bottom:1px solid #e6ebef;box-shadow:0 3px 14px rgba(28,49,62,.035)}
 .hero:before,.hero:after,.hero .notch{display:none}
 .hero-in{width:100%;max-width:none;height:78px;margin:0;display:flex;align-items:center;justify-content:space-between}
