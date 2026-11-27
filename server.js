@@ -575,7 +575,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '32kb', strict: true, type: 'application/json' }));
+app.use(express.json({ limit: '8mb', strict: true, type: 'application/json' }));
 app.use(express.static(path.join(__dirname, 'public'), {
   dotfiles: 'deny',
   etag: true,
