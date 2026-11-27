@@ -24,7 +24,7 @@ async function allocateRentPayment(pool,id){
 async function generateCharges(pool,id){
  const l=(await pool.query("SELECT * FROM rent_leases WHERE id=$1 AND status='active'",[id])).rows[0];if(!l)return 0;
  const step=FREQUENCIES[l.billing_frequency],today=todayNairobi(),horizon=addMonths(today,18);let period=String(l.start_date).slice(0,10),count=0;
- for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),end=new Date(next.getTime()-86400000);if(l.end_date&&period>String(l.end_date).slice(0,10))break;
+ for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),periodEnd=new Date(next.getTime()-86400000);if(l.end_date&&period>String(l.end_date).slice(0,10))break;const end=l.end_date&&String(l.end_date).slice(0,10)<iso(periodEnd)?new Date(String(l.end_date).slice(0,10)+'T00:00:00Z'):periodEnd;
   const r=await pool.query('INSERT INTO rent_charges(lease_id,period_start,period_end,due_date,amount) VALUES($1,$2,$3,$4,$5) ON CONFLICT(lease_id,period_start) DO NOTHING',[id,period,iso(end),dueDate(period,l.due_day),l.rent_amount]);count+=r.rowCount;period=iso(next);}
  const ps=(await pool.query("SELECT id FROM rent_payments WHERE lease_id=$1 AND status IN ('confirmed','unallocated','allocated') ORDER BY created_at",[id])).rows;for(const p of ps)await allocateRentPayment(pool,p.id);return count;
 }
@@ -116,7 +116,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  }));
  app.post(admin+'/leases',wrap(async(req,res)=>{
   const b=req.body||{},meter=String(b.meterCode||''),tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim(),amount=Number(b.rentAmount),freq=String(b.billingFrequency||'monthly'),start=String(b.startDate||'').slice(0,10),end=b.endDate?String(b.endDate).slice(0,10):null,day=Number(b.dueDay||1);
-  if(!meter||!tenant||!unit||!ref||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^\d{4}-\d{2}-\d{2}$/.test(start)||day<1||day>28)return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
+  if(!meter||!tenant||!unit||!ref||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^\d{4}-\d{2}-\d{2}$/.test(start)||(end&&(!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start))||day<1||day>28)return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
   if(!(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1',[meter])).rowCount)return res.status(404).json({ok:false,message:'Select a registered meter.'});
   if((await pool.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active'",[meter])).rowCount)return res.status(409).json({ok:false,message:'This meter already has an active tenancy. End the old tenancy before creating another.'});
   if((await pool.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rowCount)return res.status(409).json({ok:false,message:'Rent account reference is already assigned.'});
@@ -182,14 +182,12 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   `,[from,to])).rows;
   const arrears=(await pool.query(`
    SELECT l.id,l.tenant_name,l.unit_label,l.rent_account_ref,l.rent_amount,
-    COALESCE(sum(c.amount),0)::bigint charged,
-    COALESCE(sum(a.amount),0)::bigint paid,
-    COALESCE(sum(c.amount),0)-COALESCE(sum(a.amount),0)::bigint balance,
-    min(c.due_date) FILTER(WHERE c.due_date<current_date AND c.amount>COALESCE(x.paid,0)) oldest_due
+    sum(c.amount)::bigint charged,COALESCE(sum(x.paid),0)::bigint paid,
+    sum(c.amount-COALESCE(x.paid,0))::bigint balance,min(c.due_date) oldest_due
    FROM rent_leases l JOIN rent_charges c ON c.lease_id=l.id
-   LEFT JOIN rent_allocations a ON a.charge_id=c.id
    LEFT JOIN (SELECT charge_id,sum(amount) paid FROM rent_allocations GROUP BY charge_id) x ON x.charge_id=c.id
-   WHERE c.due_date<current_date GROUP BY l.id HAVING sum(c.amount)-COALESCE(sum(a.amount),0)>0 ORDER BY balance DESC
+   WHERE c.due_date<current_date AND c.amount>COALESCE(x.paid,0)
+   GROUP BY l.id HAVING sum(c.amount-COALESCE(x.paid,0))>0 ORDER BY balance DESC
   `)).rows;
   res.json({ok:true,from,to,summary:{...summary,collectionRate:Number(summary.expected)>0?Math.round(Number(summary.collected)/Number(summary.expected)*10000)/100:0},months,arrears});
  }));
