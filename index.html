@@ -400,9 +400,9 @@ input::placeholder{color:#647987}
 :root{--tenant-shell:#18272d;--tenant-accent:#129dce;--tenant-canvas:#f4f6f9;--tenant-ink:#202b32;--tenant-muted:#71818b;--tenant-line:#e5eaf0}
 html,body{background:var(--tenant-canvas);color:var(--tenant-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 body{display:grid;grid-template-columns:252px minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto);min-height:100svh}
-body:has(main[data-state="login"]){grid-template-columns:minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto)}
-body:has(main[data-state="login"]) .hero{grid-column:1}
-body:has(main[data-state="login"]) main{grid-column:1}
+body:has(main[data-state="login"]),body:has(main[data-state="pw"]){grid-template-columns:minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto)}
+body:has(main[data-state="login"]) .hero,body:has(main[data-state="pw"]) .hero{grid-column:1}
+body:has(main[data-state="login"]) main,body:has(main[data-state="pw"]) main{grid-column:1}
 .portal-nav[hidden]{display:none!important}
 .hero{grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:30;min-height:78px;padding:0 30px;background:#fff;border:0;border-bottom:1px solid #e6ebef;box-shadow:0 3px 14px rgba(28,49,62,.035)}
 .hero:before,.hero:after,.hero .notch{display:none}
@@ -535,7 +535,7 @@ button,.btn{border-radius:10px}
       <article class="portal-stat"><span class="portal-stat-icon aqua"><svg class="ico"><use href="#i-drop"/></svg></span><span>Water issued this month</span><strong id="portalWaterUsage">—</strong><small id="portalWaterMeter">Your water meter</small><button type="button" data-go-tab="water">Top up water →</button></article>
       <article class="portal-stat" id="portalRentStat" hidden><span class="portal-stat-icon violet"><svg class="ico"><use href="#p-building"/></svg></span><span>Rent outstanding</span><strong id="portalRentBalance">—</strong><small id="portalRentFrequency">Your rent account</small><button type="button" data-go-tab="rent">View rent account →</button></article>
       <article class="portal-stat"><span class="portal-stat-icon green"><svg class="ico"><use href="#p-receipt"/></svg></span><span>Water payment records</span><strong id="portalWaterPayments">—</strong><small>Top-ups in your account</small><button type="button" data-go-tab="payments">View payment history →</button></article>
-      <article class="portal-stat" id="portalAgreementStat" hidden><span class="portal-stat-icon amber"><svg class="ico"><use href="#p-file"/></svg></span><span>Tenancy agreement</span><strong>Available</strong><small>Latest issued agreement</small><button type="button" data-go-tab="agreement">View agreement →</button></article>
+      <article class="portal-stat" id="portalAgreementStat" hidden><span class="portal-stat-icon amber"><svg class="ico"><use href="#p-file"/></svg></span><span>Tenancy agreement</span><strong id="portalAgreementAvailability">Not issued</strong><small>Latest issued agreement</small><button type="button" data-go-tab="agreement">View agreement →</button></article>
     </div>
     <div class="portal-quick-grid">
       <button type="button" class="portal-quick" data-go-tab="water"><span><svg class="ico"><use href="#i-drop"/></svg></span><b>Top up water</b><small>Pay with M-Pesa and receive your token</small><i>→</i></button>
@@ -959,7 +959,7 @@ button,.btn{border-radius:10px}
     const panel=$('#view-rent');
     try {
       const j=await api('/api/me/rent');
-      if(!j.lease){panel.hidden=false;$('#rentAccountData').hidden=true;$('#rentNoAccount').hidden=false;$('#rentNoAccount').className='notice';$('#rentNoAccountText').textContent='No rent account is linked to this customer login yet. You can still view this page, but rent payments and arrears will appear once the property office links your tenancy to your account.';$('#portalRentStat').hidden=true;$('#portalRentQuick').hidden=true;$('#portalRentHistoryWrap').hidden=true;$('#portalAgreementStat').hidden=true;$('#portalAgreementEmpty').hidden=false;$('#portalAgreementMeta').hidden=true;$('#portalAgreementBody').hidden=true;return;}
+      if(!j.lease){panel.hidden=false;$('#rentAccountData').hidden=true;$('#rentNoAccount').hidden=false;$('#rentNoAccount').className='notice';$('#rentNoAccountText').textContent='No rent account is linked to this customer login yet. You can still view this page, but rent payments and arrears will appear once the property office links your tenancy to your account.';$('#portalRentStat').hidden=false;$('#portalRentQuick').hidden=false;$('#portalRentBalance').textContent='—';$('#portalRentFrequency').textContent='Tenancy not linked';$('#portalAgreementStat').hidden=false;$('#portalAgreementAvailability').textContent='Not issued';$('#portalRentHistoryWrap').hidden=true;$('#portalAgreementEmpty').hidden=false;$('#portalAgreementMeta').hidden=true;$('#portalAgreementBody').hidden=true;return;}
       panel.hidden=false;$('#rentAccountData').hidden=false;$('#rentNoAccount').hidden=true;$('#portalRentStat').hidden=false;$('#portalRentQuick').hidden=false;$('#portalRentHistoryWrap').hidden=false;
       $('#rentPeriodAmount').textContent='KSh '+fmt(j.lease.rent_amount);
       $('#rentFrequencyLabel').textContent=j.lease.billing_frequency.replace('_',' ');
@@ -977,14 +977,15 @@ button,.btn{border-radius:10px}
       $('#rentAgreementWrap').hidden=!j.agreement;
       $('#rentAgreement').textContent=j.agreement?j.agreement.title+' · Version '+j.agreement.version+'\n\n'+j.agreement.body:'';
       $('#agreementTab').hidden=false;
-      $('#portalAgreementStat').hidden=!j.agreement;
+      $('#portalAgreementStat').hidden=false;
+      $('#portalAgreementAvailability').textContent=j.agreement?'Available':'Not issued';
       $('#portalAgreementEmpty').hidden=!!j.agreement;
       $('#portalAgreementMeta').hidden=!j.agreement;
       $('#portalAgreementBody').hidden=!j.agreement;
       $('#portalAgreementMeta').textContent=j.agreement?j.agreement.title+' · Version '+j.agreement.version+' · Issued '+dateOf(j.agreement.issued_at):'';
       $('#portalAgreementBody').textContent=j.agreement?j.agreement.body:'';
       $('#portalRentHistory').innerHTML=j.payments.map(p=>'<tr><td>'+dateOf(p.created_at)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+escRent(p.status)+'</td><td>'+escRent(p.mpesa_receipt||'—')+'</td><td>'+(p.receipt_id?'<a href="/api/me/rent/receipt/'+encodeURIComponent(p.receipt_id)+'">Download receipt</a>':'—')+'</td></tr>').join('')||'<tr><td colspan="5">No rent payments yet.</td></tr>';
-    } catch(err){panel.hidden=false;$('#rentAccountData').hidden=true;$('#rentNoAccount').hidden=false;$('#rentNoAccount').className='notice bad';$('#rentNoAccountText').textContent='We could not load your rent account just now. Your rent details have not been changed. Please retry in a moment.';$('#portalAgreementEmpty').hidden=false;$('#portalAgreementEmpty').textContent='Your tenancy agreement could not be loaded. Please retry the rent account or contact the property office.';$('#portalAgreementMeta').hidden=true;$('#portalAgreementBody').hidden=true;if(err.status===401)sessionEnded();}
+    } catch(err){panel.hidden=false;$('#rentAccountData').hidden=true;$('#rentNoAccount').hidden=false;$('#rentNoAccount').className='notice bad';$('#rentNoAccountText').textContent='We could not load your rent account just now. Your rent details have not been changed. Please retry in a moment.';$('#portalRentStat').hidden=false;$('#portalRentQuick').hidden=false;$('#portalRentBalance').textContent='—';$('#portalRentFrequency').textContent='Rent account temporarily unavailable';$('#portalAgreementStat').hidden=false;$('#portalAgreementAvailability').textContent='Unavailable';$('#portalAgreementEmpty').hidden=false;$('#portalAgreementEmpty').textContent='Your tenancy agreement could not be loaded. Please retry the rent account or contact the property office.';$('#portalAgreementMeta').hidden=true;$('#portalAgreementBody').hidden=true;if(err.status===401)sessionEnded();}
   }
   $('#retryRentLoad').addEventListener('click',loadRentAccount);
   const escRent = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
