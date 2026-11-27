@@ -229,6 +229,7 @@ tr:hover td{background:#f7fbfc}
       <button role="tab" data-t="recharge" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-bolt"/></svg>STS recharge</button>
       <button role="tab" data-t="records" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-list"/></svg>STS records</button>
       <button role="tab" data-t="pricing" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-tag"/></svg>Pricing</button>
+      <button role="tab" data-t="rent" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#a-receipt"/></svg>Rent management</button>
     </nav>
     <div class="side-foot"><button class="secondary" id="logout">Disconnect</button></div>
   </aside>
@@ -276,6 +277,40 @@ tr:hover td{background:#f7fbfc}
     <section class="panel hidden" data-tab="records"><div class="bar"><div><h2 class="section-title">STS records</h2><p class="muted small">Hydro's recharge history for Mauriskade meters.</p></div><button class="secondary" id="rcExport">Download CSV (this page)</button></div><div class="filters"><input id="recQ" inputmode="numeric" placeholder="Meter number"><select id="recStatus"><option value="">Any status</option><option value="1">Success</option><option value="0">Processing</option><option value="2">Failed</option><option value="3">Refunded</option></select><button class="secondary" id="recGo">Search</button></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Meter</th><th>Amount</th><th>Volume</th><th>Balance after</th><th>Status</th><th>Token</th></tr></thead><tbody id="recRows"><tr><td colspan="7" class="empty">Press Search to load records.</td></tr></tbody></table></div><div class="bar" style="margin-top:12px"><span id="recInfo" class="muted small"></span><div class="actions"><button class="secondary" id="recPrev" disabled>Previous</button><button class="secondary" id="recNext" disabled>Next</button></div></div></section>
 
     <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing</h2><p class="muted small">Current pricing and payment limits from the backend.</p><div id="priceBox" class="notice" style="margin-top:12px">Loading pricing…</div></section>
+    <section class="panel hidden" data-tab="rent">
+      <div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><button class="secondary" id="rentC2B">Register Paybill callbacks</button><button class="secondary" id="rentRefresh">Refresh rent</button></div></div>
+      <div class="panel" style="box-shadow:none;margin-top:16px">
+        <h3 class="section-title">Create tenancy / rent account</h3>
+        <form id="rentLeaseForm" class="form">
+          <label>Hydro meter <select id="rentMeter" required><option value="">Select registered meter</option></select></label>
+          <label>Tenant name <input id="rentTenant" required maxlength="100"></label>
+          <label>Unit / flat <input id="rentUnit" required maxlength="60"></label>
+          <label>Unique rent account reference <input id="rentRef" required maxlength="30" placeholder="e.g. RENT-ROOM01"></label>
+          <label>Rent amount per billing period (KSh) <input id="rentAmount" type="number" min="1" step="1" required></label>
+          <label>Billing frequency <select id="rentFrequency"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="half_yearly">Half-yearly</option><option value="annually">Annually</option></select></label>
+          <label>Tenancy start date <input id="rentStart" type="date" required></label>
+          <label>Rent due day of month (1–28) <input id="rentDueDay" type="number" min="1" max="28" value="1" required></label>
+          <label>Agreement terms / notes <textarea id="rentTerms" rows="3"></textarea></label>
+          <button type="submit">Create tenancy and generate rent schedule</button><p id="rentFormMsg" class="muted small"></p>
+        </form>
+      </div>
+      <div class="panel" style="box-shadow:none">
+        <div class="bar"><h3 class="section-title">Tenants and rent schedules</h3><span class="muted small" id="rentLeaseCount"></span></div>
+        <div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Rent account</th><th>Rent / frequency</th><th>Tenancy</th><th>Actions</th></tr></thead><tbody id="rentLeaseRows"><tr><td colspan="5" class="empty">Load rent records.</td></tr></tbody></table></div>
+      </div>
+      <div class="panel" style="box-shadow:none">
+        <div class="bar"><div><h3 class="section-title">Unmatched Paybill payments</h3><p class="muted small">C2B confirmations are captured here when the account reference does not match an active tenancy. Reconcile only after checking the Paybill statement.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Paybill reference</th><th>Amount</th><th>M-Pesa receipt</th><th>Reconcile to rent account</th></tr></thead><tbody id="rentUnmatchedRows"><tr><td colspan="5" class="empty">No unmatched payments loaded.</td></tr></tbody></table></div>
+      </div>
+      <div class="panel" style="box-shadow:none">
+        <h3 class="section-title">Tenancy agreement editor</h3><p class="muted small">Select a tenant, prepare or revise the agreement, save it as a draft, then issue the approved version. Issued versions are retained in the audit history.</p>
+        <label>Tenant / unit <select id="agreementLease"><option value="">Select tenancy</option></select></label>
+        <label>Agreement title <input id="agreementTitle" value="Tenancy Agreement"></label>
+        <label>Agreement text <textarea id="agreementBody" rows="12" placeholder="Enter the complete agreement terms, parties, rent, deposit, payment dates, obligations, termination and signatures."></textarea></label>
+        <div class="actions"><button class="secondary" id="agreementLoad">Load latest version</button><button id="agreementSave">Save draft</button><button class="secondary" id="agreementIssue">Issue saved draft</button></div>
+        <p id="agreementMsg" class="muted small"></p>
+      </div>
+    </section>
 
 
   </div>
@@ -299,6 +334,25 @@ async function api(path, opts={}) {
 const post=(p,b={})=>api(p,{method:'POST',body:JSON.stringify(b)});
 function showApp(on){$('#app').classList.toggle('hidden',!on);$('#authPanel').classList.toggle('hidden',on);}
 async function connect(){key=$('#adminKey').value.trim();if(!key)return say('Enter the admin key.',true);try{await loadSummary();showApp(true);$('#adminKey').value='';tab('overview');loadOverview();await loadMeters(true);say('Connected.')}catch(e){key='';say(e.message,true)}}
+
+async function loadRent(){
+ const [leases,unmatched,meters]=await Promise.all([api('/api/admin/rent/leases'),api('/api/admin/rent/payments/unallocated'),api('/api/admin/meters?offset=0')]);
+ $('#rentMeter').innerHTML='<option value="">Select registered meter</option>'+meters.items.map(m=>'<option value="'+esc(m.meter_code)+'">'+esc((m.flat||m.tenant_name||m.meter_code)+' · '+m.meter_code)+'</option>').join('');
+ $('#rentLeaseCount').textContent=leases.items.length+' tenancies';
+ $('#rentLeaseRows').innerHTML=leases.items.map(l=>'<tr><td><b>'+esc(l.tenant_name)+'</b><br><span class="muted small">'+esc(l.unit_label)+'</span></td><td>'+esc(l.rent_account_ref)+'</td><td>KSh '+fmt(l.rent_amount)+' / '+esc(l.billing_frequency.replace('_',' '))+'</td><td>'+esc(l.start_date)+' · '+esc(l.status)+'</td><td><button class="secondary" data-agreement="'+esc(l.id)+'">Agreement</button></td></tr>').join('')||'<tr><td colspan="5" class="empty">No tenancies created yet.</td></tr>';
+ $('#agreementLease').innerHTML='<option value="">Select tenancy</option>'+leases.items.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.tenant_name+' · '+l.unit_label+' · '+l.rent_account_ref)+'</option>').join('');
+ $('#rentUnmatchedRows').innerHTML=unmatched.items.map(p=>'<tr><td>'+esc(new Date(p.created_at).toLocaleString())+'</td><td>'+esc(p.rent_account_ref)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+esc(p.mpesa_receipt||'—')+'</td><td><div class="row-actions"><input data-rentref="'+esc(p.id)+'" placeholder="Rent account ref"><button data-reconcile="'+esc(p.id)+'">Reconcile</button></div></td></tr>').join('')||'<tr><td colspan="5" class="empty">No unmatched Paybill payments.</td></tr>';
+}
+$('#rentRefresh').addEventListener('click',()=>loadRent().then(()=>say('Rent records refreshed.')).catch(e=>say(e.message,true)));
+$('#rentC2B').addEventListener('click',async()=>{if(!confirm('Register these URLs with Daraja for Paybill C2B confirmations? This updates the callback URLs for this shortcode.'))return;try{const j=await post('/api/admin/rent/c2b/register');say('C2B callback registration response: '+JSON.stringify(j.result));}catch(e){say(e.message,true)}});
+$('#rentLeaseForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('#rentFormMsg');b.textContent='Creating tenancy…';try{await post('/api/admin/rent/leases',{meterCode:$('#rentMeter').value,tenantName:$('#rentTenant').value,unitLabel:$('#rentUnit').value,rentAccountRef:$('#rentRef').value,rentAmount:Number($('#rentAmount').value),billingFrequency:$('#rentFrequency').value,startDate:$('#rentStart').value,dueDay:Number($('#rentDueDay').value),terms:$('#rentTerms').value});e.target.reset();$('#rentDueDay').value='1';b.textContent='Tenancy created and rent schedule generated.';await loadRent();}catch(x){b.textContent=x.message}});
+$('#rentUnmatchedRows').addEventListener('click',async e=>{const b=e.target.closest('[data-reconcile]');if(!b)return;const id=b.dataset.reconcile,ref=$('[data-rentref="'+id+'"]').value.trim();if(!ref)return say('Enter the tenant rent account reference.',true);try{await post('/api/admin/rent/payments/'+id+'/reconcile',{rentAccountRef:ref});say('Payment reconciled and allocated to rent.');await loadRent();}catch(x){say(x.message,true)}});
+$('#rentLeaseRows').addEventListener('click',e=>{const b=e.target.closest('[data-agreement]');if(!b)return;$('#agreementLease').value=b.dataset.agreement;loadAgreement().catch(x=>say(x.message,true));});
+async function loadAgreement(){const id=$('#agreementLease').value;if(!id)return;const j=await api('/api/admin/rent/agreements/'+id),latest=j.agreements[0];$('#agreementTitle').value=latest?.title||'Tenancy Agreement';$('#agreementBody').value=latest?.body||('TENANCY AGREEMENT\n\nLandlord: Mauriskade Apartments\nTenant: '+j.lease.tenant_name+'\nUnit: '+j.lease.unit_label+'\nRent account: '+j.lease.rent_account_ref+'\nRent per '+j.lease.billing_frequency+': KSh '+j.lease.rent_amount+'\nStart date: '+String(j.lease.start_date).slice(0,10)+'\n\n1. Rent is payable using the tenant’s unique rent account reference.\n2. Water payments and rent payments are separate.\n3. The tenant should retain all payment receipts.\n4. The parties shall complete the remaining obligations, deposit, notice, maintenance and signature clauses before issue.');$('#agreementMsg').textContent=latest?'Loaded version '+latest.version+' ('+latest.status+').':'New draft template loaded.';}
+$('#agreementLoad').addEventListener('click',()=>loadAgreement().catch(x=>say(x.message,true)));
+$('#agreementSave').addEventListener('click',async()=>{try{const j=await post('/api/admin/rent/agreements/'+$('#agreementLease').value,{title:$('#agreementTitle').value,body:$('#agreementBody').value});$('#agreementMsg').textContent='Draft version '+j.agreement.version+' saved.';$('#agreementMsg').dataset.id=j.agreement.id;}catch(x){$('#agreementMsg').textContent=x.message}});
+$('#agreementIssue').addEventListener('click',async()=>{const id=$('#agreementMsg').dataset.id;if(!id)return $('#agreementMsg').textContent='Save a draft first.';if(!confirm('Issue this saved tenancy agreement version?'))return;try{await post('/api/admin/rent/agreements/'+id+'/issue');$('#agreementMsg').textContent='Agreement issued and recorded.';await loadAgreement();}catch(x){$('#agreementMsg').textContent=x.message}});
+
 $('#connect').addEventListener('click',connect);
 $('#adminKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
 $('#logout').addEventListener('click',()=>{key='';S=null;T=null;showApp(false);$('#meters').textContent='';$('#reviews').textContent='Disconnected.';say('Disconnected.')});
@@ -318,7 +372,7 @@ $('#loadReview').addEventListener('click',()=>loadReview().then(()=>say('Review 
 $('#reviews').addEventListener('click',async e=>{const b=e.target.closest('button[data-review]');if(!b)return;const action=b.dataset.review,id=b.dataset.id;try{let body={action};if(action==='adopt')body.token=b.dataset.token;if(action==='retry'&&!confirm('Have you checked Hydro recharge records and confirmed no token was issued?'))return;if(action==='close'){body.note=prompt('Reason for closing this case:','Reviewed by admin')||'Reviewed by admin';if(!confirm('Close this case?'))return}await post('/api/admin/review/'+encodeURIComponent(id),body);await loadReview();await loadSummary();say('Review action completed.')}catch(x){say(x.message,true)}});
 /* ---- Hydro app features ---- */
 let feat={};
-function tab(n){document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('hidden',e.dataset.tab!==n));document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===n)));if(n==='pricing')loadPricing().catch(e=>say(e.message,true));if(n==='recharge')loadFeatures().catch(()=>{});if(n==='pay'||n==='recharge')loadMeterList().catch(()=>{})}
+function tab(n){document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('hidden',e.dataset.tab!==n));document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===n)));if(n==='rent')loadRent().catch(e=>say(e.message,true));if(n==='pricing')loadPricing().catch(e=>say(e.message,true));if(n==='recharge')loadFeatures().catch(()=>{});if(n==='pay'||n==='recharge')loadMeterList().catch(()=>{})}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(b)tab(b.dataset.t)});
 async function loadFeatures(){feat=await api('/api/admin/features');$('#rcOff').classList.toggle('hidden',feat.rechargeEnabled);$('#rcForm').classList.toggle('hidden',!feat.rechargeEnabled)}
 async function loadPricing(){await loadFeatures();const box=$('#priceBox');if(!box)return;box.innerHTML='<b>KSh '+esc(feat.pricePerM3)+' per m³</b> · fixed rate<br><span class="muted small">Payment limits: KSh '+esc(feat.minAmount)+'–'+esc(feat.maxAmount)+' · Hydro company '+esc(feat.companyId)+' · M-Pesa '+esc(feat.mpesaEnv)+'</span>'}
