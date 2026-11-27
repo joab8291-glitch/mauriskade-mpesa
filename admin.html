@@ -161,7 +161,7 @@ button.danger{color:#a52f42;background:#fff1f2;border:1px solid #f0cdd2;box-shad
 .stat strong{color:#123d56}
 .stat span{color:#718797}
 .tabs{position:fixed;z-index:20;left:16px;top:16px;bottom:16px;width:246px;display:flex;flex-direction:column;align-items:stretch;gap:7px;overflow-y:auto;margin:0;padding:16px 12px;border:1px solid #e0e9ed;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(26,67,88,.08);backdrop-filter:none}
-.tabs:before{content:"MAURISKADE WATER";display:block;padding:12px 10px 18px;color:#0b617d;font-size:.75rem;font-weight:850;letter-spacing:.14em}
+.tabs:before{content:"MAURISKADE MANAGEMENT";display:block;padding:12px 10px 18px;color:#0b617d;font-size:.75rem;font-weight:850;letter-spacing:.14em}
 .tabs button{width:100%;min-height:46px;text-align:left;padding:11px 14px;color:#526f81;background:transparent;border:1px solid transparent;border-radius:11px;box-shadow:none}
 .tabs button:before{display:inline-block;width:23px;color:#07849b;font-weight:800}
 .tabs button[data-t="registry"]:before{content:"▦"}
@@ -189,6 +189,13 @@ tr:hover td{background:#f7fbfc}
 @media(max-width:900px){main{padding:18px 18px 48px}.tabs{position:sticky;top:8px;left:auto;bottom:auto;width:auto;flex-direction:row;align-items:center;overflow-x:auto;white-space:nowrap;margin:14px 0;padding:8px;border-radius:14px}.tabs:before{display:none}.tabs button{width:auto;flex:0 0 auto;text-align:center}.tabs button:before{display:none}}
 @media(max-width:560px){main{padding:12px 10px 40px}.top{min-height:190px;padding:23px 20px;border-radius:20px 20px 38px 20px}.top:after{width:50px;height:50px;right:22px;top:30%}.top h1{max-width:78%;font-size:1.9rem}.panel{padding:16px;border-radius:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:13px}.stat strong{font-size:1.55rem}.tabs{margin-left:0;margin-right:0}.tabs button{font-size:.8rem;padding:9px 11px}.filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){.top:before,.top:after{animation:none}}
+
+/* Dedicated rent workspace: feature navigation stays visible and jumps to each tool. */
+.rent-page-head{position:sticky;top:0;z-index:12;padding:4px 0 12px;background:var(--bg)}
+.rent-feature-nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.rent-feature-nav a{padding:9px 13px;border-radius:9px;color:#075c76;background:#edf7f8;text-decoration:none;font-weight:650;font-size:.88rem}
+.rent-feature-nav a:hover{background:#dff0f2}
+@media(max-width:640px){.rent-feature-nav{overflow-x:auto;flex-wrap:nowrap}.rent-feature-nav a{white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -208,7 +215,7 @@ tr:hover td{background:#f7fbfc}
 
 <!-- Sign in -->
 <div id="authPanel">
-  <div class="auth-top"><a class="brand" href="/admin"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Water</span></a></div>
+  <div class="auth-top"><a class="brand" href="/admin"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Management</span></a></div>
   <div class="auth-card">
     <p class="eyebrow">Secure administrator access</p>
     <h1>Property Management</h1>
@@ -278,8 +285,8 @@ tr:hover td{background:#f7fbfc}
 
     <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing</h2><p class="muted small">Current pricing and payment limits from the backend.</p><div id="priceBox" class="notice" style="margin-top:12px">Loading pricing…</div></section>
     <section class="panel hidden" data-tab="rent">
-      <div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div>
-      <div class="panel" style="box-shadow:none;margin-top:16px">
+      <div class="rent-page-head"><div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div><nav class="rent-feature-nav" aria-label="Rent management features"><a href="#rent-tenancies">Tenancies & rent schedules</a><a href="#rent-unmatched">Paybill reconciliation</a><a href="#rent-agreements">Tenancy agreements</a></nav></div>
+      <div id="rent-create" class="panel" style="box-shadow:none;margin-top:16px">
         <h3 class="section-title">Create tenancy / rent account</h3>
         <form id="rentLeaseForm" class="form">
           <label>Hydro meter <select id="rentMeter" required><option value="">Select registered meter</option></select></label>
@@ -294,15 +301,15 @@ tr:hover td{background:#f7fbfc}
           <button type="submit">Create tenancy and generate rent schedule</button><p id="rentFormMsg" class="muted small"></p>
         </form>
       </div>
-      <div class="panel" style="box-shadow:none">
+      <div id="rent-tenancies" class="panel" style="box-shadow:none">
         <div class="bar"><h3 class="section-title">Tenants and rent schedules</h3><span class="muted small" id="rentLeaseCount"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Rent account</th><th>Rent / frequency</th><th>Tenancy</th><th>Actions</th></tr></thead><tbody id="rentLeaseRows"><tr><td colspan="5" class="empty">Load rent records.</td></tr></tbody></table></div>
       </div>
-      <div class="panel" style="box-shadow:none">
+      <div id="rent-unmatched" class="panel" style="box-shadow:none">
         <div class="bar"><div><h3 class="section-title">Unmatched Paybill payments</h3><p class="muted small">C2B confirmations are captured here when the account reference does not match an active tenancy. Reconcile only after checking the Paybill statement.</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Paybill reference</th><th>Amount</th><th>M-Pesa receipt</th><th>Reconcile to rent account</th></tr></thead><tbody id="rentUnmatchedRows"><tr><td colspan="5" class="empty">No unmatched payments loaded.</td></tr></tbody></table></div>
       </div>
-      <div class="panel" style="box-shadow:none">
+      <div id="rent-agreements" class="panel" style="box-shadow:none">
         <h3 class="section-title">Tenancy agreement editor</h3><p class="muted small">Select a tenant, prepare or revise the agreement, save it as a draft, then issue the approved version. Issued versions are retained in the audit history.</p>
         <label>Tenant / unit <select id="agreementLease"><option value="">Select tenancy</option></select></label>
         <label>Agreement title <input id="agreementTitle" value="Tenancy Agreement"></label>
