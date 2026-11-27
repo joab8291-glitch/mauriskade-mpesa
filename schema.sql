@@ -200,3 +200,5 @@ BEGIN
   END IF;
  END LOOP;
 END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_active_ref_uidx ON public.rent_leases(rent_account_ref) WHERE status='active';
