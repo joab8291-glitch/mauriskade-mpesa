@@ -214,7 +214,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
   </div>
   <div class="badge-wrap" id="meterBadge" hidden>
     <div class="meter-badge">
-      <small>Meter ID Badge</small>
+      <small>Water account reference</small>
       <div class="code"><span id="whoMeter"></span><span class="live" title="Signed in" aria-hidden="true"></span></div>
     </div>
   </div>
@@ -231,7 +231,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
         <form id="loginForm" novalidate>
           <div class="field">
             <label for="loginUser">Username</label>
-            <input id="loginUser" autocomplete="username" placeholder="Username provided by the admin">
+            <input id="loginUser" autocomplete="username" placeholder="e.g. RENT-ROOM1">
           </div>
           <div class="field">
             <label for="loginPass">Password</label>
@@ -450,10 +450,12 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
   });
 
   function setWho() {
-    $('#whoMeter').textContent = me.meterCode;
+    $('#whoMeter').textContent = me.waterAccountRef || me.meterCode;
     const bits = [];
     if (me.flat) bits.push('Flat ' + me.flat);
     if (me.tenantName) bits.push(me.tenantName);
+    if (me.rentAccountRef) bits.push('Rent ' + me.rentAccountRef);
+    if (me.waterAccountRef) bits.push('Water ' + me.waterAccountRef);
     $('#whoLabel').textContent = bits.length ? bits.join(' · ') : 'Meter ' + me.meterCode;
     $('#userName').textContent = me.tenantName || (me.flat ? 'Flat ' + me.flat : 'My account');
   }
