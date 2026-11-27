@@ -914,6 +914,26 @@ app.post('/api/admin/logins/create', wrap(async (req, res) => {
   res.json({ ok: true, created });
 }));
 
+app.post('/api/admin/logins/reset-all', wrap(async (_req, res) => {
+  const { rows } = await pool.query('SELECT meter_code, tenant_name, rent_account_ref, water_account_ref FROM meters WHERE rent_account_ref IS NOT NULL AND water_account_ref IS NOT NULL ORDER BY rent_account_ref');
+  if (rows.length !== 10) return res.status(409).json({ ok: false, message: 'Expected 10 room accounts; found ' + rows.length + '. No logins were changed.' });
+  const client = await pool.connect();
+  const credentials = [];
+  try {
+    await client.query('BEGIN');
+    for (const m of rows) {
+      const password = genPassword(12);
+      const hash = await hashPassword(password);
+      await client.query('INSERT INTO users (meter_code, username, password_hash, must_change, disabled, failed_attempts, locked_until) VALUES ($1,$2,$3,true,false,0,NULL) ON CONFLICT (meter_code) DO UPDATE SET username=EXCLUDED.username, password_hash=EXCLUDED.password_hash, must_change=true, disabled=false, failed_attempts=0, locked_until=NULL', [m.meter_code, m.rent_account_ref, hash]);
+      credentials.push({ room: m.tenant_name === 'Celestine' ? 'Room 10' : m.tenant_name, tenantName: m.tenant_name, rentAccountRef: m.rent_account_ref, waterAccountRef: m.water_account_ref, username: m.rent_account_ref, password });
+    }
+    await client.query('DELETE FROM sessions');
+    await client.query('COMMIT');
+    res.json({ ok: true, count: credentials.length, credentials });
+  } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { client.release(); }
+}));
+
 app.post('/api/admin/logins/:meter/reset', wrap(async (req, res) => {
   const password = genPassword();
   const r = await pool.query(
