@@ -202,3 +202,5 @@ BEGIN
 END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_active_ref_uidx ON public.rent_leases(rent_account_ref) WHERE status='active';
+
+CREATE INDEX IF NOT EXISTS rent_allocations_charge_id_idx ON public.rent_allocations(charge_id);
