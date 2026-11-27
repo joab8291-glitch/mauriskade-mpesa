@@ -379,7 +379,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
     <div class="card-body"><h2 id="h-recent">Recent Top-Ups</h2></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Date</th><th>Amount (KSh)</th><th>Volume (m³)</th><th>M-Pesa Receipt Code</th><th>Token</th></tr></thead>
+        <thead><tr><th>Date</th><th>Amount (KSh)</th><th>Volume (m³)</th><th>M-Pesa Receipt Code</th><th>Token</th><th>Receipt</th></tr></thead>
         <tbody id="recentList"></tbody>
       </table>
     </div>
@@ -678,12 +678,22 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
         last = cell('Token', pill, act);
       }
 
+      const receiptLink = document.createElement('a');
+      receiptLink.className = 'link';
+      if (t.status === 'done' && t.receipt) {
+        receiptLink.href = '/api/me/transactions/' + encodeURIComponent(t.id) + '/receipt';
+        receiptLink.textContent = 'Download';
+      } else {
+        receiptLink.textContent = '—';
+        receiptLink.setAttribute('aria-disabled', 'true');
+      }
       tr.append(
         cell('Date', document.createTextNode(dateOf(t.createdAt)), small),
         cell('Amount (KSh)', document.createTextNode('KSh ' + fmt(t.amount))),
         cell('Volume (m³)', document.createTextNode(typeof t.volume === 'number' ? t.volume.toFixed(2) : '—')),
         cell('M-Pesa Receipt', receipt),
         last,
+        cell('Receipt', receiptLink),
       );
       body.append(tr);
     }
