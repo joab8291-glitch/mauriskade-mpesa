@@ -85,6 +85,22 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const l=(await pool.query('INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,agreement_terms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',[meter,tenant,unit,ref,amount,freq,start,day,String(b.terms||'')])).rows[0];
   await generateCharges(pool,l.id);await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_LEASE_CREATED',$1,$2,'DONE')",[meter,JSON.stringify({leaseId:l.id,tenant,unit,amount,frequency:freq,accountRef:ref})]);res.json({ok:true,lease:l});
  }));
+ app.patch(admin+'/leases/:id',wrap(async(req,res)=>{
+  const b=req.body||{},amount=Number(b.rentAmount),freq=String(b.billingFrequency||''),day=Number(b.dueDay||1),status=String(b.status||'active');
+  if(!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||day<1||day>28||!['active','ended','suspended'].includes(status))return res.status(400).json({ok:false,message:'Enter a valid rent amount, billing frequency, due day and status.'});
+  const client=await pool.connect();
+  try{await client.query('BEGIN');
+   const old=(await client.query('SELECT * FROM rent_leases WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];if(!old){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Tenancy not found.'});}
+   const changed=old.billing_frequency!==freq;
+   await client.query('UPDATE rent_leases SET rent_amount=$2,billing_frequency=$3,due_day=$4,status=$5,updated_at=now() WHERE id=$1',[old.id,amount,freq,day,status]);
+   if(changed)await client.query('DELETE FROM rent_charges c WHERE c.lease_id=$1 AND c.period_start >= $2 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)',[old.id,todayNairobi()]);
+   else await client.query('UPDATE rent_charges c SET amount=$2,due_date=$3 WHERE c.lease_id=$1 AND c.period_start >= $4 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)',[old.id,amount,dueDate(todayNairobi(),day),todayNairobi()]);
+   await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
+  if(status==='active')await generateCharges(pool,req.params.id);
+  await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('RENT_LEASE_UPDATED',$1,'DONE')",[JSON.stringify({leaseId:req.params.id,rentAmount:amount,billingFrequency:freq,dueDay:day,status})]);
+  res.json({ok:true});
+ }));
  app.post(admin+'/leases/:id/generate',wrap(async(req,res)=>res.json({ok:true,created:await generateCharges(pool,req.params.id)})));
  app.get(admin+'/payments/unallocated',wrap(async(_req,res)=>res.json({ok:true,items:(await pool.query("SELECT * FROM rent_payments WHERE status IN ('unallocated','review') OR (lease_id IS NULL AND status='confirmed') ORDER BY created_at DESC LIMIT 200")).rows})));
  app.post(admin+'/payments/:id/reconcile',wrap(async(req,res)=>{
