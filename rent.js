@@ -65,7 +65,7 @@ async function processRentStkCallback(pool,checkoutId,cb){
 function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaPost,mpesaShortcode,callbackBaseUrl,callbackSecret}){
  const customer=[requireUser,requireReady],admin='/api/admin/rent';
  app.get('/api/me/rent',...customer,wrap(async(req,res)=>{
-  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' ORDER BY created_at DESC LIMIT 1",[req.user.meter_code])).rows[0];
+  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 ORDER BY created_at DESC LIMIT 1",[req.user.meter_code])).rows[0];
   if(!l)return res.json({ok:true,lease:null,charges:[],payments:[],credit:0,arrears:0});
   await generateCharges(pool,l.id);
   const charges=(await pool.query('SELECT c.id,c.period_start,c.period_end,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.lease_id=$1 GROUP BY c.id ORDER BY c.period_start DESC LIMIT 36',[l.id])).rows;
