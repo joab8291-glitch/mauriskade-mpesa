@@ -94,7 +94,9 @@ Generated passwords are shown once when created or reset. Give them to tenants s
 | POST | `/api/pay` | Start STK Push for the signed-in customer's meter |
 | GET | `/api/pay/:id` | Read payment state and token when ready |
 | POST | `/api/mpesa/callback/:secret` | Safaricom callback |
-| GET/POST | `/api/admin/*` | Admin operations; requires `x-admin-key` |
+| GET/POST/PATCH | `/api/admin/*` | Admin operations; requires `x-admin-key` |
+| GET | `/api/me/rent/statement` | Tenant rent ledger with running balance |
+| POST | `/api/me/rent/missing-payment` | Report an M-Pesa rent payment that is not showing |
 
 Customer sessions use an HttpOnly cookie. The Vercel rewrite is intentional: it makes browser API calls same-origin instead of relying on cross-site cookies between Vercel and Render.
 
@@ -141,3 +143,6 @@ The current application uses the amount recharge endpoint because M-Pesa collect
 - Token display is in the customer portal; SMS delivery is not implemented.
 - A transaction UUID is treated as a private reference. Do not share transaction URLs publicly.
 - Render's free PostgreSQL plan is temporary and expires; use a persistent database plan for production records.
+
+
+Rent management additions and known limitations are documented in `RENT_MANAGEMENT.md`. The rent module defaults to oldest-due-first allocation, supports verified manual cash/bank entries, tenant missing-payment reports, and running rent statements. Deposit settlement, refund/reversal approvals, role-based staff access, and scheduled reminders still require additional policy and provider setup.

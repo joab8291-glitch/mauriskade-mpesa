@@ -205,6 +205,47 @@ CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_active_ref_uidx ON public.rent_lea
 
 CREATE INDEX IF NOT EXISTS rent_allocations_charge_id_idx ON public.rent_allocations(charge_id);
 
+-- Configurable allocation policy. The default follows the client's recommended oldest-due-first rule.
+CREATE TABLE IF NOT EXISTS public.rent_settings (
+ singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+ allocation_rule text NOT NULL DEFAULT 'oldest_due_first'
+   CHECK (allocation_rule IN ('oldest_due_first','oldest_period_first','newest_due_first')),
+ updated_by text,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO public.rent_settings(singleton,allocation_rule) VALUES(true,'oldest_due_first')
+ ON CONFLICT(singleton) DO NOTHING;
+
+-- Tenant-reported missing payments are cases for staff investigation; they are never auto-posted.
+CREATE TABLE IF NOT EXISTS public.rent_payment_reports (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ lease_id uuid NOT NULL REFERENCES public.rent_leases(id),
+ transaction_code text NOT NULL,
+ amount integer CHECK (amount IS NULL OR amount > 0),
+ description text,
+ status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','investigating','resolved','rejected')),
+ staff_note text,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(lease_id,transaction_code)
+);
+CREATE INDEX IF NOT EXISTS rent_payment_reports_status_created_idx ON public.rent_payment_reports(status,created_at DESC);
+
 ALTER TABLE public.rent_payments ADD COLUMN IF NOT EXISTS requested_amount integer;
+ALTER TABLE public.rent_payments ADD COLUMN IF NOT EXISTS external_reference text;
+ALTER TABLE public.rent_payments ADD COLUMN IF NOT EXISTS verified_by text;
+ALTER TABLE public.rent_payments ADD COLUMN IF NOT EXISTS verification_note text;
+CREATE UNIQUE INDEX IF NOT EXISTS rent_payments_external_reference_uidx ON public.rent_payments(external_reference) WHERE external_reference IS NOT NULL;
+DO $$
+DECLARE t text;
+BEGIN
+ FOREACH t IN ARRAY ARRAY['rent_settings','rent_payment_reports'] LOOP
+  EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, anon, authenticated',t);
+  EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname='deny_client_api_access') THEN
+   EXECUTE format('CREATE POLICY deny_client_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',t);
+  END IF;
+ END LOOP;
+END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_one_active_per_meter_idx ON public.rent_leases(meter_code) WHERE status='active';
