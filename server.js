@@ -1240,6 +1240,9 @@ app.post('/api/mpesa/shared-c2b', wrap(async (req, res) => {
     return res.sendStatus(403);
   }
   const b = req.body || {};
+  if (b.BusinessShortCode != null && String(b.BusinessShortCode) !== String(MPESA_SHORTCODE)) {
+    return res.status(403).json({ ok: false, message: 'C2B shortcode does not match this Mauriskade service.' });
+  }
   const receipt = String(b.TransID || '').trim();
   const ref = String(b.BillRefNumber || '').trim();
   const amount = Number(b.TransAmount);
