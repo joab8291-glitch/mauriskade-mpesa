@@ -586,7 +586,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
       $('#rentFrequencyLabel').textContent=j.lease.billing_frequency.replace('_',' ');
       $('#rentArrears').textContent='KSh '+fmt(j.arrears);
       $('#rentCredit').textContent='Available credit: KSh '+fmt(j.credit);
-      $('#rentAccountInfo').textContent='Rent account reference: '+j.lease.rent_account_ref+' · Unit: '+j.lease.unit_label;
+      $('#rentAccountInfo').textContent='Paybill: '+j.paybill+' · Rent account reference: '+j.lease.rent_account_ref+' · Unit: '+j.lease.unit_label;
       $('#rentAnnualWarning').hidden=j.lease.billing_frequency!=='annually';
       if(me.phone&&!$('#rentPayPhone').value)$('#rentPayPhone').value=String(me.phone).replace(/^254/,'');
       $('#rentChargeRows').innerHTML=j.charges.map(c=>'<tr><td>'+dateOf(c.period_start)+' – '+dateOf(c.period_end)+'</td><td>'+dateOf(c.due_date)+'</td><td>KSh '+fmt(c.amount)+'</td><td>KSh '+fmt(c.paid)+'</td><td>KSh '+fmt(c.balance)+'</td></tr>').join('')||'<tr><td colspan="5">No rent charges yet.</td></tr>';
