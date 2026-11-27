@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const express = require('express');
 const { Pool } = require('pg');
-const { registerRentRoutes, processRentStkCallback, processRentC2B } = require('./rent');
+const { registerRentRoutes, processRentStkCallback, processRentC2B, makeReceiptPdf } = require('./rent');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -720,6 +720,33 @@ app.get('/api/pay/:id', requireUser, requireReady, pollLimit, wrap(async (req, r
 }));
 
 // The customer's own recent top-ups, tokens included, so a lost token can be found again
+app.get('/api/me/transactions/:id/receipt', requireUser, requireReady, wrap(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(400).send('Invalid receipt reference');
+  const t = (await pool.query(
+    `SELECT t.*, m.tenant_name, m.flat FROM transactions t
+       JOIN meters m ON m.meter_code=t.meter_number
+      WHERE t.id=$1 AND t.meter_number=$2 AND t.status='TOKEN_ISSUED'`,
+    [req.params.id, req.user.meter_code])).rows[0];
+  if (!t) return res.status(404).send('Verified water receipt not found');
+  const pdf = makeReceiptPdf([
+    'WATER PAYMENT RECEIPT',
+    'Receipt / M-Pesa code: ' + (t.mpesa_receipt || 'Recorded'),
+    'Tenant: ' + (t.tenant_name || req.user.tenant_name || 'Customer'),
+    'Unit: ' + (t.flat || req.user.flat || '—'),
+    'Water account: ' + (req.user.water_account_ref || '—'),
+    'Meter: ' + t.meter_number,
+    'Amount received: KSh ' + Number(t.amount).toLocaleString('en-KE'),
+    'Water issued: ' + (t.water_volume == null ? 'Verified in Hydro' : Number(t.water_volume).toFixed(2) + ' m3'),
+    'Hydro recharge reference: ' + (t.hydro_recharge_no || '—'),
+    'STS token: ' + (t.token || '—'),
+    'Payment date: ' + new Date(t.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' }),
+    'Status: M-Pesa confirmed; Hydro recharge verified',
+  ]);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="Mauriskade-Water-Receipt-' + t.id + '.pdf"');
+  res.send(pdf);
+}));
+
 app.get('/api/me/transactions', requireUser, requireReady, wrap(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, status, amount, token, mpesa_receipt, water_volume, created_at
