@@ -35,23 +35,64 @@ async function createReceipt(pool,id){
 }
 
 function makeReceiptPdf(lines) {
- const clean=v=>{const s=String(v??'').normalize('NFKD').replace(/[^\x20-\x7E]/g,'?');return s.split('\\').join('\\\\').split('(').join('\\(').split(')').join('\\)');};
- const nl=String.fromCharCode(10);
- const ops=['BT /F1 20 Tf 50 790 Td ('+clean('Mauriskade Apartments')+') Tj','/F1 15 Tf 0 -34 Td ('+clean('RENT PAYMENT RECEIPT')+') Tj','/F1 10 Tf 0 -22 Td ('+clean('Official payment record')+') Tj','/F1 11 Tf'];
- for(const line of lines)ops.push('0 -25 Td ('+clean(line)+') Tj');
- ops.push('ET');
- const stream=ops.join(nl),objects=[
+ const nl=String.fromCharCode(10),pageH=842,ops=[];
+ const clean=v=>String(v??'').normalize('NFKD').replace(/[^\x20-\x7E]/g,'?').replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+ const fill=(r,g,b)=>ops.push(r+' '+g+' '+b+' rg');
+ const stroke=(r,g,b)=>ops.push(r+' '+g+' '+b+' RG');
+ const rect=(x,top,w,h,r,g,b)=>{fill(r,g,b);ops.push(x+' '+(pageH-top-h)+' '+w+' '+h+' re f');};
+ const line=(x1,y1,x2,y2,r,g,b,width)=>{stroke(r,g,b);ops.push(width+' w '+x1+' '+(pageH-y1)+' m '+x2+' '+(pageH-y2)+' l S');};
+ const txt=(value,x,top,size,font,color,align)=>{
+   const str=clean(value),approx=str.length*size*(font==='F2'?.56:.51),xx=align==='right'?x-approx:align==='center'?x-approx/2:x;
+   fill(color[0],color[1],color[2]);ops.push('BT /'+font+' '+size+' Tf 1 0 0 1 '+xx.toFixed(2)+' '+(pageH-top-size).toFixed(2)+' Tm ('+str+') Tj ET');
+ };
+ const source=Array.isArray(lines)?lines.map(v=>String(v??'')):[];
+ const first=source[0]||'PAYMENT RECEIPT',title=/WATER/i.test(first)?'WATER PAYMENT RECEIPT':'RENT PAYMENT RECEIPT';
+ const fields=source.slice(1).map(v=>{const i=v.indexOf(':');return i>0?{label:v.slice(0,i).trim(),value:v.slice(i+1).trim()}:{label:'Details',value:v};});
+ const amount=fields.find(x=>/^amount received$/i.test(x.label));
+ const details=fields.filter(x=>x!==amount);
+ const receipt=fields.find(x=>/^receipt( \/ mpesa code)?$/i.test(x.label));
+ const status=fields.find(x=>/^status$/i.test(x.label));
+ rect(0,0,595,150,.035,.20,.31);rect(0,140,595,10,.035,.57,.56);
+ txt('MAURISKADE MANAGEMENT',42,34,10,'F2',[.63,.94,.91]);
+ txt(title,42,64,22,'F2',[1,1,1]);
+ txt('OFFICIAL PAYMENT CONFIRMATION',42,101,8,'F1',[.78,.88,.92]);
+ rect(433,35,120,28,.08,.34,.31);txt('PAYMENT VERIFIED',493,44,7,'F2',[.88,1,.96],'center');
+ rect(34,174,527,112,.94,.97,.97);rect(34,174,4,112,.02,.58,.56);
+ txt('AMOUNT RECEIVED',57,195,8,'F2',[.38,.49,.54]);
+ txt(amount?amount.value:'See payment details',57,220,25,'F2',[.035,.28,.36]);
+ if(receipt)txt('REFERENCE  '+receipt.value,57,261,8,'F1',[.34,.47,.53]);
+ txt('TRANSACTION DETAILS',42,315,9,'F2',[.035,.32,.40]);line(42,337,553,337,.84,.89,.91,.8);
+ let y=352;
+ for(const item of details){
+   const val=item.value||'—';
+   txt(item.label.toUpperCase(),48,y,7.4,'F2',[.43,.53,.58]);
+   if(val.length>48){
+     const parts=[];for(let i=0;i<val.length;i+=65)parts.push(val.slice(i,i+65));
+     txt(parts[0],545,y,8.3,'F1',[.13,.25,.32],'right');
+     if(parts[1])txt(parts.slice(1).join(' '),545,y+12,8,'F1',[.13,.25,.32],'right');
+     y+=40;
+   }else{txt(val,545,y,8.8,'F1',[.13,.25,.32],'right');y+=31;}
+   line(48,y-8,547,y-8,.91,.94,.95,.55);
+ }
+ const footY=Math.min(786,Math.max(735,y+12));
+ rect(34,footY,527,44,.93,.97,.96);
+ txt('THANK YOU',50,footY+9,8,'F2',[.04,.42,.39]);
+ txt(status?status.value:'Payment recorded successfully.',50,footY+23,7.5,'F1',[.28,.43,.46]);
+ txt('Mauriskade Management  |  Keep this receipt for your records',297.5,817,7,'F1',[.48,.56,.60],'center');
+ const stream=ops.join(nl);
+ const objects=[
   '<< /Type /Catalog /Pages 2 0 R >>',
   '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>',
   '<< /Length '+Buffer.byteLength(stream)+' >>'+nl+'stream'+nl+stream+nl+'endstream',
-  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'
  ];
  let pdf='%PDF-1.4'+nl,offsets=[0];
  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf));pdf+=(i+1)+' 0 obj'+nl+objects[i]+nl+'endobj'+nl;}
- const xref=Buffer.byteLength(pdf);pdf+='xref'+nl+'0 6'+nl+'0000000000 65535 f '+nl;
+ const xref=Buffer.byteLength(pdf);pdf+='xref'+nl+'0 7'+nl+'0000000000 65535 f '+nl;
  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n '+nl;
- pdf+='trailer'+nl+'<< /Size 6 /Root 1 0 R >>'+nl+'startxref'+nl+xref+nl+'%%EOF';
+ pdf+='trailer'+nl+'<< /Size 7 /Root 1 0 R >>'+nl+'startxref'+nl+xref+nl+'%%EOF';
  return Buffer.from(pdf,'binary');
 }
 async function processRentStkCallback(pool,checkoutId,cb){
