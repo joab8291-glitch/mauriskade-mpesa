@@ -76,4 +76,4 @@
 
 ## Deployment note
 
-The changes are prepared in the repository working copy. They should be merged/deployed only after the final review and the production database migration window is approved. The live database and live Daraja credentials were not used for this audit. Do not treat the unimplemented items above as delivered functionality.
+The implementation and checklist are committed to `main` at `d9c2412222e78355c4590daa9f5c68eda959a2a1`. Vercel production deployment for that commit reached `READY`. Render is configured for automatic deploys, but the latest Render deployment record still points to the previous backend commit; the new backend routes and schema migration are therefore **not confirmed live**. The admin UI handles missing new rent endpoints without breaking the existing rent dashboard while Render deployment is pending. The live database and live Daraja credentials were not used for this audit. Do not treat the unimplemented items above as delivered functionality, and do not rely on the new APIs until the Render deployment is confirmed.
