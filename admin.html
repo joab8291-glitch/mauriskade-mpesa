@@ -278,14 +278,14 @@ tr:hover td{background:#f7fbfc}
 
     <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing</h2><p class="muted small">Current pricing and payment limits from the backend.</p><div id="priceBox" class="notice" style="margin-top:12px">Loading pricing…</div></section>
     <section class="panel hidden" data-tab="rent">
-      <div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><button class="secondary" id="rentC2B">Register Paybill callbacks</button><button class="secondary" id="rentRefresh">Refresh rent</button></div></div>
+      <div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div>
       <div class="panel" style="box-shadow:none;margin-top:16px">
         <h3 class="section-title">Create tenancy / rent account</h3>
         <form id="rentLeaseForm" class="form">
           <label>Hydro meter <select id="rentMeter" required><option value="">Select registered meter</option></select></label>
           <label>Tenant name <input id="rentTenant" required maxlength="100"></label>
           <label>Unit / flat <input id="rentUnit" required maxlength="60"></label>
-          <label>Unique rent account reference <input id="rentRef" required maxlength="30" placeholder="e.g. RENT-ROOM01"></label>
+          <label>Unique rent account reference <input id="rentRef" required maxlength="30" placeholder="e.g. RENT-ROOM1"></label>
           <label>Rent amount per billing period (KSh) <input id="rentAmount" type="number" min="1" step="1" required></label>
           <label>Billing frequency <select id="rentFrequency"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="half_yearly">Half-yearly</option><option value="annually">Annually</option></select></label>
           <label>Tenancy start date <input id="rentStart" type="date" required></label>
@@ -344,7 +344,7 @@ async function loadRent(){
  $('#rentUnmatchedRows').innerHTML=unmatched.items.map(p=>'<tr><td>'+esc(new Date(p.created_at).toLocaleString())+'</td><td>'+esc(p.rent_account_ref)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+esc(p.mpesa_receipt||'—')+'</td><td><div class="row-actions"><input data-rentref="'+esc(p.id)+'" placeholder="Rent account ref"><button data-reconcile="'+esc(p.id)+'">Reconcile</button></div></td></tr>').join('')||'<tr><td colspan="5" class="empty">No unmatched Paybill payments.</td></tr>';
 }
 $('#rentRefresh').addEventListener('click',()=>loadRent().then(()=>say('Rent records refreshed.')).catch(e=>say(e.message,true)));
-$('#rentC2B').addEventListener('click',async()=>{if(!confirm('Register these URLs with Daraja for Paybill C2B confirmations? This updates the callback URLs for this shortcode.'))return;try{const j=await post('/api/admin/rent/c2b/register');say('C2B callback registration response: '+JSON.stringify(j.result));}catch(e){say(e.message,true)}});
+
 $('#rentLeaseForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('#rentFormMsg');b.textContent='Creating tenancy…';try{await post('/api/admin/rent/leases',{meterCode:$('#rentMeter').value,tenantName:$('#rentTenant').value,unitLabel:$('#rentUnit').value,rentAccountRef:$('#rentRef').value,rentAmount:Number($('#rentAmount').value),billingFrequency:$('#rentFrequency').value,startDate:$('#rentStart').value,dueDay:Number($('#rentDueDay').value),terms:$('#rentTerms').value});e.target.reset();$('#rentDueDay').value='1';b.textContent='Tenancy created and rent schedule generated.';await loadRent();}catch(x){b.textContent=x.message}});
 $('#rentUnmatchedRows').addEventListener('click',async e=>{const b=e.target.closest('[data-reconcile]');if(!b)return;const id=b.dataset.reconcile,ref=$('[data-rentref="'+id+'"]').value.trim();if(!ref)return say('Enter the tenant rent account reference.',true);try{await post('/api/admin/rent/payments/'+id+'/reconcile',{rentAccountRef:ref});say('Payment reconciled and allocated to rent.');await loadRent();}catch(x){say(x.message,true)}});
 $('#rentLeaseRows').addEventListener('click',e=>{const b=e.target.closest('[data-agreement]');if(!b)return;$('#agreementLease').value=b.dataset.agreement;loadAgreement().catch(x=>say(x.message,true));});
