@@ -172,7 +172,10 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
     (SELECT count(*) FROM period_charges WHERE balance>0)::int accounts_with_balance,
     (SELECT count(*) FROM rent_leases WHERE status='active' AND (end_date IS NULL OR end_date>=current_date))::int occupied,
     (SELECT count(*) FROM meters)::int units,
-    (SELECT count(*) FROM meters m WHERE NOT EXISTS(SELECT 1 FROM rent_leases l WHERE l.meter_code=m.meter_code AND l.status='active' AND (l.end_date IS NULL OR l.end_date>=current_date)))::int vacant
+    (SELECT count(*) FROM meters m WHERE NOT EXISTS(SELECT 1 FROM rent_leases l WHERE l.meter_code=m.meter_code AND l.status='active' AND (l.end_date IS NULL OR l.end_date>=current_date)))::int vacant,
+    (SELECT count(*) FROM rent_payments p WHERE p.status IN ('unallocated','review') OR p.lease_id IS NULL)::int unmatched_payments,
+    (SELECT count(*) FROM rent_payments p JOIN rent_allocations a ON a.payment_id=p.id GROUP BY p.id,p.amount HAVING sum(a.amount)>0 AND sum(a.amount)<p.amount)::int partial_payments,
+    COALESCE((SELECT sum(z.credit) FROM (SELECT p.lease_id,sum(p.amount)-COALESCE(sum(a.amount),0) credit FROM rent_payments p LEFT JOIN rent_allocations a ON a.payment_id=p.id WHERE p.status IN ('confirmed','allocated') GROUP BY p.lease_id HAVING sum(p.amount)-COALESCE(sum(a.amount),0)>0) z),0)::bigint excess_credit
   `,[from,to])).rows[0];
   const months=(await pool.query(`
    SELECT to_char(date_trunc('month',d)::date,'YYYY-MM') AS month_label,
@@ -180,6 +183,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
     COALESCE((SELECT sum(p.amount) FROM rent_payments p WHERE p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)>=date_trunc('month',d) AND COALESCE(p.transaction_time,p.created_at)<date_trunc('month',d)+interval '1 month'),0)::bigint collected
    FROM generate_series(date_trunc('month',$1::date),date_trunc('month',$2::date),interval '1 month') d ORDER BY d
   `,[from,to])).rows;
+  const reconciliations=(await pool.query(`SELECT p.id,p.created_at,p.rent_account_ref,p.amount,p.status,p.method,p.mpesa_receipt,l.tenant_name,l.unit_label,COALESCE(sum(a.amount),0)::int allocated,(p.amount-COALESCE(sum(a.amount),0))::int unallocated FROM rent_payments p LEFT JOIN rent_leases l ON l.id=p.lease_id LEFT JOIN rent_allocations a ON a.payment_id=p.id WHERE COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date AND p.status NOT IN ('failed','pending') GROUP BY p.id,l.id ORDER BY p.created_at DESC LIMIT 250`,[from,to])).rows;
   const arrears=(await pool.query(`
    SELECT l.id,l.tenant_name,l.unit_label,l.rent_account_ref,l.rent_amount,
     sum(c.amount)::bigint charged,COALESCE(sum(x.paid),0)::bigint paid,
@@ -189,7 +193,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
    WHERE c.due_date<current_date AND c.amount>COALESCE(x.paid,0)
    GROUP BY l.id HAVING sum(c.amount-COALESCE(x.paid,0))>0 ORDER BY balance DESC
   `)).rows;
-  res.json({ok:true,from,to,summary:{...summary,collectionRate:Number(summary.expected)>0?Math.round(Number(summary.collected)/Number(summary.expected)*10000)/100:0},months,arrears});
+  res.json({ok:true,from,to,summary:{...summary,collectionRate:Number(summary.expected)>0?Math.round(Number(summary.collected)/Number(summary.expected)*10000)/100:0},months,arrears,reconciliations});
  }));
  app.get(admin+'/reports/export',wrap(async(req,res)=>{
   const type=String(req.query.type||'collections'),from=String(req.query.from||'2000-01-01'),to=String(req.query.to||todayNairobi());
