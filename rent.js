@@ -175,18 +175,22 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  }));
  app.patch(admin+'/leases/:id',wrap(async(req,res)=>{
   const b=req.body||{},amount=Number(b.rentAmount),freq=String(b.billingFrequency||''),day=Number(b.dueDay||1),status=String(b.status||'active'),end=b.endDate?String(b.endDate).slice(0,10):null;
-  if(!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||day<1||day>28||!['active','ended','suspended'].includes(status)||(end&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)))return res.status(400).json({ok:false,message:'Enter a valid rent amount, billing frequency, due day and status.'});
+  const tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim();
+  if(!tenant||tenant.length>100||!unit||unit.length>60||!ref||ref.length>30||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||day<1||day>28||!['active','ended','suspended'].includes(status)||(end&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)))return res.status(400).json({ok:false,message:'Enter valid tenant, room, rent account, rent amount, frequency, due day and tenancy status.'});
+  if(status==='ended'&&!end)return res.status(400).json({ok:false,message:'Enter the actual tenancy end date before ending this tenancy.'});
   const client=await pool.connect();
   try{await client.query('BEGIN');
    const old=(await client.query('SELECT * FROM rent_leases WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];if(!old){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Tenancy not found.'});}
+   if(ref!==old.rent_account_ref&&(await client.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date) AND id<>$2",[ref,old.id])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'That rent account reference is already assigned to another active tenancy.'});}
+   if(status==='active'&&(await client.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date) AND id<>$2",[old.meter_code,old.id])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This room already has another active tenancy. End it before activating this tenancy.'});}
    const changed=old.billing_frequency!==freq;
-   await client.query('UPDATE rent_leases SET rent_amount=$2,billing_frequency=$3,due_day=$4,status=$5,end_date=$6,updated_at=now() WHERE id=$1',[old.id,amount,freq,day,status,end]);
+   await client.query('UPDATE rent_leases SET tenant_name=$2,unit_label=$3,rent_account_ref=$4,rent_amount=$5,billing_frequency=$6,due_day=$7,status=$8,end_date=$9,updated_at=now() WHERE id=$1',[old.id,tenant,unit,ref,amount,freq,day,status,end]);
    if(changed)await client.query('DELETE FROM rent_charges c WHERE c.lease_id=$1 AND c.period_start >= $2 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)',[old.id,todayNairobi()]);
    else await client.query("UPDATE rent_charges c SET amount=$2,due_date=(date_trunc('month',c.period_start)::date + (LEAST($3,extract(day from (date_trunc('month',c.period_start)+interval '1 month - 1 day'))::int)-1)) WHERE c.lease_id=$1 AND c.period_start >= $4 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)",[old.id,amount,day,todayNairobi()]);
    await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
   if(status==='active')await generateCharges(pool,req.params.id);
-  await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('RENT_LEASE_UPDATED',$1,'DONE')",[JSON.stringify({leaseId:req.params.id,rentAmount:amount,billingFrequency:freq,dueDay:day,status})]);
+  await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('RENT_LEASE_UPDATED',$1,'DONE')",[JSON.stringify({leaseId:req.params.id,tenant,unit,rentAccountRef:ref,rentAmount:amount,billingFrequency:freq,dueDay:day,status,endDate:end})]);
   res.json({ok:true});
  }));
  app.post(admin+'/leases/:id/generate',wrap(async(req,res)=>res.json({ok:true,created:await generateCharges(pool,req.params.id)})));
