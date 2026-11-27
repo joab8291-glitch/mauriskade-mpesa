@@ -643,7 +643,7 @@ button,.btn{border-radius:10px}
         <form id="rentPayForm" novalidate>
           <div class="field"><label for="rentPayAmount">Amount to pay (KSh)</label><input id="rentPayAmount" type="number" min="1" step="1" required placeholder="Enter any amount"></div>
           <div class="field"><label for="rentPayPhone">M-Pesa phone number</label><input id="rentPayPhone" type="tel" inputmode="tel" required placeholder="0712 345 678"></div>
-          <p class="hint">You may pay partially or in advance. Payments are allocated to the oldest outstanding rent first; any excess stays as credit for future rent.</p>
+          <p class="hint">You may pay partially or more than the rent due. Any extra amount is kept safely as rent credit and automatically applied when the next rent instalment becomes due.</p>
           <button class="btn green" id="rentPayBtn" type="submit">Pay rent with M-Pesa</button><p class="msg" id="rentPayMsg" role="alert"></p>
         </form>
         <h3 style="margin-top:22px">Rent schedule</h3>
@@ -965,7 +965,7 @@ button,.btn{border-radius:10px}
       $('#rentArrears').textContent='KSh '+fmt(j.arrears);
       $('#portalRentBalance').textContent='KSh '+fmt(j.arrears);
       $('#portalRentFrequency').textContent='KSh '+fmt(j.lease.rent_amount)+' · '+j.lease.billing_frequency.replace('_',' ');
-      $('#rentCredit').textContent='Available credit: KSh '+fmt(j.credit);
+      $('#rentCredit').textContent=Number(j.credit)>0?'Rent credit available: KSh '+fmt(j.credit)+' · automatically applied to the next rent instalment when due':'Available rent credit: KSh 0';
       $('#rentAccountInfo').textContent='Paybill: '+j.paybill+' · Rent account reference: '+j.lease.rent_account_ref+' · Unit: '+j.lease.unit_label;
       const leaseExpired=!!j.lease.end_date&&String(j.lease.end_date).slice(0,10)<new Date().toISOString().slice(0,10);$('#rentPayBtn').disabled=j.lease.status!=='active'||leaseExpired;
       if(j.lease.status!=='active'||leaseExpired)$('#rentPayMsg').textContent=leaseExpired?'This tenancy has reached its end date. Rent payments are disabled; contact the property office.':'This tenancy is '+j.lease.status+'. Rent payments are currently disabled; contact the property office.';
