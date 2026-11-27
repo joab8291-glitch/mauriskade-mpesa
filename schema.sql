@@ -91,3 +91,11 @@ CREATE TABLE IF NOT EXISTS admin_actions (
   detail       jsonb NOT NULL DEFAULT '{}',
   created_at   timestamptz NOT NULL DEFAULT now()
 );
+
+
+-- Protect the audit log: it is private operational data, accessed only by the trusted
+-- backend through DATABASE_URL. The browser-facing Supabase roles must never read or
+-- mutate audit entries. RLS with no client policies is intentional default-deny.
+REVOKE ALL PRIVILEGES ON TABLE public.admin_actions FROM PUBLIC, anon, authenticated;
+REVOKE ALL PRIVILEGES ON SEQUENCE public.admin_actions_id_seq FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.admin_actions ENABLE ROW LEVEL SECURITY;
