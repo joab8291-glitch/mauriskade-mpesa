@@ -152,7 +152,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
  const sendCsv=(res,name,rows)=>{const body=rows.map(row=>row.map(csvCell).join(',')).join('\r\n');res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="'+name+'"');res.send('\uFEFF'+body);};
  app.get(admin+'/reports',wrap(async(req,res)=>{
-  const from=/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from||''))?String(req.query.from):iso(addMonths(todayNairobi(),-1));
+  const from=/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from||''))?String(req.query.from):(todayNairobi().slice(0,8)+'01');
   const to=/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to||''))?String(req.query.to):todayNairobi();
   if(from>to)return res.status(400).json({ok:false,message:'Start date must be before end date.'});
   const summary=(await pool.query(`
@@ -175,7 +175,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
     (SELECT count(*) FROM meters m WHERE NOT EXISTS(SELECT 1 FROM rent_leases l WHERE l.meter_code=m.meter_code AND l.status='active' AND (l.end_date IS NULL OR l.end_date>=current_date)))::int vacant,
     (SELECT count(*) FROM rent_payments p WHERE (p.status IN ('unallocated','review') OR p.lease_id IS NULL) AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date)::int unmatched_payments,
     (SELECT count(*) FROM (SELECT p.id FROM rent_payments p JOIN rent_allocations a ON a.payment_id=p.id WHERE COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date GROUP BY p.id,p.amount HAVING sum(a.amount)>0 AND sum(a.amount)<p.amount) partials)::int partial_payments,
-    COALESCE((SELECT sum(p.amount-COALESCE((SELECT sum(a.amount) FROM rent_allocations a WHERE a.payment_id=p.id),0)) FROM rent_payments p WHERE p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date),0)::bigint excess_credit
+    COALESCE((SELECT sum(p.amount-COALESCE((SELECT sum(a.amount) FROM rent_allocations a WHERE a.payment_id=p.id),0)) FROM rent_payments p WHERE p.status IN ('confirmed','allocated') AND p.lease_id IS NOT NULL AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date),0)::bigint excess_credit
   `,[from,to])).rows[0];
   const months=(await pool.query(`
    SELECT to_char(date_trunc('month',d)::date,'YYYY-MM') AS month_label,
@@ -206,9 +206,9 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
    const leaseId=String(req.query.leaseId||'');if(!leaseId)return res.status(400).send('Select a tenancy for its statement');
    const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[leaseId])).rows[0];if(!l)return res.status(404).send('Tenancy not found');
    const charges=(await pool.query(`SELECT c.period_start::text date,'Rent charge' kind,c.amount::bigint amount,COALESCE(sum(a.amount),0)::bigint allocated FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.lease_id=$1 AND c.period_start BETWEEN $2::date AND $3::date GROUP BY c.id ORDER BY c.period_start`,[leaseId,from,to])).rows;
-   const payments=(await pool.query(`SELECT COALESCE(p.transaction_time,p.created_at)::date::text date,'Payment '+p.method kind,p.amount::bigint amount,COALESCE(sum(a.amount),0)::bigint allocated FROM rent_payments p LEFT JOIN rent_allocations a ON a.payment_id=p.id WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $2::date AND $3::date GROUP BY p.id ORDER BY date`,[leaseId,from,to])).rows;
-   const entries=[...charges.map(x=>[x.date,x.kind,x.amount,x.allocated]),...payments.map(x=>[x.date,x.kind,-Number(x.amount),x.allocated])].sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
-   return sendCsv(res,'statement-'+l.rent_account_ref+'-'+from+'-'+to+'.csv',[['Tenant',l.tenant_name],['Unit',l.unit_label],['Rent account',l.rent_account_ref],[],['Date','Description','Debit/Credit KSh','Allocated KSh'],...entries]);
+   const payments=(await pool.query(`SELECT COALESCE(p.transaction_time,p.created_at)::date::text date,'Payment '+p.method kind,p.amount::bigint amount,COALESCE(sum(a.amount),0)::bigint allocated,max(p.mpesa_receipt) mpesa_receipt FROM rent_payments p LEFT JOIN rent_allocations a ON a.payment_id=p.id WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $2::date AND $3::date GROUP BY p.id ORDER BY date`,[leaseId,from,to])).rows;
+   const entries=[...charges.map(x=>[x.date,x.kind,x.amount,x.allocated]),...payments.map(x=>[x.date,x.kind,-Number(x.amount),x.allocated,x.mpesa_receipt||'—'])].sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+   return sendCsv(res,'statement-'+l.rent_account_ref+'-'+from+'-'+to+'.csv',[['Tenant',l.tenant_name],['Unit',l.unit_label],['Rent account',l.rent_account_ref],[],['Date','Description','Debit/Credit KSh','Allocated KSh','M-Pesa receipt'],...entries]);
   }
   const rows=(await pool.query(`SELECT p.created_at::date date,l.tenant_name,l.unit_label,p.rent_account_ref,p.amount,p.method,p.status,p.mpesa_receipt,r.receipt_number FROM rent_payments p LEFT JOIN rent_leases l ON l.id=p.lease_id LEFT JOIN rent_receipts r ON r.payment_id=p.id WHERE p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)::date BETWEEN $1::date AND $2::date ORDER BY p.created_at`,[from,to])).rows;
   return sendCsv(res,'mauriskade-collections-'+from+'-'+to+'.csv',[['Date','Tenant','Unit','Rent account','Amount KSh','Method','Status','M-Pesa receipt','Receipt number'],...rows.map(x=>[x.date,x.tenant_name,x.unit_label,x.rent_account_ref,x.amount,x.method,x.status,x.mpesa_receipt,x.receipt_number])]);
