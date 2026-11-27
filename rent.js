@@ -118,15 +118,15 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const b=req.body||{},meter=String(b.meterCode||''),tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim(),amount=Number(b.rentAmount),freq=String(b.billingFrequency||'monthly'),start=String(b.startDate||'').slice(0,10),end=b.endDate?String(b.endDate).slice(0,10):null,day=Number(b.dueDay||1);
   if(!meter||!tenant||!unit||!ref||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^\d{4}-\d{2}-\d{2}$/.test(start)||(end&&(!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start))||day<1||day>28)return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
   if(!(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1',[meter])).rowCount)return res.status(404).json({ok:false,message:'Select a registered meter.'});
-  if((await pool.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active'",[meter])).rowCount)return res.status(409).json({ok:false,message:'This meter already has an active tenancy. End the old tenancy before creating another.'});
-  if((await pool.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rowCount)return res.status(409).json({ok:false,message:'Rent account reference is already assigned.'});
+  if((await pool.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date)",[meter])).rowCount)return res.status(409).json({ok:false,message:'This meter already has an active tenancy. End the old tenancy before creating another.'});
+  if((await pool.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date)",[ref])).rowCount)return res.status(409).json({ok:false,message:'Rent account reference is already assigned.'});
   await pool.query('UPDATE meters SET rent_account_ref=$2,tenant_name=$3,flat=$4 WHERE meter_code=$1',[meter,ref,tenant,unit]);
   const l=(await pool.query('INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,end_date,due_day,agreement_terms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',[meter,tenant,unit,ref,amount,freq,start,end,day,String(b.terms||'')])).rows[0];
   await generateCharges(pool,l.id);await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_LEASE_CREATED',$1,$2,'DONE')",[meter,JSON.stringify({leaseId:l.id,tenant,unit,amount,frequency:freq,accountRef:ref})]);res.json({ok:true,lease:l});
  }));
  app.patch(admin+'/leases/:id',wrap(async(req,res)=>{
   const b=req.body||{},amount=Number(b.rentAmount),freq=String(b.billingFrequency||''),day=Number(b.dueDay||1),status=String(b.status||'active'),end=b.endDate?String(b.endDate).slice(0,10):null;
-  if(!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||day<1||day>28||!['active','ended','suspended'].includes(status))return res.status(400).json({ok:false,message:'Enter a valid rent amount, billing frequency, due day and status.'});
+  if(!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||day<1||day>28||!['active','ended','suspended'].includes(status)||(end&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)))return res.status(400).json({ok:false,message:'Enter a valid rent amount, billing frequency, due day and status.'});
   const client=await pool.connect();
   try{await client.query('BEGIN');
    const old=(await client.query('SELECT * FROM rent_leases WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];if(!old){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Tenancy not found.'});}
@@ -195,7 +195,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const type=String(req.query.type||'collections'),from=String(req.query.from||'2000-01-01'),to=String(req.query.to||todayNairobi());
   if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)return res.status(400).send('Invalid date range');
   if(type==='arrears'){
-   const rows=(await pool.query(`SELECT l.tenant_name,l.unit_label,l.rent_account_ref,c.period_start,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c JOIN rent_leases l ON l.id=c.lease_id LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.due_date<current_date GROUP BY c.id,l.id HAVING c.amount>COALESCE(sum(a.amount),0) ORDER BY c.due_date,l.unit_label`)).rows;
+   const rows=(await pool.query(`SELECT l.tenant_name,l.unit_label,l.rent_account_ref,c.period_start,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c JOIN rent_leases l ON l.id=c.lease_id LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.due_date<current_date AND c.due_date BETWEEN $1::date AND $2::date GROUP BY c.id,l.id HAVING c.amount>COALESCE(sum(a.amount),0) ORDER BY c.due_date,l.unit_label`,[from,to])).rows;
    return sendCsv(res,'mauriskade-arrears-'+from+'-'+to+'.csv',[['Tenant','Unit','Rent account','Period start','Due date','Charged KSh','Paid KSh','Balance KSh'],...rows.map(x=>[x.tenant_name,x.unit_label,x.rent_account_ref,x.period_start,x.due_date,x.amount,x.paid,x.balance])]);
   }
   if(type==='statements'){
