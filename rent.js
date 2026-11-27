@@ -23,7 +23,7 @@ async function allocateRentPayment(pool,id){
   const p=(await client.query('SELECT * FROM rent_payments WHERE id=$1 FOR UPDATE',[id])).rows[0];
   if(!p||!p.lease_id||!['confirmed','unallocated','allocated'].includes(p.status)){await client.query('COMMIT');return;}
   let left=Number(p.amount)-Number((await client.query('SELECT COALESCE(sum(amount),0)::int n FROM rent_allocations WHERE payment_id=$1',[id])).rows[0].n);
-  const charges=(await client.query("SELECT c.id,c.amount-COALESCE(a.paid,0)::int balance FROM rent_charges c LEFT JOIN (SELECT charge_id,sum(amount) paid FROM rent_allocations GROUP BY charge_id) a ON a.charge_id=c.id WHERE c.lease_id=$1 AND c.amount>COALESCE(a.paid,0) ORDER BY c.period_start FOR UPDATE OF c",[p.lease_id])).rows;
+  const charges=(await client.query("SELECT c.id,c.amount-COALESCE(a.paid,0)::int balance FROM rent_charges c LEFT JOIN (SELECT charge_id,sum(amount) paid FROM rent_allocations GROUP BY charge_id) a ON a.charge_id=c.id WHERE c.lease_id=$1 AND c.due_date<=current_date AND c.amount>COALESCE(a.paid,0) ORDER BY c.period_start FOR UPDATE OF c",[p.lease_id])).rows;
   for(const c of charges){if(left<=0)break;const n=Math.min(left,Number(c.balance));if(n>0){await client.query('INSERT INTO rent_allocations(payment_id,charge_id,amount) VALUES($1,$2,$3) ON CONFLICT(payment_id,charge_id) DO NOTHING',[id,c.id,n]);left-=n;}}
   await client.query("UPDATE rent_payments SET status='allocated',updated_at=now() WHERE id=$1",[id]);
   await client.query('COMMIT');
