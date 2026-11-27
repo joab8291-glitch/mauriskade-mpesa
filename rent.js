@@ -181,6 +181,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const client=await pool.connect();
   try{await client.query('BEGIN');
    const old=(await client.query('SELECT * FROM rent_leases WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];if(!old){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Tenancy not found.'});}
+   if((old.status==='ended'||(old.end_date&&old.end_date<todayNairobi()))&&(tenant!==old.tenant_name||unit!==old.unit_label||ref!==old.rent_account_ref)){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This tenancy is closed. Its tenant and room history are locked; create a new tenancy for the incoming occupant.'});}
    if(ref!==old.rent_account_ref&&(await client.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date) AND id<>$2",[ref,old.id])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'That rent account reference is already assigned to another active tenancy.'});}
    if(status==='active'&&(await client.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date) AND id<>$2",[old.meter_code,old.id])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This room already has another active tenancy. End it before activating this tenancy.'});}
    const changed=old.billing_frequency!==freq;
