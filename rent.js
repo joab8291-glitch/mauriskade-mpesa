@@ -1,0 +1,114 @@
+'use strict';
+const crypto = require('crypto');
+const FREQUENCIES = {monthly:1,quarterly:3,half_yearly:6,annually:12};
+const iso = d => d.toISOString().slice(0,10);
+const addMonths = (s,n) => { const d=new Date(s+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d; };
+const dueDate = (s,day) => {const d=new Date(s+'T00:00:00Z');d.setUTCDate(Math.min(Number(day)||1,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return iso(d);};
+const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const wrap = fn => (req,res,next)=>Promise.resolve(fn(req,res,next)).catch(e=>{console.error('rent route',req.method,req.path,e.message);if(!res.headersSent)res.status(500).json({ok:false,message:'Rental service error. Please try again.'});});
+
+async function allocateRentPayment(pool,id){
+ const client=await pool.connect();
+ try{
+  await client.query('BEGIN');
+  const p=(await client.query('SELECT * FROM rent_payments WHERE id=$1 FOR UPDATE',[id])).rows[0];
+  if(!p||!p.lease_id||!['confirmed','unallocated','allocated'].includes(p.status)){await client.query('COMMIT');return;}
+  let left=Number(p.amount)-Number((await client.query('SELECT COALESCE(sum(amount),0)::int n FROM rent_allocations WHERE payment_id=$1',[id])).rows[0].n);
+  const charges=(await client.query("SELECT c.id,c.amount-COALESCE(a.paid,0)::int balance FROM rent_charges c LEFT JOIN (SELECT charge_id,sum(amount) paid FROM rent_allocations GROUP BY charge_id) a ON a.charge_id=c.id WHERE c.lease_id=$1 AND c.amount>COALESCE(a.paid,0) ORDER BY c.period_start FOR UPDATE OF c",[p.lease_id])).rows;
+  for(const c of charges){if(left<=0)break;const n=Math.min(left,Number(c.balance));if(n>0){await client.query('INSERT INTO rent_allocations(payment_id,charge_id,amount) VALUES($1,$2,$3) ON CONFLICT(payment_id,charge_id) DO NOTHING',[id,c.id,n]);left-=n;}}
+  await client.query("UPDATE rent_payments SET status='allocated',updated_at=now() WHERE id=$1",[id]);
+  await client.query('COMMIT');
+ }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
+}
+async function generateCharges(pool,id){
+ const l=(await pool.query("SELECT * FROM rent_leases WHERE id=$1 AND status='active'",[id])).rows[0];if(!l)return 0;
+ const step=FREQUENCIES[l.billing_frequency],today=iso(new Date()),horizon=addMonths(today,18);let period=String(l.start_date).slice(0,10),count=0;
+ for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),end=new Date(next.getTime()-86400000);if(l.end_date&&period>String(l.end_date).slice(0,10))break;
+  const r=await pool.query('INSERT INTO rent_charges(lease_id,period_start,period_end,due_date,amount) VALUES($1,$2,$3,$4,$5) ON CONFLICT(lease_id,period_start) DO NOTHING',[id,period,iso(end),dueDate(period,l.due_day),l.rent_amount]);count+=r.rowCount;period=iso(next);}
+ const ps=(await pool.query("SELECT id FROM rent_payments WHERE lease_id=$1 AND status IN ('confirmed','unallocated','allocated') ORDER BY created_at",[id])).rows;for(const p of ps)await allocateRentPayment(pool,p.id);return count;
+}
+async function createReceipt(pool,id){
+ const p=(await pool.query('SELECT p.*,l.tenant_name,l.unit_label FROM rent_payments p LEFT JOIN rent_leases l ON l.id=p.lease_id WHERE p.id=$1',[id])).rows[0];if(!p||p.status==='pending'||p.status==='failed'||p.status==='review')return;
+ const n='MR-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+crypto.randomBytes(3).toString('hex').toUpperCase();
+ await pool.query('INSERT INTO rent_receipts(payment_id,receipt_number) VALUES($1,$2) ON CONFLICT(payment_id) DO NOTHING',[id,n]);
+}
+async function processRentStkCallback(pool,checkoutId,cb){
+ const p=(await pool.query('SELECT * FROM rent_payments WHERE checkout_request_id=$1',[checkoutId])).rows[0];if(!p)return false;
+ if(Number(cb.ResultCode)!==0){await pool.query("UPDATE rent_payments SET status='failed',raw_payload=$2,notes=$3,updated_at=now() WHERE id=$1 AND status='pending'",[p.id,JSON.stringify(cb),cb.ResultDesc||'M-Pesa payment failed']);return true;}
+ const items=Object.fromEntries(((cb.CallbackMetadata||{}).Item||[]).map(x=>[x.Name,x.Value])),amount=Number(items.Amount),receipt=items.MpesaReceiptNumber?String(items.MpesaReceiptNumber):null;
+ if(amount!==Number(p.amount)||!receipt){await pool.query("UPDATE rent_payments SET status='review',mpesa_receipt=COALESCE(mpesa_receipt,$2),raw_payload=$3,notes='M-Pesa amount or receipt mismatch; verify before allocating',updated_at=now() WHERE id=$1",[p.id,receipt,JSON.stringify(cb)]);return true;}
+ await pool.query("UPDATE rent_payments SET status='confirmed',mpesa_receipt=$2,payer_phone=COALESCE($3,payer_phone),raw_payload=$4,updated_at=now() WHERE id=$1 AND status='pending'",[p.id,receipt,items.PhoneNumber?String(items.PhoneNumber):null,JSON.stringify(cb)]);
+ await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);return true;
+}
+function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaPost,mpesaShortcode,callbackBaseUrl,callbackSecret}){
+ const customer=[requireUser,requireReady],admin='/api/admin/rent';
+ app.get('/api/me/rent',...customer,wrap(async(req,res)=>{
+  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' ORDER BY created_at DESC LIMIT 1",[req.user.meter_code])).rows[0];
+  if(!l)return res.json({ok:true,lease:null,charges:[],payments:[],credit:0,arrears:0});
+  await generateCharges(pool,l.id);
+  const charges=(await pool.query('SELECT c.id,c.period_start,c.period_end,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.lease_id=$1 GROUP BY c.id ORDER BY c.period_start DESC LIMIT 36',[l.id])).rows;
+  const payments=(await pool.query('SELECT p.id,p.amount,p.method,p.status,p.mpesa_receipt,p.created_at,r.id receipt_id,r.receipt_number FROM rent_payments p LEFT JOIN rent_receipts r ON r.payment_id=p.id WHERE p.lease_id=$1 ORDER BY p.created_at DESC LIMIT 50',[l.id])).rows;
+  const credit=(await pool.query("SELECT COALESCE(sum(p.amount),0)-COALESCE((SELECT sum(a.amount) FROM rent_allocations a JOIN rent_payments x ON x.id=a.payment_id WHERE x.lease_id=$1),0) n FROM rent_payments p WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated')",[l.id])).rows[0].n;
+  res.json({ok:true,lease:l,charges,payments,credit:Number(credit)||0,arrears:charges.filter(c=>c.due_date<iso(new Date())&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
+ }));
+ app.post('/api/me/rent/pay',...customer,wrap(async(req,res)=>{
+  const amount=Number(req.body&&req.body.amount),phone=normPhone(req.body&&req.body.phone);
+  if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)return res.status(400).json({ok:false,message:'Enter a valid rent amount.'});
+  if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
+  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active'",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
+  const id=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,method,status) VALUES($1,$2,$3,$4,'mpesa_stk','pending') RETURNING id",[l.id,l.rent_account_ref,phone,amount])).rows[0].id;
+  try{const stamp=new Date(Date.now()+10800000).toISOString().replace(/[-:T]/g,'').slice(0,14),pass=Buffer.from(String(mpesaShortcode)+process.env.MPESA_PASSKEY+stamp).toString('base64');
+   const j=await darajaPost('/mpesa/stkpush/v1/processrequest',{BusinessShortCode:mpesaShortcode,Password:pass,Timestamp:stamp,TransactionType:process.env.MPESA_TXN_TYPE||'CustomerPayBillOnline',Amount:amount,PartyA:phone,PartyB:process.env.MPESA_PARTYB||mpesaShortcode,PhoneNumber:phone,CallBackURL:callbackBaseUrl+'/api/mpesa/callback/'+callbackSecret,AccountReference:String(l.rent_account_ref).slice(0,12),TransactionDesc:'House rent'});
+   if(String(j.ResponseCode)!=='0'||!j.CheckoutRequestID)throw new Error(j.errorMessage||j.ResponseDescription||'M-Pesa rejected the request.');
+   await pool.query('UPDATE rent_payments SET checkout_request_id=$2,merchant_request_id=$3,updated_at=now() WHERE id=$1',[id,j.CheckoutRequestID,j.MerchantRequestID||null]);res.json({ok:true,paymentId:id});
+  }catch(e){await pool.query("UPDATE rent_payments SET status='failed',notes=$2,updated_at=now() WHERE id=$1",[id,e.message]);res.status(502).json({ok:false,message:'Could not start the rent payment prompt. Please try again.'});}
+ }));
+ app.get('/api/me/rent/receipt/:id',...customer,wrap(async(req,res)=>{
+  const p=(await pool.query('SELECT p.*,r.receipt_number,l.tenant_name,l.unit_label,l.rent_account_ref FROM rent_payments p JOIN rent_receipts r ON r.payment_id=p.id JOIN rent_leases l ON l.id=p.lease_id WHERE r.id=$1 AND l.meter_code=$2',[req.params.id,req.user.meter_code])).rows[0];if(!p)return res.status(404).send('Receipt not found');
+  const rows=[['Tenant',p.tenant_name],['Unit',p.unit_label],['Rent account',p.rent_account_ref],['Amount received','KSh '+Number(p.amount).toLocaleString('en-KE')],['Payment method',p.method],['M-Pesa receipt',p.mpesa_receipt||'—'],['Date',new Date(p.created_at).toLocaleString('en-KE',{timeZone:'Africa/Nairobi'})]];
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(p.receipt_number)+'</title><style>body{font:16px Arial;max-width:720px;margin:40px auto;color:#18384b;padding:24px}h1{color:#087f9b}table{width:100%;border-collapse:collapse}td{padding:12px;border-bottom:1px solid #ddd}@media print{button{display:none}}</style></head><body><h1>Mauriskade Apartments</h1><h2>Rent payment receipt</h2><p>'+esc(p.receipt_number)+'</p><table>'+rows.map(x=>'<tr><td>'+esc(x[0])+'</td><td><b>'+esc(x[1])+'</b></td></tr>').join('')+'</table><p>Thank you. Keep this receipt for your records.</p><button onclick="window.print()">Print / Save as PDF</button></body></html>';
+  res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="'+p.receipt_number+'.html"');res.send(html);
+ }));
+ app.get(admin+'/leases',wrap(async(_req,res)=>{
+  const items=(await pool.query('SELECT l.*,m.phone FROM rent_leases l JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC')).rows;res.json({ok:true,items});
+ }));
+ app.post(admin+'/leases',wrap(async(req,res)=>{
+  const b=req.body||{},meter=String(b.meterCode||''),tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim(),amount=Number(b.rentAmount),freq=String(b.billingFrequency||'monthly'),start=String(b.startDate||'').slice(0,10),day=Number(b.dueDay||1);
+  if(!meter||!tenant||!unit||!ref||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^\d{4}-\d{2}-\d{2}$/.test(start)||day<1||day>28)return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
+  if(!(await pool.query('SELECT 1 FROM meters WHERE meter_code=$1',[meter])).rowCount)return res.status(404).json({ok:false,message:'Select a registered meter.'});
+  if((await pool.query("SELECT 1 FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rowCount)return res.status(409).json({ok:false,message:'Rent account reference is already assigned.'});
+  await pool.query('UPDATE meters SET rent_account_ref=$2,tenant_name=$3,flat=$4 WHERE meter_code=$1',[meter,ref,tenant,unit]);
+  const l=(await pool.query('INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,agreement_terms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',[meter,tenant,unit,ref,amount,freq,start,day,String(b.terms||'')])).rows[0];
+  await generateCharges(pool,l.id);await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_LEASE_CREATED',$1,$2,'DONE')",[meter,JSON.stringify({leaseId:l.id,tenant,unit,amount,frequency:freq,accountRef:ref})]);res.json({ok:true,lease:l});
+ }));
+ app.post(admin+'/leases/:id/generate',wrap(async(req,res)=>res.json({ok:true,created:await generateCharges(pool,req.params.id)})));
+ app.get(admin+'/payments/unallocated',wrap(async(_req,res)=>res.json({ok:true,items:(await pool.query("SELECT * FROM rent_payments WHERE status IN ('unallocated','review') OR (lease_id IS NULL AND status='confirmed') ORDER BY created_at DESC LIMIT 200")).rows})));
+ app.post(admin+'/payments/:id/reconcile',wrap(async(req,res)=>{
+  const ref=String(req.body&&req.body.rentAccountRef||'').trim(),l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active tenancy matches that rent account.'});
+  const p=(await pool.query('SELECT * FROM rent_payments WHERE id=$1',[req.params.id])).rows[0];if(!p||p.status==='failed')return res.status(404).json({ok:false,message:'Payment not found or failed.'});if(p.lease_id&&p.lease_id!==l.id)return res.status(409).json({ok:false,message:'Payment belongs to another tenancy.'});
+  await pool.query("UPDATE rent_payments SET lease_id=$2,rent_account_ref=$3,status='confirmed',updated_at=now() WHERE id=$1",[p.id,l.id,l.rent_account_ref]);await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);
+  await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_PAYMENT_RECONCILED',$1,$2,'DONE')",[l.meter_code,JSON.stringify({paymentId:p.id,amount:p.amount,accountRef:ref})]);res.json({ok:true});
+ }));
+ app.post(admin+'/c2b/register',wrap(async(_req,res)=>{
+  const base=callbackBaseUrl.replace(/\/$/,'');const j=await darajaPost('/mpesa/c2b/v1/registerurl',{ShortCode:mpesaShortcode,ResponseType:'Completed',ConfirmationURL:base+'/api/mpesa/rent-c2b/'+callbackSecret+'/confirmation',ValidationURL:base+'/api/mpesa/rent-c2b/'+callbackSecret+'/validation'});res.json({ok:true,result:j});
+ }));
+ app.get(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
+  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});res.json({ok:true,lease:l,agreements:(await pool.query('SELECT * FROM tenancy_agreements WHERE lease_id=$1 ORDER BY version DESC',[l.id])).rows});
+ }));
+ app.post(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
+  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0],body=String(req.body&&req.body.body||'').trim(),title=String(req.body&&req.body.title||'Tenancy Agreement').trim();if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});if(body.length<100||body.length>30000)return res.status(400).json({ok:false,message:'Agreement must be between 100 and 30,000 characters.'});
+  const v=Number((await pool.query('SELECT COALESCE(max(version),0)+1 n FROM tenancy_agreements WHERE lease_id=$1',[l.id])).rows[0].n);const a=(await pool.query("INSERT INTO tenancy_agreements(lease_id,version,title,body,status) VALUES($1,$2,$3,$4,'draft') RETURNING *",[l.id,v,title,body])).rows[0];res.json({ok:true,agreement:a});
+ }));
+ app.post(admin+'/agreements/:id/issue',wrap(async(req,res)=>{
+  const a=(await pool.query("UPDATE tenancy_agreements SET status='issued',issued_at=now() WHERE id=$1 AND status='draft' RETURNING *",[req.params.id])).rows[0];if(!a)return res.status(404).json({ok:false,message:'Draft agreement not found.'});await pool.query("UPDATE tenancy_agreements SET status='superseded' WHERE lease_id=$1 AND id<>$2 AND status='issued'",[a.lease_id,a.id]);await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('TENANCY_AGREEMENT_ISSUED',$1,'DONE')",[JSON.stringify({agreementId:a.id,leaseId:a.lease_id,version:a.version})]);res.json({ok:true,agreement:a});
+ }));
+ app.post('/api/mpesa/rent-c2b/:secret/validation',(req,res)=>{if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);res.json({ResultCode:0,ResultDesc:'Accepted'});});
+ app.post('/api/mpesa/rent-c2b/:secret/confirmation',wrap(async(req,res)=>{
+  if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);const b=req.body||{},receipt=String(b.TransID||'').trim(),ref=String(b.BillRefNumber||'').trim(),amount=Math.round(Number(b.TransAmount));if(!receipt||!ref||!Number.isSafeInteger(amount)||amount<1)return res.json({ResultCode:0,ResultDesc:'Accepted'});
+  const l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rows[0],t=String(b.TransTime||''),time=/^\d{14}$/.test(t)?new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10)-3,+t.slice(10,12),+t.slice(12,14))).toISOString():null;
+  const p=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,method,status,mpesa_receipt,transaction_time,raw_payload) VALUES($1,$2,$3,$4,'mpesa_paybill',$5,$6,$7,$8) ON CONFLICT(mpesa_receipt) DO NOTHING RETURNING id",[l?l.id:null,ref,b.MSISDN?String(b.MSISDN):null,amount,l?'confirmed':'unallocated',receipt,time,JSON.stringify(b)])).rows[0];
+  if(p){if(l){await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);}await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_C2B_RECEIVED',$1,$2,'DONE')",[l?l.meter_code:null,JSON.stringify({receipt,amount,accountRef:ref,matched:!!l})]);}
+  res.json({ResultCode:0,ResultDesc:'Accepted'});
+ }));
+}
+module.exports={registerRentRoutes,processRentStkCallback,generateCharges,allocateRentPayment};
