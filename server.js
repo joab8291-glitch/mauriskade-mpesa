@@ -439,6 +439,9 @@ async function startPayment({ meter, phone, amount }) {
   await pool.query(
     `UPDATE transactions SET checkout_request_id=$2, merchant_request_id=$3, updated_at=now() WHERE id=$1`,
     [id, stk.CheckoutRequestID, stk.MerchantRequestID]);
+  // Safaricom accepted the request. If no prompt reaches the phone after this, the MPESA_CALLBACK
+  // (or STK_QUERY_RESULT) line for the same checkoutId says why.
+  log('STK_ACCEPTED', { transactionId: id, checkoutId: stk.CheckoutRequestID, customerMessage: stk.CustomerMessage });
   await pool.query(`UPDATE meters SET phone=$2 WHERE meter_code=$1 AND phone IS NULL`, [meter, phone]);
 
   return { status: 200, body: { ok: true, transactionId: id } };
@@ -796,6 +799,7 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
     const cb = req.body && req.body.Body && req.body.Body.stkCallback;
     if (!cb || !cb.CheckoutRequestID) return;
     const checkoutId = String(cb.CheckoutRequestID);
+    log('MPESA_CALLBACK', { checkoutId, resultCode: cb.ResultCode, resultDesc: cb.ResultDesc });
     if (await processRentStkCallback(pool, checkoutId, cb)) return; // Rent is a separate ledger: never pass rent into water-token issuance.
     const code = Number(cb.ResultCode);
     if (!Number.isFinite(code)) { log('callback without ResultCode', checkoutId); return; }
@@ -1353,6 +1357,7 @@ async function worker() {
       try {
         const q = await stkQuery(r.checkout_request_id);
         if (q.ResultCode === undefined) continue; // still being processed
+        log('STK_QUERY_RESULT', { transactionId: r.id, checkoutId: r.checkout_request_id, resultCode: q.ResultCode, resultDesc: q.ResultDesc });
         if (String(q.ResultCode) === '0') {
           const c = await pool.query(
             `UPDATE transactions SET status='PAID', updated_at=now()
