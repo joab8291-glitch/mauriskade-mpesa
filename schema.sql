@@ -132,3 +132,71 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- ----------------------- rental-management ledger -----------------------
+-- Rent is deliberately separate from water transactions: rent payments never issue STS tokens.
+CREATE TABLE IF NOT EXISTS public.rent_leases (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ meter_code text NOT NULL REFERENCES public.meters(meter_code),
+ tenant_name text NOT NULL,
+ unit_label text NOT NULL,
+ rent_account_ref text NOT NULL,
+ rent_amount integer NOT NULL CHECK (rent_amount > 0),
+ billing_frequency text NOT NULL CHECK (billing_frequency IN ('monthly','quarterly','half_yearly','annually')),
+ start_date date NOT NULL,
+ end_date date,
+ due_day integer NOT NULL DEFAULT 1 CHECK (due_day BETWEEN 1 AND 28),
+ status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','ended','suspended')),
+ agreement_terms text,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rent_leases_meter_idx ON public.rent_leases(meter_code,status);
+CREATE INDEX IF NOT EXISTS rent_leases_ref_idx ON public.rent_leases(rent_account_ref);
+CREATE TABLE IF NOT EXISTS public.rent_charges (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ lease_id uuid NOT NULL REFERENCES public.rent_leases(id),
+ period_start date NOT NULL, period_end date NOT NULL, due_date date NOT NULL,
+ amount integer NOT NULL CHECK(amount > 0), created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(lease_id,period_start)
+);
+CREATE INDEX IF NOT EXISTS rent_charges_due_idx ON public.rent_charges(lease_id,due_date);
+CREATE TABLE IF NOT EXISTS public.rent_payments (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ lease_id uuid REFERENCES public.rent_leases(id),
+ rent_account_ref text NOT NULL, payer_phone text,
+ amount integer NOT NULL CHECK(amount > 0),
+ method text NOT NULL CHECK(method IN ('mpesa_stk','mpesa_paybill','manual')),
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','failed','unallocated','allocated','review')),
+ checkout_request_id text UNIQUE, merchant_request_id text, mpesa_receipt text UNIQUE,
+ transaction_time timestamptz, raw_payload jsonb NOT NULL DEFAULT '{}'::jsonb, notes text,
+ created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rent_payments_lease_idx ON public.rent_payments(lease_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS rent_payments_status_idx ON public.rent_payments(status,created_at DESC);
+CREATE TABLE IF NOT EXISTS public.rent_allocations (
+ id bigserial PRIMARY KEY, payment_id uuid NOT NULL REFERENCES public.rent_payments(id),
+ charge_id uuid NOT NULL REFERENCES public.rent_charges(id), amount integer NOT NULL CHECK(amount > 0),
+ created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(payment_id,charge_id)
+);
+CREATE TABLE IF NOT EXISTS public.tenancy_agreements (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), lease_id uuid NOT NULL REFERENCES public.rent_leases(id),
+ version integer NOT NULL DEFAULT 1, title text NOT NULL DEFAULT 'Tenancy Agreement',
+ body text NOT NULL, status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','issued','superseded')),
+ issued_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(lease_id,version)
+);
+CREATE TABLE IF NOT EXISTS public.rent_receipts (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), payment_id uuid NOT NULL UNIQUE REFERENCES public.rent_payments(id),
+ receipt_number text NOT NULL UNIQUE, issued_at timestamptz NOT NULL DEFAULT now()
+);
+DO $$
+DECLARE t text;
+BEGIN
+ FOREACH t IN ARRAY ARRAY['rent_leases','rent_charges','rent_payments','rent_allocations','tenancy_agreements','rent_receipts'] LOOP
+  EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, anon, authenticated',t);
+  EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=t AND policyname='deny_client_api_access') THEN
+   EXECUTE format('CREATE POLICY deny_client_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',t);
+  END IF;
+ END LOOP;
+END $$;
