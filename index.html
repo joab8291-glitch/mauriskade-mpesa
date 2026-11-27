@@ -507,14 +507,29 @@ main[data-portal-tab="rent"] #view-rent{display:block}
     $('#view-help').hidden = name !== 'pay';
     $('#recent').hidden = !((name === 'pay' || side) && recentCount > 0);
     $('#userMenu').hidden = name === 'login';
+    $('#portalNav').hidden = name === 'login' || name === 'pw';
     $('#pwBack').hidden = !(name === 'pw' && me && !me.mustChange);
     $('#meterBadge').hidden = name === 'login' || !me;
     $('main').dataset.state = name;
     document.body.dataset.state = name;
+    if(name === 'login' || name === 'pw') $('main').dataset.portalTab='';
+    else if(side || name === 'pay') setPortalTab('water');
     menu(false);
-    if (focus) $('#h-' + name).focus({ preventScroll: false });
+    if (focus && $('#h-' + name)) $('#h-' + name).focus({ preventScroll: false });
   }
 
+  function setPortalTab(name){
+    const allowed=['overview','water','rent','payments','agreement'];
+    if(!allowed.includes(name))name='overview';
+    if(name==='rent'&&$('#rentTab').hidden)name='water';
+    if(name==='agreement'&&$('#agreementTab').hidden)name='water';
+    $('main').dataset.portalTab=name;
+    document.querySelectorAll('[data-portal-tab]').forEach(b=>{const active=b.dataset.portalTab===name;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false');});
+    $('#portalNav').hidden=false;
+    menu(false);
+  }
+  document.querySelectorAll('[data-portal-tab]').forEach(b=>b.addEventListener('click',()=>setPortalTab(b.dataset.portalTab)));
+  document.querySelectorAll('[data-go-tab]').forEach(b=>b.addEventListener('click',()=>setPortalTab(b.dataset.goTab)));
   function msg(sel, text, isErr) {
     const el = $(sel);
     el.textContent = text || '';
@@ -633,6 +648,8 @@ main[data-portal-tab="rent"] #view-rent{display:block}
     msg('#payMsg', '');
     scheduleQuote();
     show('pay');
+    $('#portalTenantName').textContent=me.name||me.tenant_name||me.username||'Tenant';
+    setPortalTab('overview');
     loadRecent();
     loadMonthlyUsage();
     loadRentAccount();
@@ -643,9 +660,12 @@ main[data-portal-tab="rent"] #view-rent{display:block}
       const j = await api('/api/me/usage');
       $('#monthWater').textContent = Number(j.monthVolume).toFixed(2) + ' m³';
       $('#usageMeter').textContent = 'Meter ' + shortMeter(j.meter);
+      $('#portalWaterUsage').textContent=Number(j.monthVolume).toFixed(2)+' m³';
+      $('#portalWaterMeter').textContent='Meter '+shortMeter(j.meter);
     } catch (err) {
       $('#monthWater').textContent = 'Unavailable';
       $('#usageMeter').textContent = '';
+      $('#portalWaterUsage').textContent='Unavailable';
       if (err.status === 401) sessionEnded();
     }
   }
@@ -654,11 +674,13 @@ main[data-portal-tab="rent"] #view-rent{display:block}
     const panel=$('#view-rent');
     try {
       const j=await api('/api/me/rent');
-      if(!j.lease){panel.hidden=true;return;}
-      panel.hidden=false;
+      if(!j.lease){panel.hidden=true;$('#rentTab').hidden=true;$('#portalRentStat').hidden=true;$('#portalRentQuick').hidden=true;$('#portalRentHistoryWrap').hidden=true;return;}
+      panel.hidden=false;$('#rentTab').hidden=false;$('#portalRentStat').hidden=false;$('#portalRentQuick').hidden=false;$('#portalRentHistoryWrap').hidden=false;
       $('#rentPeriodAmount').textContent='KSh '+fmt(j.lease.rent_amount);
       $('#rentFrequencyLabel').textContent=j.lease.billing_frequency.replace('_',' ');
       $('#rentArrears').textContent='KSh '+fmt(j.arrears);
+      $('#portalRentBalance').textContent='KSh '+fmt(j.arrears);
+      $('#portalRentFrequency').textContent='KSh '+fmt(j.lease.rent_amount)+' · '+j.lease.billing_frequency.replace('_',' ');
       $('#rentCredit').textContent='Available credit: KSh '+fmt(j.credit);
       $('#rentAccountInfo').textContent='Paybill: '+j.paybill+' · Rent account reference: '+j.lease.rent_account_ref+' · Unit: '+j.lease.unit_label;
       const leaseExpired=!!j.lease.end_date&&String(j.lease.end_date).slice(0,10)<new Date().toISOString().slice(0,10);$('#rentPayBtn').disabled=j.lease.status!=='active'||leaseExpired;
@@ -669,6 +691,11 @@ main[data-portal-tab="rent"] #view-rent{display:block}
       $('#rentPaymentRows').innerHTML=j.payments.map(p=>'<tr><td>'+dateOf(p.created_at)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+escRent(p.status)+'</td><td>'+escRent(p.mpesa_receipt||'—')+'</td><td>'+(p.receipt_id?'<a href="/api/me/rent/receipt/'+encodeURIComponent(p.receipt_id)+'">Download</a>':'—')+'</td></tr>').join('')||'<tr><td colspan="5">No rent payments yet.</td></tr>';
       $('#rentAgreementWrap').hidden=!j.agreement;
       $('#rentAgreement').textContent=j.agreement?j.agreement.title+' · Version '+j.agreement.version+'\n\n'+j.agreement.body:'';
+      $('#agreementTab').hidden=!j.agreement;
+      $('#portalAgreementStat').hidden=!j.agreement;
+      $('#portalAgreementMeta').textContent=j.agreement?j.agreement.title+' · Version '+j.agreement.version+' · Issued '+dateOf(j.agreement.issued_at):'';
+      $('#portalAgreementBody').textContent=j.agreement?j.agreement.body:'';
+      $('#portalRentHistory').innerHTML=j.payments.map(p=>'<tr><td>'+dateOf(p.created_at)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+escRent(p.status)+'</td><td>'+escRent(p.mpesa_receipt||'—')+'</td><td>'+(p.receipt_id?'<a href="/api/me/rent/receipt/'+encodeURIComponent(p.receipt_id)+'">Download receipt</a>':'—')+'</td></tr>').join('')||'<tr><td colspan="5">No rent payments yet.</td></tr>';
     } catch(err){panel.hidden=true;if(err.status===401)sessionEnded();}
   }
   const escRent = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -720,6 +747,8 @@ main[data-portal-tab="rent"] #view-rent{display:block}
     const list = items.filter((t) => t.status !== 'waiting_for_payment' || Date.now() - new Date(t.createdAt) < 30 * 60000);
     recentCount = list.length;
     $('#recent').hidden = recentCount === 0 || $('#view-pay').hidden;
+    $('#portalWaterPayments').textContent=String(list.length);
+    $('#portalWaterHistory').innerHTML=list.map(t=>'<tr><td>'+dateOf(t.createdAt)+'</td><td>KSh '+fmt(t.amount)+'</td><td>'+(typeof t.volume==='number'?t.volume.toFixed(2)+' m³':'—')+'</td><td>'+escRent(t.receipt||'—')+'</td><td>'+(t.status==='done'&&t.token?'<span class="mono">'+escRent(String(t.token).slice(0,4)+'…')+'</span>':'—')+'</td><td>'+(t.status==='done'&&t.receipt?'<a href="/api/me/transactions/'+encodeURIComponent(t.id)+'/receipt">Download</a>':'—')+'</td></tr>').join('')||'<tr><td colspan="6">No water payments yet.</td></tr>';
     const body = $('#recentList');
     body.textContent = '';
     for (const t of list) {
