@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const express = require('express');
 const { Pool } = require('pg');
+const { registerRentRoutes, processRentStkCallback } = require('./rent');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -721,6 +722,7 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
     const cb = req.body && req.body.Body && req.body.Body.stkCallback;
     if (!cb || !cb.CheckoutRequestID) return;
     const checkoutId = String(cb.CheckoutRequestID);
+    if (await processRentStkCallback(pool, checkoutId, cb)) return; // Rent is a separate ledger: never pass rent into water-token issuance.
     const code = Number(cb.ResultCode);
     if (!Number.isFinite(code)) { log('callback without ResultCode', checkoutId); return; }
 
@@ -799,6 +801,9 @@ function adminAuth(req, res, next) {
   next();
 }
 app.use('/api/admin', adminLimit, adminAuth);
+
+registerRentRoutes({ app, pool, requireUser, requireReady, normPhone, darajaPost,
+  mpesaShortcode: MPESA_SHORTCODE, callbackBaseUrl: CALLBACK_BASE_URL, callbackSecret: CALLBACK_SECRET });
 
 app.get('/api/admin/summary', wrap(async (_req, res) => {
   const r = (await pool.query(
