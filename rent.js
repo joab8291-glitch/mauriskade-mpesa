@@ -33,6 +33,26 @@ async function createReceipt(pool,id){
  const n='MR-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+crypto.randomBytes(3).toString('hex').toUpperCase();
  await pool.query('INSERT INTO rent_receipts(payment_id,receipt_number) VALUES($1,$2) ON CONFLICT(payment_id) DO NOTHING',[id,n]);
 }
+
+function makeReceiptPdf(lines) {
+ const clean=v=>String(v??'').normalize('NFKD').replace(/[^\\x20-\\x7E]/g,'?').replace(/\\\\/g,'\\\\\\\\').replace(/\\(/g,'\\\\(').replace(/\\)/g,'\\\\)');
+ const ops=['BT /F1 20 Tf 50 790 Td ('+clean('Mauriskade Apartments')+') Tj','/F1 15 Tf 0 -34 Td ('+clean('RENT PAYMENT RECEIPT')+') Tj','/F1 10 Tf 0 -22 Td ('+clean('Official payment record')+') Tj','/F1 11 Tf'];
+ for(const line of lines)ops.push('0 -25 Td ('+clean(line)+') Tj');
+ ops.push('ET');
+ const stream=ops.join('\\n'),objects=[
+  '<< /Type /Catalog /Pages 2 0 R >>',
+  '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+  '<< /Length '+Buffer.byteLength(stream)+' >>\\nstream\\n'+stream+'\\nendstream',
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+ ];
+ let pdf='%PDF-1.4\\n',offsets=[0];
+ for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf));pdf+=(i+1)+' 0 obj\\n'+objects[i]+'\\nendobj\\n';}
+ const xref=Buffer.byteLength(pdf);pdf+='xref\\n0 6\\n0000000000 65535 f \\n';
+ for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \\n';
+ pdf+='trailer\\n<< /Size 6 /Root 1 0 R >>\\nstartxref\\n'+xref+'\\n%%EOF';
+ return Buffer.from(pdf,'binary');
+}
 async function processRentStkCallback(pool,checkoutId,cb){
  const p=(await pool.query('SELECT * FROM rent_payments WHERE checkout_request_id=$1',[checkoutId])).rows[0];if(!p)return false;
  if(Number(cb.ResultCode)!==0){await pool.query("UPDATE rent_payments SET status='failed',raw_payload=$2,notes=$3,updated_at=now() WHERE id=$1 AND status='pending'",[p.id,JSON.stringify(cb),cb.ResultDesc||'M-Pesa payment failed']);return true;}
@@ -69,9 +89,21 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  app.get('/api/me/rent/payment/:id',...customer,wrap(async(req,res)=>{const p=(await pool.query('SELECT id,status,amount,mpesa_receipt,created_at FROM rent_payments WHERE id=$1 AND lease_id IN (SELECT id FROM rent_leases WHERE meter_code=$2)',[req.params.id,req.user.meter_code])).rows[0];if(!p)return res.status(404).json({ok:false,message:'Rent payment not found.'});res.json({ok:true,payment:p});}));
  app.get('/api/me/rent/receipt/:id',...customer,wrap(async(req,res)=>{
   const p=(await pool.query('SELECT p.*,r.receipt_number,l.tenant_name,l.unit_label,l.rent_account_ref FROM rent_payments p JOIN rent_receipts r ON r.payment_id=p.id JOIN rent_leases l ON l.id=p.lease_id WHERE r.id=$1 AND l.meter_code=$2',[req.params.id,req.user.meter_code])).rows[0];if(!p)return res.status(404).send('Receipt not found');
-  const rows=[['Tenant',p.tenant_name],['Unit',p.unit_label],['Rent account',p.rent_account_ref],['Amount received','KSh '+Number(p.amount).toLocaleString('en-KE')],['Payment method',p.method],['M-Pesa receipt',p.mpesa_receipt||'—'],['Date',new Date(p.created_at).toLocaleString('en-KE',{timeZone:'Africa/Nairobi'})]];
-  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(p.receipt_number)+'</title><style>body{font:16px Arial;max-width:720px;margin:40px auto;color:#18384b;padding:24px}h1{color:#087f9b}table{width:100%;border-collapse:collapse}td{padding:12px;border-bottom:1px solid #ddd}@media print{button{display:none}}</style></head><body><h1>Mauriskade Apartments</h1><h2>Rent payment receipt</h2><p>'+esc(p.receipt_number)+'</p><table>'+rows.map(x=>'<tr><td>'+esc(x[0])+'</td><td><b>'+esc(x[1])+'</b></td></tr>').join('')+'</table><p>Thank you. Keep this receipt for your records.</p><button onclick="window.print()">Print / Save as PDF</button></body></html>';
-  res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="'+p.receipt_number+'.html"');res.send(html);
+  const lines=[
+   'Receipt: '+p.receipt_number,
+   'Tenant: '+p.tenant_name,
+   'Unit: '+p.unit_label,
+   'Rent account: '+p.rent_account_ref,
+   'Amount received: KSh '+Number(p.amount).toLocaleString('en-KE'),
+   'Payment method: '+p.method,
+   'M-Pesa receipt: '+(p.mpesa_receipt||'Not applicable'),
+   'Date: '+new Date(p.created_at).toLocaleString('en-KE',{timeZone:'Africa/Nairobi'}),
+   'Status: Confirmed'
+  ];
+  const pdf=makeReceiptPdf(lines);
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename="'+p.receipt_number+'.pdf"');
+  res.send(pdf);
  }));
  app.get(admin+'/leases',wrap(async(_req,res)=>{
   const items=(await pool.query('SELECT l.*,m.phone FROM rent_leases l JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC')).rows;res.json({ok:true,items});
