@@ -287,8 +287,8 @@ tr:hover td{background:#f7fbfc}
 
     <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing</h2><p class="muted small">Current pricing and payment limits from the backend.</p><div id="priceBox" class="notice" style="margin-top:12px">Loading pricing…</div></section>
     <section class="panel hidden" data-tab="rent">
-      <div class="rent-page-head"><div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div><nav class="rent-feature-nav" aria-label="Rent management pages"><button type="button" data-rent-page="create">＋ Create tenancy</button><button type="button" data-rent-page="tenancies">Tenancies & rent schedules</button><button type="button" data-rent-page="reconcile">Paybill reconciliation</button><button type="button" data-rent-page="agreements">Tenancy agreements</button></nav></div>
-      <div id="rent-create" class="rent-view panel" data-rent-view="create" style="box-shadow:none;margin-top:16px" style="box-shadow:none;margin-top:16px">
+      <div class="rent-page-head"><div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div><nav class="rent-feature-nav" aria-label="Rent management pages"><button type="button" data-rent-page="create">＋ Create tenancy</button><button type="button" data-rent-page="tenancies">Tenancies & rent schedules</button><button type="button" data-rent-page="reconcile">Paybill reconciliation</button><button type="button" data-rent-page="agreements">Tenancy agreements</button><button type="button" data-rent-page="reports">Reports & occupancy</button></nav></div>
+      <div id="rent-create" class="rent-view panel" data-rent-view="create" style="box-shadow:none;margin-top:16px">
         <h3 class="section-title">Create tenancy / rent account</h3>
         <form id="rentLeaseForm" class="form">
           <label>Hydro meter <select id="rentMeter" required><option value="">Select registered meter</option></select></label>
@@ -298,26 +298,45 @@ tr:hover td{background:#f7fbfc}
           <label>Rent amount per billing period (KSh) <input id="rentAmount" type="number" min="1" step="1" required></label>
           <label>Billing frequency <select id="rentFrequency"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="half_yearly">Half-yearly</option><option value="annually">Annually</option></select></label>
           <label>Tenancy start date <input id="rentStart" type="date" required></label>
+          <label>Tenancy end date (optional) <input id="rentEnd" type="date"></label>
           <label>Rent due day of month (1–28) <input id="rentDueDay" type="number" min="1" max="28" value="1" required></label>
           <label>Agreement terms / notes <textarea id="rentTerms" rows="3"></textarea></label>
           <button type="submit">Create tenancy and generate rent schedule</button><p id="rentFormMsg" class="muted small"></p>
         </form>
       </div>
-      <div id="rent-tenancies" class="rent-view panel hidden" data-rent-view="tenancies" style="box-shadow:none" style="box-shadow:none">
+      <div id="rent-tenancies" class="rent-view panel hidden" data-rent-view="tenancies" style="box-shadow:none">
         <div class="bar"><h3 class="section-title">Tenants and rent schedules</h3><span class="muted small" id="rentLeaseCount"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Rent account</th><th>Rent / frequency</th><th>Tenancy</th><th>Actions</th></tr></thead><tbody id="rentLeaseRows"><tr><td colspan="5" class="empty">Load rent records.</td></tr></tbody></table></div>
       </div>
-      <div id="rent-unmatched" class="rent-view panel hidden" data-rent-view="reconcile" style="box-shadow:none" style="box-shadow:none">
+      <div id="rent-unmatched" class="rent-view panel hidden" data-rent-view="reconcile" style="box-shadow:none">
         <div class="bar"><div><h3 class="section-title">Unmatched Paybill payments</h3><p class="muted small">C2B confirmations are captured here when the account reference does not match an active tenancy. Reconcile only after checking the Paybill statement.</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Paybill reference</th><th>Amount</th><th>M-Pesa receipt</th><th>Reconcile to rent account</th></tr></thead><tbody id="rentUnmatchedRows"><tr><td colspan="5" class="empty">No unmatched payments loaded.</td></tr></tbody></table></div>
       </div>
-      <div id="rent-agreements" class="rent-view panel hidden" data-rent-view="agreements" style="box-shadow:none" style="box-shadow:none">
+      <div id="rent-agreements" class="rent-view panel hidden" data-rent-view="agreements" style="box-shadow:none">
         <h3 class="section-title">Tenancy agreement editor</h3><p class="muted small">Select a tenant, prepare or revise the agreement, save it as a draft, then issue the approved version. Issued versions are retained in the audit history.</p>
         <label>Tenant / unit <select id="agreementLease"><option value="">Select tenancy</option></select></label>
         <label>Agreement title <input id="agreementTitle" value="Tenancy Agreement"></label>
         <label>Agreement text <textarea id="agreementBody" rows="12" placeholder="Enter the complete agreement terms, parties, rent, deposit, payment dates, obligations, termination and signatures."></textarea></label>
         <div class="actions"><button class="secondary" id="agreementLoad">Load latest version</button><button id="agreementSave">Save draft</button><button class="secondary" id="agreementIssue">Issue saved draft</button></div>
         <p id="agreementMsg" class="muted small"></p>
+      </div>
+      <div id="rent-reports" class="rent-view panel hidden" data-rent-view="reports" style="box-shadow:none">
+        <div class="bar"><div><h3 class="section-title">Rent dashboard & reports</h3><p class="muted small">Collections, balances, occupancy and exportable financial records.</p></div><div class="actions"><label class="small">From <input id="rentReportFrom" type="date"></label><label class="small">To <input id="rentReportTo" type="date"></label><button id="rentReportRefresh">Run report</button></div></div>
+        <div class="grid" id="rentReportKpis">
+          <div class="stat"><span>Total expected rent</span><strong id="rentExpected">—</strong><small>Selected period</small></div>
+          <div class="stat"><span>Collected</span><strong id="rentCollected">—</strong><small>Confirmed payments</small></div>
+          <div class="stat"><span>Outstanding</span><strong id="rentOutstanding">—</strong><small>Unpaid scheduled charges</small></div>
+          <div class="stat"><span>Overdue rent</span><strong id="rentOverdue">—</strong><small>Past due date</small></div>
+          <div class="stat"><span>Collection performance</span><strong id="rentPerformance">—</strong><small>Collected ÷ expected</small></div>
+          <div class="stat"><span>Occupancy</span><strong id="rentOccupancy">—</strong><small id="rentVacancy">Vacancies —</small></div>
+        </div>
+        <h4 class="section-title">Monthly collection performance</h4>
+        <div class="table-wrap"><table><thead><tr><th>Month</th><th>Expected (KSh)</th><th>Collected (KSh)</th><th>Performance</th></tr></thead><tbody id="rentMonthRows"><tr><td colspan="4" class="empty">Run a report.</td></tr></tbody></table></div>
+        <h4 class="section-title">Overdue tenant accounts</h4>
+        <div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Rent account</th><th>Oldest overdue</th><th>Balance (KSh)</th></tr></thead><tbody id="rentArrearsRows"><tr><td colspan="4" class="empty">Run a report.</td></tr></tbody></table></div>
+        <h4 class="section-title">Export reports</h4>
+        <div class="actions"><button class="secondary" data-rent-export="collections">Monthly collections CSV</button><button class="secondary" data-rent-export="arrears">Arrears report CSV</button><label>Tenant statement <select id="rentStatementLease"><option value="">Select tenant</option></select></label><button data-rent-export="statements">Download statement CSV</button></div>
+        <p class="muted small">Exports use the selected date range. Tenant statements include rent charges, payments and allocations.</p>
       </div>
     </section>
 
@@ -348,13 +367,13 @@ async function loadRent(){
  const [leases,unmatched,meters]=await Promise.all([api('/api/admin/rent/leases'),api('/api/admin/rent/payments/unallocated'),api('/api/admin/meters?offset=0')]);
  $('#rentMeter').innerHTML='<option value="">Select registered meter</option>'+meters.items.map(m=>'<option value="'+esc(m.meter_code)+'">'+esc((m.flat||m.tenant_name||m.meter_code)+' · '+m.meter_code)+'</option>').join('');
  $('#rentLeaseCount').textContent=leases.items.length+' tenancies';
- $('#rentLeaseRows').innerHTML=leases.items.map(l=>'<tr><td><b>'+esc(l.tenant_name)+'</b><br><span class="muted small">'+esc(l.unit_label)+'</span></td><td>'+esc(l.rent_account_ref)+'</td><td>KSh '+fmt(l.rent_amount)+' / '+esc(l.billing_frequency.replace('_',' '))+'</td><td>'+esc(l.start_date)+' · '+esc(l.status)+'</td><td><button class="secondary" data-agreement="'+esc(l.id)+'">Agreement</button><button class="secondary" data-edit-rent="'+esc(l.id)+'" data-amount="'+esc(l.rent_amount)+'" data-frequency="'+esc(l.billing_frequency)+'" data-day="'+esc(l.due_day)+'" data-status="'+esc(l.status)+'">Edit rent</button></td></tr>').join('')||'<tr><td colspan="5" class="empty">No tenancies created yet.</td></tr>';
- $('#agreementLease').innerHTML='<option value="">Select tenancy</option>'+leases.items.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.tenant_name+' · '+l.unit_label+' · '+l.rent_account_ref)+'</option>').join('');
+ $('#rentLeaseRows').innerHTML=leases.items.map(l=>'<tr><td><b>'+esc(l.tenant_name)+'</b><br><span class="muted small">'+esc(l.unit_label)+'</span></td><td>'+esc(l.rent_account_ref)+'</td><td>KSh '+fmt(l.rent_amount)+' / '+esc(l.billing_frequency.replace('_',' '))+'</td><td>'+esc(l.start_date)+' – '+esc(l.end_date||'Open-ended')+' · '+esc(l.status)+'</td><td><button class="secondary" data-agreement="'+esc(l.id)+'">Agreement</button><button class="secondary" data-edit-rent="'+esc(l.id)+'" data-amount="'+esc(l.rent_amount)+'" data-frequency="'+esc(l.billing_frequency)+'" data-day="'+esc(l.due_day)+'" data-status="'+esc(l.status)+'">Edit rent</button></td></tr>').join('')||'<tr><td colspan="5" class="empty">No tenancies created yet.</td></tr>';
+ $('#agreementLease').innerHTML='<option value="">Select tenancy</option>'+leases.items.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.tenant_name+' · '+l.unit_label+' · '+l.rent_account_ref)+'</option>').join('');$('#rentStatementLease').innerHTML='<option value="">Select tenant</option>'+leases.items.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.tenant_name+' · '+l.unit_label)+'</option>').join('');
  $('#rentUnmatchedRows').innerHTML=unmatched.items.map(p=>'<tr><td>'+esc(new Date(p.created_at).toLocaleString())+'</td><td>'+esc(p.rent_account_ref)+'</td><td>KSh '+fmt(p.amount)+'</td><td>'+esc(p.mpesa_receipt||'—')+'</td><td><div class="row-actions"><input data-rentref="'+esc(p.id)+'" placeholder="Rent account ref"><button data-reconcile="'+esc(p.id)+'">Reconcile</button></div></td></tr>').join('')||'<tr><td colspan="5" class="empty">No unmatched Paybill payments.</td></tr>';
 }
 $('#rentRefresh').addEventListener('click',()=>loadRent().then(()=>say('Rent records refreshed.')).catch(e=>say(e.message,true)));
 
-$('#rentLeaseForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('#rentFormMsg');b.textContent='Creating tenancy…';try{await post('/api/admin/rent/leases',{meterCode:$('#rentMeter').value,tenantName:$('#rentTenant').value,unitLabel:$('#rentUnit').value,rentAccountRef:$('#rentRef').value,rentAmount:Number($('#rentAmount').value),billingFrequency:$('#rentFrequency').value,startDate:$('#rentStart').value,dueDay:Number($('#rentDueDay').value),terms:$('#rentTerms').value});e.target.reset();$('#rentDueDay').value='1';b.textContent='Tenancy created and rent schedule generated.';await loadRent();}catch(x){b.textContent=x.message}});
+$('#rentLeaseForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('#rentFormMsg');b.textContent='Creating tenancy…';try{await post('/api/admin/rent/leases',{meterCode:$('#rentMeter').value,tenantName:$('#rentTenant').value,unitLabel:$('#rentUnit').value,rentAccountRef:$('#rentRef').value,rentAmount:Number($('#rentAmount').value),billingFrequency:$('#rentFrequency').value,startDate:$('#rentStart').value,endDate:$('#rentEnd').value||null,dueDay:Number($('#rentDueDay').value),terms:$('#rentTerms').value});e.target.reset();$('#rentDueDay').value='1';b.textContent='Tenancy created and rent schedule generated.';await loadRent();}catch(x){b.textContent=x.message}});
 $('#rentUnmatchedRows').addEventListener('click',async e=>{const b=e.target.closest('[data-reconcile]');if(!b)return;const id=b.dataset.reconcile,ref=$('[data-rentref="'+id+'"]').value.trim();if(!ref)return say('Enter the tenant rent account reference.',true);try{await post('/api/admin/rent/payments/'+id+'/reconcile',{rentAccountRef:ref});say('Payment reconciled and allocated to rent.');await loadRent();}catch(x){say(x.message,true)}});
 $('#rentLeaseRows').addEventListener('click',e=>{const b=e.target.closest('[data-agreement]');if(!b)return;$('#agreementLease').value=b.dataset.agreement;loadAgreement().catch(x=>say(x.message,true));});
 $('#rentLeaseRows').addEventListener('click',async e=>{const b=e.target.closest('[data-edit-rent]');if(!b)return;const amount=prompt('Rent amount per billing period (KSh):',b.dataset.amount);if(amount===null)return;const frequency=prompt('Frequency: monthly, quarterly, half_yearly, annually',b.dataset.frequency);if(frequency===null)return;const dueDay=prompt('Due day (1–28):',b.dataset.day);if(dueDay===null)return;const status=prompt('Status: active, suspended, ended',b.dataset.status);if(status===null)return;try{await api('/api/admin/rent/leases/'+b.dataset.editRent,{method:'PATCH',body:JSON.stringify({rentAmount:Number(amount),billingFrequency:frequency,dueDay:Number(dueDay),status})});say('Rent terms updated. Existing allocated payments were preserved.');await loadRent();}catch(x){say(x.message,true)}});
@@ -383,6 +402,18 @@ $('#loadReview').addEventListener('click',()=>loadReview().then(()=>say('Review 
 $('#reviews').addEventListener('click',async e=>{const b=e.target.closest('button[data-review]');if(!b)return;const action=b.dataset.review,id=b.dataset.id;try{let body={action};if(action==='adopt')body.token=b.dataset.token;if(action==='retry'&&!confirm('Have you checked Hydro recharge records and confirmed no token was issued?'))return;if(action==='close'){body.note=prompt('Reason for closing this case:','Reviewed by admin')||'Reviewed by admin';if(!confirm('Close this case?'))return}await post('/api/admin/review/'+encodeURIComponent(id),body);await loadReview();await loadSummary();say('Review action completed.')}catch(x){say(x.message,true)}});
 /* ---- Hydro app features ---- */
 let feat={};
+
+function rentReportRange(){return {from:$('#rentReportFrom').value,to:$('#rentReportTo').value};}
+async function loadRentReports(){
+ const range=rentReportRange();const q=new URLSearchParams();if(range.from)q.set('from',range.from);if(range.to)q.set('to',range.to);
+ const j=await api('/api/admin/rent/reports?'+q.toString()),m=j.summary;
+ $('#rentExpected').textContent='KSh '+fmt(m.expected);$('#rentCollected').textContent='KSh '+fmt(m.collected);$('#rentOutstanding').textContent='KSh '+fmt(m.outstanding);$('#rentOverdue').textContent='KSh '+fmt(m.overdue);$('#rentPerformance').textContent=Number(m.collectionRate).toFixed(2)+'%';$('#rentOccupancy').textContent=m.occupied+' / '+m.units;$('#rentVacancy').textContent='Vacant units: '+m.vacant;
+ $('#rentMonthRows').innerHTML=j.months.map(x=>'<tr><td>'+esc(x.month)+'</td><td>KSh '+fmt(x.expected)+'</td><td>KSh '+fmt(x.collected)+'</td><td>'+(Number(x.expected)?(Number(x.collected)/Number(x.expected)*100).toFixed(1):'0.0')+'%</td></tr>').join('')||'<tr><td colspan="4">No monthly data.</td></tr>';
+ $('#rentArrearsRows').innerHTML=j.arrears.map(x=>'<tr><td>'+esc(x.tenant_name)+' / '+esc(x.unit_label)+'</td><td>'+esc(x.rent_account_ref)+'</td><td>'+esc(String(x.oldest_due).slice(0,10))+'</td><td>KSh '+fmt(x.balance)+'</td></tr>').join('')||'<tr><td colspan="4">No overdue accounts.</td></tr>';
+}
+$('#rentReportRefresh').addEventListener('click',()=>loadRentReports().catch(e=>say(e.message,true)));
+$('#rent-reports').addEventListener('click',e=>{const b=e.target.closest('[data-rent-export]');if(!b)return;const range=rentReportRange(),type=b.dataset.rentExport,lease=$('#rentStatementLease').value;if(type==='statements'&&!lease)return say('Select a tenant first.',true);const q=new URLSearchParams({type,from:range.from||'2000-01-01',to:range.to||new Date().toISOString().slice(0,10)});if(lease)q.set('leaseId',lease);window.location.href='/api/admin/rent/reports/export?'+q.toString();});
+
 function rentPage(page){document.querySelectorAll('[data-rent-view]').forEach(e=>e.classList.toggle('hidden',e.dataset.rentView!==page));document.querySelectorAll('[data-rent-page]').forEach(b=>{if(b.dataset.rentPage===page)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
 function tab(n){document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('hidden',e.dataset.tab!==n));document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===n)));if(n==='rent'){rentPage('tenancies');loadRent().catch(e=>say(e.message,true))}if(n==='pricing')loadPricing().catch(e=>say(e.message,true));if(n==='recharge')loadFeatures().catch(()=>{});if(n==='pay'||n==='recharge')loadMeterList().catch(()=>{})}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(b)tab(b.dataset.t)});
