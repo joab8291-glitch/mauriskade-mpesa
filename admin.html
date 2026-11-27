@@ -190,12 +190,14 @@ tr:hover td{background:#f7fbfc}
 @media(max-width:560px){main{padding:12px 10px 40px}.top{min-height:190px;padding:23px 20px;border-radius:20px 20px 38px 20px}.top:after{width:50px;height:50px;right:22px;top:30%}.top h1{max-width:78%;font-size:1.9rem}.panel{padding:16px;border-radius:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:13px}.stat strong{font-size:1.55rem}.tabs{margin-left:0;margin-right:0}.tabs button{font-size:.8rem;padding:9px 11px}.filters{grid-template-columns:1fr 1fr}.filters input{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){.top:before,.top:after{animation:none}}
 
-/* Dedicated rent workspace: feature navigation stays visible and jumps to each tool. */
+/* Rent workspace: each feature opens as its own page; no anchor scrolling. */
 .rent-page-head{position:sticky;top:0;z-index:12;padding:4px 0 12px;background:var(--bg)}
 .rent-feature-nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:14px}
-.rent-feature-nav a{padding:9px 13px;border-radius:9px;color:#075c76;background:#edf7f8;text-decoration:none;font-weight:650;font-size:.88rem}
-.rent-feature-nav a:hover{background:#dff0f2}
-@media(max-width:640px){.rent-feature-nav{overflow-x:auto;flex-wrap:nowrap}.rent-feature-nav a{white-space:nowrap}}
+.rent-feature-nav button{min-height:40px;padding:9px 13px;border-radius:9px;color:#075c76;background:#edf7f8;border:1px solid transparent;box-shadow:none;font-weight:650;font-size:.88rem;white-space:nowrap}
+.rent-feature-nav button:hover{background:#dff0f2;filter:none;transform:none}
+.rent-feature-nav button[aria-current=page]{color:#fff;background:#087f9b;border-color:#087f9b}
+.rent-view{min-height:300px}
+@media(max-width:640px){.rent-feature-nav{overflow-x:auto;flex-wrap:nowrap}}
 </style>
 </head>
 <body>
@@ -285,8 +287,8 @@ tr:hover td{background:#f7fbfc}
 
     <section class="panel hidden" data-tab="pricing"><h2 class="section-title">Pricing</h2><p class="muted small">Current pricing and payment limits from the backend.</p><div id="priceBox" class="notice" style="margin-top:12px">Loading pricing…</div></section>
     <section class="panel hidden" data-tab="rent">
-      <div class="rent-page-head"><div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div><nav class="rent-feature-nav" aria-label="Rent management features"><a href="#rent-tenancies">Tenancies & rent schedules</a><a href="#rent-unmatched">Paybill reconciliation</a><a href="#rent-agreements">Tenancy agreements</a></nav></div>
-      <div id="rent-create" class="panel" style="box-shadow:none;margin-top:16px">
+      <div class="rent-page-head"><div class="bar"><div><h2 class="section-title">Rent management</h2><p class="muted small">Separate rent ledger. Rent payments do not create water tokens. Partial and advance payments are allocated to the oldest outstanding rent first; excess remains as tenant credit.</p></div><div class="actions"><span class="notice small">Shared Paybill callbacks are managed by the Webazi Daraja gateway. Do not register this shortcode again here.</span><button class="secondary" id="rentRefresh">Refresh rent</button></div></div><nav class="rent-feature-nav" aria-label="Rent management pages"><button type="button" data-rent-page="create">＋ Create tenancy</button><button type="button" data-rent-page="tenancies">Tenancies & rent schedules</button><button type="button" data-rent-page="reconcile">Paybill reconciliation</button><button type="button" data-rent-page="agreements">Tenancy agreements</button></nav></div>
+      <div id="rent-create" class="rent-view panel" data-rent-view="create" style="box-shadow:none;margin-top:16px" style="box-shadow:none;margin-top:16px">
         <h3 class="section-title">Create tenancy / rent account</h3>
         <form id="rentLeaseForm" class="form">
           <label>Hydro meter <select id="rentMeter" required><option value="">Select registered meter</option></select></label>
@@ -301,15 +303,15 @@ tr:hover td{background:#f7fbfc}
           <button type="submit">Create tenancy and generate rent schedule</button><p id="rentFormMsg" class="muted small"></p>
         </form>
       </div>
-      <div id="rent-tenancies" class="panel" style="box-shadow:none">
+      <div id="rent-tenancies" class="rent-view panel hidden" data-rent-view="tenancies" style="box-shadow:none" style="box-shadow:none">
         <div class="bar"><h3 class="section-title">Tenants and rent schedules</h3><span class="muted small" id="rentLeaseCount"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Rent account</th><th>Rent / frequency</th><th>Tenancy</th><th>Actions</th></tr></thead><tbody id="rentLeaseRows"><tr><td colspan="5" class="empty">Load rent records.</td></tr></tbody></table></div>
       </div>
-      <div id="rent-unmatched" class="panel" style="box-shadow:none">
+      <div id="rent-unmatched" class="rent-view panel hidden" data-rent-view="reconcile" style="box-shadow:none" style="box-shadow:none">
         <div class="bar"><div><h3 class="section-title">Unmatched Paybill payments</h3><p class="muted small">C2B confirmations are captured here when the account reference does not match an active tenancy. Reconcile only after checking the Paybill statement.</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Paybill reference</th><th>Amount</th><th>M-Pesa receipt</th><th>Reconcile to rent account</th></tr></thead><tbody id="rentUnmatchedRows"><tr><td colspan="5" class="empty">No unmatched payments loaded.</td></tr></tbody></table></div>
       </div>
-      <div id="rent-agreements" class="panel" style="box-shadow:none">
+      <div id="rent-agreements" class="rent-view panel hidden" data-rent-view="agreements" style="box-shadow:none" style="box-shadow:none">
         <h3 class="section-title">Tenancy agreement editor</h3><p class="muted small">Select a tenant, prepare or revise the agreement, save it as a draft, then issue the approved version. Issued versions are retained in the audit history.</p>
         <label>Tenant / unit <select id="agreementLease"><option value="">Select tenancy</option></select></label>
         <label>Agreement title <input id="agreementTitle" value="Tenancy Agreement"></label>
@@ -381,8 +383,10 @@ $('#loadReview').addEventListener('click',()=>loadReview().then(()=>say('Review 
 $('#reviews').addEventListener('click',async e=>{const b=e.target.closest('button[data-review]');if(!b)return;const action=b.dataset.review,id=b.dataset.id;try{let body={action};if(action==='adopt')body.token=b.dataset.token;if(action==='retry'&&!confirm('Have you checked Hydro recharge records and confirmed no token was issued?'))return;if(action==='close'){body.note=prompt('Reason for closing this case:','Reviewed by admin')||'Reviewed by admin';if(!confirm('Close this case?'))return}await post('/api/admin/review/'+encodeURIComponent(id),body);await loadReview();await loadSummary();say('Review action completed.')}catch(x){say(x.message,true)}});
 /* ---- Hydro app features ---- */
 let feat={};
-function tab(n){document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('hidden',e.dataset.tab!==n));document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===n)));if(n==='rent')loadRent().catch(e=>say(e.message,true));if(n==='pricing')loadPricing().catch(e=>say(e.message,true));if(n==='recharge')loadFeatures().catch(()=>{});if(n==='pay'||n==='recharge')loadMeterList().catch(()=>{})}
+function rentPage(page){document.querySelectorAll('[data-rent-view]').forEach(e=>e.classList.toggle('hidden',e.dataset.rentView!==page));document.querySelectorAll('[data-rent-page]').forEach(b=>{if(b.dataset.rentPage===page)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(page==='create')loadMeterList().then(()=>{const src=$('#rentMeter'),dest=$('#rentMeter');}).catch(e=>say(e.message,true))}
+function tab(n){document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('hidden',e.dataset.tab!==n));document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===n)));if(n==='rent'){rentPage('tenancies');loadRent().catch(e=>say(e.message,true))}if(n==='pricing')loadPricing().catch(e=>say(e.message,true));if(n==='recharge')loadFeatures().catch(()=>{});if(n==='pay'||n==='recharge')loadMeterList().catch(()=>{})}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(b)tab(b.dataset.t)});
+$('.rent-feature-nav').addEventListener('click',e=>{const b=e.target.closest('button[data-rent-page]');if(b)rentPage(b.dataset.rentPage)});
 async function loadFeatures(){feat=await api('/api/admin/features');$('#rcOff').classList.toggle('hidden',feat.rechargeEnabled);$('#rcForm').classList.toggle('hidden',!feat.rechargeEnabled)}
 async function loadPricing(){await loadFeatures();const box=$('#priceBox');if(!box)return;box.innerHTML='<b>KSh '+esc(feat.pricePerM3)+' per m³</b> · fixed rate<br><span class="muted small">Payment limits: KSh '+esc(feat.minAmount)+'–'+esc(feat.maxAmount)+' · Hydro company '+esc(feat.companyId)+' · M-Pesa '+esc(feat.mpesaEnv)+'</span>'}
 async function loadMeterList(){const j=await api('/api/admin/meters?offset=0');$('#meterList').innerHTML=j.items.map(m=>'<option value="'+esc(m.meter_code)+'">'+esc((m.flat?'Flat '+m.flat+' ':'')+(m.tenant_name||''))+'</option>').join('')}
