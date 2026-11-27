@@ -80,6 +80,8 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
   const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active'",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
   await generateCharges(pool,l.id);
+  const pending=(await pool.query("SELECT 1 FROM rent_payments WHERE lease_id=$1 AND status='pending' AND created_at>now()-interval '2 minutes'",[l.id])).rowCount;
+  if(pending)return res.status(429).json({ok:false,message:'A rent payment prompt is already pending. Approve it or wait for it to expire before trying again.'});
   const id=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,requested_amount,method,status) VALUES($1,$2,$3,$4,$4,'mpesa_stk','pending') RETURNING id",[l.id,l.rent_account_ref,phone,amount])).rows[0].id;
   try{const stamp=new Date(Date.now()+10800000).toISOString().replace(/[-:T]/g,'').slice(0,14),pass=Buffer.from(String(mpesaShortcode)+process.env.MPESA_PASSKEY+stamp).toString('base64');
    const j=await darajaPost('/mpesa/stkpush/v1/processrequest',{BusinessShortCode:mpesaShortcode,Password:pass,Timestamp:stamp,TransactionType:process.env.MPESA_TXN_TYPE||'CustomerPayBillOnline',Amount:amount,PartyA:phone,PartyB:process.env.MPESA_PARTYB||mpesaShortcode,PhoneNumber:phone,CallBackURL:callbackBaseUrl.replace(/\/$/,'')+'/api/mpesa/callback/'+callbackSecret,AccountReference:String(l.rent_account_ref).slice(0,12),TransactionDesc:'House rent'});
