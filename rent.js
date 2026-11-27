@@ -49,7 +49,8 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const charges=(await pool.query('SELECT c.id,c.period_start,c.period_end,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.lease_id=$1 GROUP BY c.id ORDER BY c.period_start DESC LIMIT 36',[l.id])).rows;
   const payments=(await pool.query('SELECT p.id,p.amount,p.method,p.status,p.mpesa_receipt,p.created_at,r.id receipt_id,r.receipt_number FROM rent_payments p LEFT JOIN rent_receipts r ON r.payment_id=p.id WHERE p.lease_id=$1 ORDER BY p.created_at DESC LIMIT 50',[l.id])).rows;
   const credit=(await pool.query("SELECT COALESCE(sum(p.amount),0)-COALESCE((SELECT sum(a.amount) FROM rent_allocations a JOIN rent_payments x ON x.id=a.payment_id WHERE x.lease_id=$1),0) n FROM rent_payments p WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated')",[l.id])).rows[0].n;
-  const agreement=(await pool.query(\"SELECT title,body,version,issued_at FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1\",[l.id])).rows[0]||null;\n  res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,arrears:charges.filter(c=>c.due_date<iso(new Date())&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
+  const agreement=(await pool.query("SELECT title,body,version,issued_at FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[l.id])).rows[0]||null;
+  res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,arrears:charges.filter(c=>c.due_date<iso(new Date())&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
  }));
  app.post('/api/me/rent/pay',...customer,wrap(async(req,res)=>{
   const amount=Number(req.body&&req.body.amount),phone=normPhone(req.body&&req.body.phone);
