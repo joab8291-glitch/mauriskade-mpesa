@@ -35,22 +35,23 @@ async function createReceipt(pool,id){
 }
 
 function makeReceiptPdf(lines) {
- const clean=v=>String(v??'').normalize('NFKD').replace(/[^\\x20-\\x7E]/g,'?').replace(/\\\\/g,'\\\\\\\\').replace(/\\(/g,'\\\\(').replace(/\\)/g,'\\\\)');
+ const clean=v=>{const s=String(v??'').normalize('NFKD').replace(/[^\x20-\x7E]/g,'?');return s.split('\\').join('\\\\').split('(').join('\\(').split(')').join('\\)');};
+ const nl=String.fromCharCode(10);
  const ops=['BT /F1 20 Tf 50 790 Td ('+clean('Mauriskade Apartments')+') Tj','/F1 15 Tf 0 -34 Td ('+clean('RENT PAYMENT RECEIPT')+') Tj','/F1 10 Tf 0 -22 Td ('+clean('Official payment record')+') Tj','/F1 11 Tf'];
  for(const line of lines)ops.push('0 -25 Td ('+clean(line)+') Tj');
  ops.push('ET');
- const stream=ops.join('\\n'),objects=[
+ const stream=ops.join(nl),objects=[
   '<< /Type /Catalog /Pages 2 0 R >>',
   '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
   '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
-  '<< /Length '+Buffer.byteLength(stream)+' >>\\nstream\\n'+stream+'\\nendstream',
+  '<< /Length '+Buffer.byteLength(stream)+' >>'+nl+'stream'+nl+stream+nl+'endstream',
   '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
  ];
- let pdf='%PDF-1.4\\n',offsets=[0];
- for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf));pdf+=(i+1)+' 0 obj\\n'+objects[i]+'\\nendobj\\n';}
- const xref=Buffer.byteLength(pdf);pdf+='xref\\n0 6\\n0000000000 65535 f \\n';
- for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \\n';
- pdf+='trailer\\n<< /Size 6 /Root 1 0 R >>\\nstartxref\\n'+xref+'\\n%%EOF';
+ let pdf='%PDF-1.4'+nl,offsets=[0];
+ for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf));pdf+=(i+1)+' 0 obj'+nl+objects[i]+nl+'endobj'+nl;}
+ const xref=Buffer.byteLength(pdf);pdf+='xref'+nl+'0 6'+nl+'0000000000 65535 f '+nl;
+ for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n '+nl;
+ pdf+='trailer'+nl+'<< /Size 6 /Root 1 0 R >>'+nl+'startxref'+nl+xref+nl+'%%EOF';
  return Buffer.from(pdf,'binary');
 }
 async function processRentStkCallback(pool,checkoutId,cb){
