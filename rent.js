@@ -80,9 +80,12 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
   const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active'",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
   await generateCharges(pool,l.id);
-  const pending=(await pool.query("SELECT 1 FROM rent_payments WHERE lease_id=$1 AND status='pending' AND created_at>now()-interval '2 minutes'",[l.id])).rowCount;
-  if(pending)return res.status(429).json({ok:false,message:'A rent payment prompt is already pending. Approve it or wait for it to expire before trying again.'});
-  const id=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,requested_amount,method,status) VALUES($1,$2,$3,$4,$4,'mpesa_stk','pending') RETURNING id",[l.id,l.rent_account_ref,phone,amount])).rows[0].id;
+  const client=await pool.connect();let id;
+  try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent:'+l.id]);
+   const pending=(await client.query("SELECT 1 FROM rent_payments WHERE lease_id=$1 AND status='pending' AND created_at>now()-interval '2 minutes'",[l.id])).rowCount;
+   if(pending){await client.query('ROLLBACK');return res.status(429).json({ok:false,message:'A rent payment prompt is already pending. Approve it or wait for it to expire before trying again.'});}
+   id=(await client.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,requested_amount,method,status) VALUES($1,$2,$3,$4,$4,'mpesa_stk','pending') RETURNING id",[l.id,l.rent_account_ref,phone,amount])).rows[0].id;await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
   try{const stamp=new Date(Date.now()+10800000).toISOString().replace(/[-:T]/g,'').slice(0,14),pass=Buffer.from(String(mpesaShortcode)+process.env.MPESA_PASSKEY+stamp).toString('base64');
    const j=await darajaPost('/mpesa/stkpush/v1/processrequest',{BusinessShortCode:mpesaShortcode,Password:pass,Timestamp:stamp,TransactionType:process.env.MPESA_TXN_TYPE||'CustomerPayBillOnline',Amount:amount,PartyA:phone,PartyB:process.env.MPESA_PARTYB||mpesaShortcode,PhoneNumber:phone,CallBackURL:callbackBaseUrl.replace(/\/$/,'')+'/api/mpesa/callback/'+callbackSecret,AccountReference:String(l.rent_account_ref).slice(0,12),TransactionDesc:'House rent'});
    if(String(j.ResponseCode)!=='0'||!j.CheckoutRequestID)throw new Error(j.errorMessage||j.ResponseDescription||'M-Pesa rejected the request.');
@@ -159,7 +162,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  }));
  app.post('/api/mpesa/rent-c2b/:secret/validation',(req,res)=>{if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);res.json({ResultCode:0,ResultDesc:'Accepted'});});
  app.post('/api/mpesa/rent-c2b/:secret/confirmation',wrap(async(req,res)=>{
-  if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);const b=req.body||{},receipt=String(b.TransID||'').trim(),ref=String(b.BillRefNumber||'').trim(),amount=Math.round(Number(b.TransAmount));if(!receipt||!ref||!Number.isSafeInteger(amount)||amount<1)return res.json({ResultCode:0,ResultDesc:'Accepted'});
+  if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);const b=req.body||{},receipt=String(b.TransID||'').trim(),ref=String(b.BillRefNumber||'').trim(),amount=Number(b.TransAmount);if(!receipt||!ref||!Number.isSafeInteger(amount)||amount<1)return res.json({ResultCode:0,ResultDesc:'Accepted'});
   const l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rows[0],t=String(b.TransTime||''),time=/^\d{14}$/.test(t)?new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10)-3,+t.slice(10,12),+t.slice(12,14))).toISOString():null;
   const p=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,method,status,mpesa_receipt,transaction_time,raw_payload) VALUES($1,$2,$3,$4,'mpesa_paybill',$5,$6,$7,$8) ON CONFLICT(mpesa_receipt) DO NOTHING RETURNING id",[l?l.id:null,ref,b.MSISDN?String(b.MSISDN):null,amount,l?'confirmed':'unallocated',receipt,time,JSON.stringify(b)])).rows[0];
   if(p){if(l){await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);}await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_C2B_RECEIVED',$1,$2,'DONE')",[l?l.meter_code:null,JSON.stringify({receipt,amount,accountRef:ref,matched:!!l})]);}
