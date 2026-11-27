@@ -181,7 +181,7 @@ const requireUser = wrap(async (req, res, next) => {
   const tok = parseCookies(req.headers.cookie)[COOKIE];
   if (!tok) return res.status(401).json({ ok: false, message: 'Please sign in.' });
   const { rows } = await pool.query(
-    `SELECT u.id, u.meter_code, u.must_change, u.disabled, m.flat, m.tenant_name, m.phone, s.token_hash
+    `SELECT u.id, u.meter_code, u.must_change, u.disabled, m.flat, m.tenant_name, m.phone, m.rent_account_ref, m.water_account_ref, s.token_hash
        FROM sessions s
        JOIN users u  ON u.id = s.user_id
        JOIN meters m ON m.meter_code = u.meter_code
@@ -198,7 +198,7 @@ const requireReady = (req, res, next) => (req.user.must_change
 
 const meView = (u) => ({
   meterCode: u.meter_code, flat: u.flat || null, tenantName: u.tenant_name || null,
-  phone: u.phone || null, mustChange: !!u.must_change,
+  phone: u.phone || null, rentAccountRef: u.rent_account_ref || null, waterAccountRef: u.water_account_ref || null, mustChange: !!u.must_change,
 });
 
 /* --------------------------- Hydro IoT client --------------------------- */
@@ -869,7 +869,7 @@ app.get('/api/admin/meters', wrap(async (req, res) => {
   const onlyNoLogin = req.query.filter === 'nologin';
   const offset = Math.max(0, Number(req.query.offset) || 0);
   const { rows } = await pool.query(
-    `SELECT m.meter_code, m.hydro_label, m.flat, m.tenant_name, m.phone, m.first_seen_at, u.username,
+    `SELECT m.meter_code, m.hydro_label, m.flat, m.tenant_name, m.phone, m.rent_account_ref, m.water_account_ref, m.first_seen_at, u.username,
             (u.id IS NOT NULL) AS has_login, COALESCE(u.disabled,false) AS disabled,
             COALESCE(u.must_change,false) AS must_change, u.last_login_at
        FROM meters m LEFT JOIN users u ON u.meter_code = m.meter_code
@@ -897,18 +897,18 @@ app.post('/api/admin/meters/:meter', wrap(async (req, res) => {
 app.post('/api/admin/logins/create', wrap(async (req, res) => {
   const codes = Array.isArray(req.body && req.body.meters) ? req.body.meters.map(String) : null;
   const { rows } = await pool.query(
-    `SELECT m.meter_code, m.flat, m.tenant_name
+    `SELECT m.meter_code, m.flat, m.tenant_name, m.rent_account_ref, m.water_account_ref
        FROM meters m LEFT JOIN users u ON u.meter_code = m.meter_code
-      WHERE u.id IS NULL ${codes ? 'AND m.meter_code = ANY($1)' : ''}
-      ORDER BY m.meter_code LIMIT 500`, codes ? [codes] : []);
+      WHERE u.id IS NULL AND m.rent_account_ref IS NOT NULL ${codes ? 'AND m.meter_code = ANY($1)' : ''}
+      ORDER BY m.rent_account_ref LIMIT 500`, codes ? [codes] : []);
   const created = [];
   for (const m of rows) {
     const password = genPassword();
     const r = await pool.query(
-      `INSERT INTO users (meter_code, username, password_hash) VALUES ($1,$1,$2) ON CONFLICT (meter_code) DO NOTHING RETURNING id`,
-      [m.meter_code, await hashPassword(password)]);
+      `INSERT INTO users (meter_code, username, password_hash) VALUES ($1,$3,$2) ON CONFLICT (meter_code) DO NOTHING RETURNING id`,
+      [m.meter_code, await hashPassword(password), m.rent_account_ref]);
     if (r.rowCount) {
-      created.push({ meterCode: m.meter_code, flat: m.flat, tenantName: m.tenant_name, username: m.meter_code, password });
+      created.push({ meterCode: m.meter_code, flat: m.flat, tenantName: m.tenant_name, rentAccountRef: m.rent_account_ref, waterAccountRef: m.water_account_ref, username: m.rent_account_ref, password });
     }
   }
   res.json({ ok: true, created });
