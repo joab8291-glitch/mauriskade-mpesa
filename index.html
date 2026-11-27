@@ -228,6 +228,35 @@ main[data-portal-tab="overview"] #recent,main[data-portal-tab="rent"] #recent,ma
 @media(max-width:850px){.portal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.portal-quick-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.portal-nav-inner{width:100%;padding:8px 12px}.portal-tab{padding:0 12px;font-size:.79rem}.portal-welcome{padding:22px 19px}.portal-welcome-mark{width:52px;height:52px}.portal-overview-grid{gap:8px}.portal-stat{grid-template-columns:30px 1fr;gap:4px 8px;padding:12px 10px}.portal-stat-icon{width:30px;height:30px}.portal-stat strong{font-size:1rem}.portal-stat>span:nth-child(2){font-size:.68rem}.portal-stat small{font-size:.64rem}.portal-stat button{font-size:.7rem}}
 </style>
+<style>
+body[data-state="login"]{background:radial-gradient(ellipse at 50% 36%,rgba(11,142,153,.09),transparent 42%),linear-gradient(180deg,#eaf3f7 0,#f7fafb 54%,#f1f6f8 100%)}
+body[data-state="login"] .hero{padding:21px 0 24px;border-radius:0 0 28px 28px;box-shadow:0 12px 34px rgba(7,55,83,.13)}
+body[data-state="login"] .hero-in{width:min(100% - 40px,1120px)}
+body[data-state="login"] .brand{font-size:1.08rem;letter-spacing:-.025em}
+body[data-state="login"] main{width:min(100% - 32px,1120px);min-height:calc(100svh - 90px);margin:0 auto;padding:clamp(28px,6vh,64px) 0 54px;display:grid;grid-template-columns:1fr;align-content:center;justify-items:center;gap:0}
+body[data-state="login"] main>.col:first-of-type{grid-column:1/-1;width:100%;display:grid;justify-items:center;align-content:center;gap:0}
+body[data-state="login"] main>.col:last-of-type{display:none!important}
+body[data-state="login"] #view-login{display:block;width:min(100%,470px);grid-column:1;min-width:0;margin:0 auto;padding:0;overflow:hidden;border:1px solid rgba(215,230,236,.95);border-radius:26px;background:#fff;box-shadow:0 28px 75px -36px rgba(10,51,75,.32),0 8px 24px rgba(17,65,88,.06)}
+body[data-state="login"] #view-login .login-card-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:34px 34px 20px;background:linear-gradient(180deg,#f2fbfb 0%,#fff 100%);border-bottom:1px solid #edf2f4}
+body[data-state="login"] .login-emblem{display:grid;place-items:center;width:58px;height:58px;margin-bottom:5px;border-radius:19px;color:#fff;background:linear-gradient(145deg,#087f9b,#08a99b);box-shadow:0 12px 25px rgba(8,143,151,.22)}
+body[data-state="login"] .login-emblem .ico{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.65}
+body[data-state="login"] .login-kicker{font-size:.68rem;font-weight:800;letter-spacing:.16em;color:#07818c}
+body[data-state="login"] #view-login h2{margin:3px 0 0;font-size:1.8rem;letter-spacing:-.045em;color:#123b53}
+body[data-state="login"] .login-card-head p{max-width:310px;margin:0;color:#738b99;font-size:.9rem;line-height:1.55}
+body[data-state="login"] #view-login .card-body{padding:26px 34px 32px}
+body[data-state="login"] #loginForm{display:grid;gap:5px}
+body[data-state="login"] #loginForm .field{margin-bottom:13px}
+body[data-state="login"] #loginForm label{display:block;margin-bottom:8px;font-size:.82rem;font-weight:700;color:#294d61}
+body[data-state="login"] #loginForm input{width:100%;min-height:52px;padding:0 15px;border-radius:13px;background:#f7fafb;border:1px solid #d9e5ea;font-size:.96rem}
+body[data-state="login"] #loginForm input:focus{background:#fff;border-color:#0795a2;box-shadow:0 0 0 4px rgba(7,149,162,.12)}
+body[data-state="login"] #loginForm .hint{margin:8px 0 0;font-size:.76rem;line-height:1.5}
+body[data-state="login"] #loginBtn{width:100%;min-height:52px;margin-top:5px;border-radius:13px;font-size:.96rem;font-weight:750;letter-spacing:.01em;background:linear-gradient(105deg,#078a91,#087f9b);box-shadow:0 12px 24px -13px rgba(8,132,151,.65)}
+body[data-state="login"] #loginBtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 15px 28px -13px rgba(8,132,151,.55)}
+body[data-state="login"] #loginMsg{min-height:1.2em;margin:8px 0 0;text-align:center;font-size:.83rem}
+body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
+@media(max-width:600px){body[data-state="login"] .hero{padding:17px 0 20px;border-radius:0 0 21px 21px}body[data-state="login"] .hero-in{width:calc(100% - 30px)}body[data-state="login"] main{width:calc(100% - 28px);min-height:calc(100svh - 72px);padding:32px 0 38px}body[data-state="login"] #view-login{border-radius:22px}body[data-state="login"] #view-login .login-card-head{padding:28px 22px 18px}body[data-state="login"] #view-login .card-body{padding:22px 22px 26px}}
+@media(prefers-reduced-motion:no-preference){body[data-state="login"] #view-login{animation:loginLift .55s cubic-bezier(.2,.75,.25,1) both}@keyframes loginLift{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -295,7 +324,12 @@ main[data-portal-tab="overview"] #recent,main[data-portal-tab="rent"] #recent,ma
   <div class="col">
     <!-- Sign in -->
     <section class="card" id="view-login" aria-labelledby="h-login" hidden>
-      <div class="card-head"><h2 id="h-login" tabindex="-1">Sign in</h2></div>
+      <div class="card-head login-card-head">
+          <span class="login-emblem" aria-hidden="true"><svg class="ico"><use href="#i-drop"/></svg></span>
+          <span class="login-kicker">SECURE TENANT PORTAL</span>
+          <h2 id="h-login" tabindex="-1">Welcome back</h2>
+          <p>Sign in to manage your Mauriskade water and rent account.</p>
+        </div>
       <div class="card-body">
         <form id="loginForm" novalidate>
           <div class="field">
