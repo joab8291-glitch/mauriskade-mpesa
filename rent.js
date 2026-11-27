@@ -148,9 +148,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   await pool.query("UPDATE rent_payments SET lease_id=$2,rent_account_ref=$3,status='confirmed',updated_at=now() WHERE id=$1",[p.id,l.id,l.rent_account_ref]);await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);
   await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_PAYMENT_RECONCILED',$1,$2,'DONE')",[l.meter_code,JSON.stringify({paymentId:p.id,amount:p.amount,accountRef:ref})]);res.json({ok:true});
  }));
- app.post(admin+'/c2b/register',wrap(async(_req,res)=>{
-  const base=callbackBaseUrl.replace(/\/$/,'');const j=await darajaPost('/mpesa/c2b/v1/registerurl',{ShortCode:mpesaShortcode,ResponseType:'Completed',ConfirmationURL:base+'/api/mpesa/rent-c2b/'+callbackSecret+'/confirmation',ValidationURL:base+'/api/mpesa/rent-c2b/'+callbackSecret+'/validation'});res.json({ok:true,result:j});
- }));
+ app.post(admin+'/c2b/register',wrap(async(_req,res)=>res.status(409).json({ok:false,message:'This shortcode uses the shared Webazi C2B gateway. Registering Mauriskade-specific URLs here would overwrite the shared callbacks. Manage registration from the Webazi Daraja service only.'})));
  app.get(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
   const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});res.json({ok:true,lease:l,agreements:(await pool.query('SELECT * FROM tenancy_agreements WHERE lease_id=$1 ORDER BY version DESC',[l.id])).rows});
  }));
