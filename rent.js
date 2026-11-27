@@ -6,7 +6,7 @@ const iso = d => { if (!(d instanceof Date) || !Number.isFinite(d.getTime())) th
 const dateOnly = value => {
  if (value instanceof Date) return iso(value);
  const s=String(value??'').trim();
- if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;
+ if (s.length===10 && s[4]==='-' && s[7]==='-' && Number.isFinite(Date.parse(s+'T00:00:00Z'))) return s;
  const d=new Date(s);
  if (!Number.isFinite(d.getTime())) throw new TypeError('Invalid tenancy date: '+s);
  return iso(d);
