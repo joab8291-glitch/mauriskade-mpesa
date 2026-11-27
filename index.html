@@ -189,6 +189,43 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
 .badge-wrap{top:78px;right:max(16px,calc((100vw - 1100px) / 2))}
 main{position:relative;z-index:4;clear:both;padding-top:28px}
 @media(max-width:700px){.hero{padding-bottom:34px}.hero-in{align-items:flex-start;flex-wrap:wrap}.badge-wrap{position:relative;top:auto;right:auto;width:min(100% - 32px,1100px);margin:-18px auto 0}.meter-badge{min-width:0;width:100%}main{padding-top:18px}}
+/* Customer portal navigation and overview */
+.portal-nav{position:sticky;top:0;z-index:20;background:rgba(248,251,252,.95);backdrop-filter:blur(14px);border-bottom:1px solid #dce8ed;box-shadow:0 7px 22px rgba(18,57,77,.06)}
+.portal-nav-inner{width:min(100% - 32px,1100px);margin:auto;display:flex;gap:7px;overflow-x:auto;padding:10px 0}
+.portal-tab{display:inline-flex;align-items:center;gap:8px;flex:none;min-height:43px;padding:0 15px;border:1px solid transparent;border-radius:12px;background:transparent;color:#5c7587;font:600 .86rem Inter,system-ui,sans-serif;cursor:pointer}
+.portal-tab .ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.portal-tab.active{background:#e4f4f3;border-color:#c5e9e5;color:#087f82}
+.portal-overview{width:100%;margin-bottom:22px}
+.portal-welcome{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:26px 30px;margin-bottom:16px;border-radius:22px;color:white;background:radial-gradient(circle at 80% 25%,rgba(119,237,221,.25),transparent 27%),linear-gradient(112deg,#073d63,#086d87 60%,#078c87);box-shadow:0 16px 38px rgba(6,74,99,.15)}
+.portal-eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.15em;color:#a2eee0}
+.portal-welcome h1{margin:8px 0 5px;color:white;font-size:clamp(1.55rem,4vw,2.2rem);letter-spacing:-.045em}
+.portal-welcome p{margin:0;color:#d5edf2;font-size:.92rem}
+.portal-welcome-mark{display:grid;place-items:center;width:68px;height:68px;flex:none;border:1px solid rgba(255,255,255,.3);border-radius:22px;background:rgba(255,255,255,.12)}
+.portal-welcome-mark .ico{width:38px;height:38px;fill:none;stroke:#baf5ed;stroke-width:1.5}
+.portal-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.portal-stat{display:grid;grid-template-columns:38px 1fr;gap:4px 11px;align-items:center;min-width:0;padding:16px;background:#fff;border:1px solid #e1eaee;border-radius:16px;box-shadow:0 7px 22px rgba(26,67,88,.04)}
+.portal-stat-icon{grid-row:span 2;display:grid;place-items:center;width:38px;height:38px;border-radius:12px}
+.portal-stat-icon .ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8}
+.portal-stat-icon.aqua{color:#078b94;background:#e5f7f6}.portal-stat-icon.violet{color:#6959b5;background:#f0edff}.portal-stat-icon.green{color:#13845d;background:#e7f8ef}.portal-stat-icon.amber{color:#a36a13;background:#fff5e3}
+.portal-stat>span:nth-child(2){font-size:.76rem;color:#718694;font-weight:650}.portal-stat strong{font-size:1.2rem;color:#173e55;overflow-wrap:anywhere}.portal-stat small{grid-column:2;color:#8999a3;font-size:.7rem}
+.portal-stat button{grid-column:1/-1;margin-top:8px;padding:9px 0 0;text-align:left;border:0;border-top:1px solid #edf1f3;background:none;color:#07818c;font:700 .78rem Inter,system-ui,sans-serif;cursor:pointer}
+.portal-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.portal-quick{display:grid;grid-template-columns:42px 1fr 18px;align-items:center;gap:4px 12px;padding:15px;text-align:left;border:1px solid #e2eaee;border-radius:15px;background:#fff;color:#173e55;cursor:pointer}
+.portal-quick>span{grid-row:span 2;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#eaf6f7;color:#07818c}.portal-quick .ico{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8}
+.portal-quick b{font-size:.88rem}.portal-quick small{color:#82939d;font-size:.72rem}.portal-quick i{grid-column:3;grid-row:1/3;color:#07818c;font-size:1.2rem;font-style:normal}
+.portal-notice{display:flex;gap:12px;align-items:flex-start;margin-top:14px;padding:14px 16px;border:1px solid #d5e9f0;border-radius:14px;background:#f0f8fb;color:#31576b}.portal-notice>.ico{width:22px;height:22px;flex:none;color:#087f91}.portal-notice p{margin:4px 0 0;color:#6c8290;font-size:.78rem}
+.portal-extra{margin:0 0 22px}.portal-extra h3{margin:8px 0 12px;color:#21475c}.portal-extra table{min-width:620px}
+.agreement-meta{margin:10px 0;padding:12px 14px;border-radius:10px;background:#eff7f8;color:#087782;font-weight:700}
+.agreement-body{max-height:70vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;border:1px solid #e0e9ed;border-radius:13px;background:#fff;color:#304d5f;font:.9rem/1.75 Inter,system-ui,sans-serif}
+main[data-portal-tab="overview"]>.col,main[data-portal-tab="payments"]>.col,main[data-portal-tab="agreement"]>.col{display:none}
+main[data-portal-tab="overview"] #portal-overview,main[data-portal-tab="payments"] #portal-payments,main[data-portal-tab="agreement"] #portal-agreement{display:block}
+main[data-portal-tab="overview"] #view-rent,main[data-portal-tab="payments"] #view-rent,main[data-portal-tab="agreement"] #view-rent{display:none}
+main[data-portal-tab="payments"] #view-pay,main[data-portal-tab="payments"] #view-help,main[data-portal-tab="agreement"] #view-pay,main[data-portal-tab="agreement"] #view-help{display:none}
+main[data-portal-tab="water"] #view-rent,main[data-portal-tab="water"] #portal-overview,main[data-portal-tab="water"] #portal-payments,main[data-portal-tab="water"] #portal-agreement{display:none}
+main[data-portal-tab="rent"] #view-pay,main[data-portal-tab="rent"] #view-help,main[data-portal-tab="rent"] #portal-overview,main[data-portal-tab="rent"] #portal-payments,main[data-portal-tab="rent"] #portal-agreement{display:none}
+main[data-portal-tab="rent"] #view-rent{display:block}
+@media(max-width:850px){.portal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.portal-quick-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.portal-nav-inner{width:100%;padding:8px 12px}.portal-tab{padding:0 12px;font-size:.79rem}.portal-welcome{padding:22px 19px}.portal-welcome-mark{width:52px;height:52px}.portal-overview-grid{gap:8px}.portal-stat{grid-template-columns:30px 1fr;gap:4px 8px;padding:12px 10px}.portal-stat-icon{width:30px;height:30px}.portal-stat strong{font-size:1rem}.portal-stat>span:nth-child(2){font-size:.68rem}.portal-stat small{font-size:.64rem}.portal-stat button{font-size:.7rem}}
 </style>
 </head>
 <body>
@@ -199,6 +236,10 @@ main{position:relative;z-index:4;clear:both;padding-top:28px}
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
   <symbol id="i-touch" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10V8.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a5 5 0 0 1-4-2l-3.2-4.3a1.5 1.5 0 0 1 2.3-1.9L9 15"/></symbol>
   <symbol id="i-keypad" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="1.7"/></g></symbol>
+  <symbol id="p-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="p-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2m4 0h2M8 11h2m4 0h2M10 21v-5h4v5"/></symbol>
+  <symbol id="p-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="p-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6m-6 4h6"/></symbol>
 </svg>
 
 <header class="hero">
@@ -225,8 +266,29 @@ main{position:relative;z-index:4;clear:both;padding-top:28px}
     </div>
   </div>
 </header>
-
+<nav class="portal-nav" id="portalNav" aria-label="Customer portal" hidden><div class="portal-nav-inner">
+<button type="button" class="portal-tab active" data-portal-tab="overview"><svg class="ico"><use href="#p-home"/></svg>Overview</button>
+<button type="button" class="portal-tab" data-portal-tab="water"><svg class="ico"><use href="#i-drop"/></svg>Water</button>
+<button type="button" class="portal-tab" data-portal-tab="rent" id="rentTab" hidden><svg class="ico"><use href="#p-building"/></svg>Rent</button>
+<button type="button" class="portal-tab" data-portal-tab="payments"><svg class="ico"><use href="#p-receipt"/></svg>Payments &amp; receipts</button>
+<button type="button" class="portal-tab" data-portal-tab="agreement" id="agreementTab" hidden><svg class="ico"><use href="#p-file"/></svg>Agreement</button>
+</div></nav>
 <main data-state="login">
+  <section class="portal-overview" id="portal-overview" hidden>
+    <div class="portal-welcome"><div><span class="portal-eyebrow">YOUR MAURISKADE ACCOUNT</span><h1>Welcome back, <span id="portalTenantName">Tenant</span></h1><p>Manage your water, rent, payments and tenancy documents from one place.</p></div><span class="portal-welcome-mark"><svg class="ico"><use href="#i-drop"/></svg></span></div>
+    <div class="portal-overview-grid">
+      <article class="portal-stat"><span class="portal-stat-icon aqua"><svg class="ico"><use href="#i-drop"/></svg></span><span>Water issued this month</span><strong id="portalWaterUsage">—</strong><small id="portalWaterMeter">Your water meter</small><button type="button" data-go-tab="water">Top up water →</button></article>
+      <article class="portal-stat" id="portalRentStat" hidden><span class="portal-stat-icon violet"><svg class="ico"><use href="#p-building"/></svg></span><span>Rent outstanding</span><strong id="portalRentBalance">—</strong><small id="portalRentFrequency">Your rent account</small><button type="button" data-go-tab="rent">View rent account →</button></article>
+      <article class="portal-stat"><span class="portal-stat-icon green"><svg class="ico"><use href="#p-receipt"/></svg></span><span>Water payment records</span><strong id="portalWaterPayments">—</strong><small>Top-ups in your account</small><button type="button" data-go-tab="payments">View payment history →</button></article>
+      <article class="portal-stat" id="portalAgreementStat" hidden><span class="portal-stat-icon amber"><svg class="ico"><use href="#p-file"/></svg></span><span>Tenancy agreement</span><strong>Available</strong><small>Latest issued agreement</small><button type="button" data-go-tab="agreement">View agreement →</button></article>
+    </div>
+    <div class="portal-quick-grid">
+      <button type="button" class="portal-quick" data-go-tab="water"><span><svg class="ico"><use href="#i-drop"/></svg></span><b>Top up water</b><small>Pay with M-Pesa and receive your token</small><i>→</i></button>
+      <button type="button" class="portal-quick" data-go-tab="rent" id="portalRentQuick" hidden><span><svg class="ico"><use href="#p-building"/></svg></span><b>Pay rent</b><small>Check your balance and rent schedule</small><i>→</i></button>
+      <button type="button" class="portal-quick" data-go-tab="payments"><span><svg class="ico"><use href="#p-receipt"/></svg></span><b>Payment history</b><small>View and download available receipts</small><i>→</i></button>
+    </div>
+    <div class="portal-notice"><svg class="ico"><use href="#p-file"/></svg><div><b>Keep rent and water payments separate</b><p>Use the correct Paybill account reference for each payment. Rent payments do not generate water tokens.</p></div></div>
+  </section>
   <noscript><p class="msg err">This page needs JavaScript to run.</p></noscript>
 
   <div class="col">
@@ -390,6 +452,12 @@ main{position:relative;z-index:4;clear:both;padding-top:28px}
       </table>
     </div>
   </section>
+  <section class="card portal-extra wide" id="portal-payments" hidden><div class="card-head"><h2>Payments &amp; receipts</h2></div><div class="card-body">
+    <p class="hint">Water top-ups and rent payments are listed separately. Download a receipt wherever available.</p>
+    <h3>Water top-ups</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Volume</th><th>M-Pesa receipt</th><th>Token</th><th>Receipt</th></tr></thead><tbody id="portalWaterHistory"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>
+    <section id="portalRentHistoryWrap" hidden><h3 style="margin-top:24px">Rent payments</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>M-Pesa receipt</th><th>Receipt</th></tr></thead><tbody id="portalRentHistory"><tr><td colspan="5">Loading…</td></tr></tbody></table></div></section>
+  </div></section>
+  <section class="card portal-extra wide" id="portal-agreement" hidden><div class="card-head"><h2>Tenancy agreement</h2></div><div class="card-body"><p class="hint">Latest agreement issued by the property administrator.</p><div class="agreement-meta" id="portalAgreementMeta"></div><pre id="portalAgreementBody" class="agreement-body"></pre><p class="hint">Contact the property office if you need a correction or clarification.</p></div></section>
 </main>
 
 <footer class="site-foot">
