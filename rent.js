@@ -2,9 +2,17 @@
 const crypto = require('crypto');
 const FREQUENCIES = {monthly:1,quarterly:3,half_yearly:6,annually:12};
 const todayNairobi = () => iso(new Date(Date.now()+3*3600000));
-const iso = d => d.toISOString().slice(0,10);
-const addMonths = (s,n) => { const d=new Date(s+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d; };
-const dueDate = (s,day) => {const d=new Date(s+'T00:00:00Z');d.setUTCDate(Math.min(Number(day)||1,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return iso(d);};
+const iso = d => { if (!(d instanceof Date) || !Number.isFinite(d.getTime())) throw new TypeError('Invalid date supplied to rent schedule'); return d.toISOString().slice(0,10); };
+const dateOnly = value => {
+ if (value instanceof Date) return iso(value);
+ const s=String(value??'').trim();
+ if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;
+ const d=new Date(s);
+ if (!Number.isFinite(d.getTime())) throw new TypeError('Invalid tenancy date: '+s);
+ return iso(d);
+};
+const addMonths = (s,n) => { const d=new Date(dateOnly(s)+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d; };
+const dueDate = (s,day) => {const d=new Date(dateOnly(s)+'T00:00:00Z');d.setUTCDate(Math.min(Number(day)||1,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return iso(d);};
 const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const wrap = fn => (req,res,next)=>Promise.resolve(fn(req,res,next)).catch(e=>{console.error('rent route',req.method,req.path,e.message);if(!res.headersSent)res.status(500).json({ok:false,message:'Rental service error. Please try again.'});});
 
@@ -23,8 +31,8 @@ async function allocateRentPayment(pool,id){
 }
 async function generateCharges(pool,id){
  const l=(await pool.query("SELECT * FROM rent_leases WHERE id=$1 AND status='active'",[id])).rows[0];if(!l)return 0;
- const step=FREQUENCIES[l.billing_frequency],today=todayNairobi(),horizon=addMonths(today,18);let period=String(l.start_date).slice(0,10),count=0;
- for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),periodEnd=new Date(next.getTime()-86400000);if(l.end_date&&period>String(l.end_date).slice(0,10))break;const end=l.end_date&&String(l.end_date).slice(0,10)<iso(periodEnd)?new Date(String(l.end_date).slice(0,10)+'T00:00:00Z'):periodEnd;
+ const step=FREQUENCIES[l.billing_frequency],today=todayNairobi(),horizon=addMonths(today,18);let period=dateOnly(l.start_date),count=0;const leaseEnd=l.end_date?dateOnly(l.end_date):null;
+ for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),periodEnd=new Date(next.getTime()-86400000);if(leaseEnd&&period>leaseEnd)break;const end=leaseEnd&&leaseEnd<iso(periodEnd)?new Date(leaseEnd+'T00:00:00Z'):periodEnd;
   const r=await pool.query('INSERT INTO rent_charges(lease_id,period_start,period_end,due_date,amount) VALUES($1,$2,$3,$4,$5) ON CONFLICT(lease_id,period_start) DO NOTHING',[id,period,iso(end),dueDate(period,l.due_day),l.rent_amount]);count+=r.rowCount;period=iso(next);}
  const ps=(await pool.query("SELECT id FROM rent_payments WHERE lease_id=$1 AND status IN ('confirmed','unallocated','allocated') ORDER BY created_at",[id])).rows;for(const p of ps)await allocateRentPayment(pool,p.id);return count;
 }
