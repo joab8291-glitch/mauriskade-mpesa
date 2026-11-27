@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mauriskade Water Bill Payment | M-Pesa Water Top-Up</title>
-<meta name="description" content="Pay your Mauriskade Apartments water bill securely with M-Pesa and top up your water meter credit. Choose an amount, approve the payment prompt and receive your water token.">
+<title>Mauriskade Management Bill Payment | M-Pesa Water Top-Up</title>
+<meta name="description" content="Pay your Mauriskade Management water bill securely with M-Pesa and top up your water meter credit. Choose an amount, approve the payment prompt and receive your water token.">
 <link rel="canonical" href="https://mauriskade.co.ke/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Mauriskade Water Bill Payment">
-<meta property="og:description" content="Top up your Mauriskade water meter using M-Pesa and receive your water token online.">
+<meta property="og:title" content="Mauriskade Management Bill Payment">
+<meta property="og:description" content="Top up your Mauriskade Management meter using M-Pesa and receive your water token online.">
 <meta name="theme-color" content="#0a4f82">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,10 +18,10 @@
 /* Customer portal layout. Colours, buttons, cards, chips and tables come from /theme.css. */
 
 /* ---- header band, user menu and meter badge ---- */
-.hero{position:relative;z-index:20;padding:24px 0 96px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--blue))}
-.hero-in{position:relative;z-index:10;width:min(100% - 32px,1100px);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.notch{position:absolute;z-index:1;top:0;right:0;width:min(380px,38%);height:214px;background:linear-gradient(120deg,var(--navy),var(--blue));border-bottom-left-radius:40px}
-.badge-wrap{position:absolute;z-index:2;top:86px;right:max(16px,calc((100vw - 1100px) / 2))}
+.hero{position:relative;z-index:1;padding:24px 0 56px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--blue))}
+.hero-in{position:relative;z-index:2;width:min(100% - 32px,1100px);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.notch{position:absolute;z-index:0;top:0;right:0;width:min(380px,38%);height:214px;background:linear-gradient(120deg,var(--navy),var(--blue));border-bottom-left-radius:40px}
+.badge-wrap{position:absolute;z-index:3;top:78px;right:max(16px,calc((100vw - 1100px) / 2))}
 .meter-badge{min-width:230px;padding:14px 18px;color:var(--ink);background:#fff;border-radius:14px;box-shadow:0 10px 30px -12px rgba(5,40,70,.5)}
 .usage-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin:0 0 18px;border:1px solid #dce9f2;border-radius:14px;background:linear-gradient(110deg,#f1f8fc,#f7fbff)}
 .usage-summary>div{display:grid;gap:4px}
@@ -47,7 +47,7 @@ body[data-state=login] .notch,body[data-state=pw] .notch{display:none}
 .user-panel button:hover{background:var(--sky-50)}
 
 /* ---- page grid ---- */
-main{position:relative;z-index:1;width:min(100% - 32px,1100px);margin:-64px auto 0;padding-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+main{position:relative;z-index:4;position:relative;z-index:1;width:min(100% - 32px,1100px);margin:-64px auto 0;padding-bottom:30px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
 .col{display:grid;gap:22px;min-width:0}
 main[data-state=login],main[data-state=pw]{grid-template-columns:minmax(0,28rem);justify-content:center}
 .wide{grid-column:1/-1}
@@ -134,7 +134,7 @@ main[data-state=login],main[data-state=pw]{grid-template-columns:minmax(0,28rem)
 @media(prefers-reduced-motion:reduce){.lcd-digits span{animation:none;opacity:1}.status-dot.live{animation:none}}
 </style>
 <style>
-/* ===== Mauriskade Water customer portal: light utility/fintech theme ===== */
+/* ===== Mauriskade Management customer portal: light utility/fintech theme ===== */
 :root{color-scheme:light;--text:#17334a;--muted:#647e91;--aqua:#087f9b;--foam:#dff8f1;--link:#087f9b;--line:#dce8ed;--danger:#c83d4d}
 html{background:#f3f7f9}
 body{color:#17334a;background:linear-gradient(180deg,#eaf3f7 0,#f5f8fa 360px,#f4f7f9 100%);font-family:"Schibsted Grotesk",Inter,system-ui,sans-serif}
@@ -183,6 +183,12 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
 @media(min-width:960px){main{grid-template-columns:minmax(0,1fr) minmax(360px,.82fr);align-items:start}main>header{grid-column:1/-1;grid-row:auto;position:relative;top:auto}.recent{grid-column:1/-1}}
 @media(max-width:760px){main{width:min(100% - 22px,620px);grid-template-columns:1fr;padding-top:12px;gap:14px}main>header{grid-column:1;min-height:220px;border-radius:23px 23px 48px 23px;padding:26px 22px}header:after{width:58px;height:58px;right:25px;top:34%;opacity:.82}header:before{width:220px;height:220px;right:-85px;top:-105px}header h1{max-width:82%;font-size:clamp(2.2rem,10vw,3.25rem)}#view-login,#view-pw,#view-pay,#view-wait,#view-token,.recent{grid-column:1;padding:22px 18px;border-radius:20px}.recent{grid-column:1}}
 @media(prefers-reduced-motion:reduce){header:before{animation:none}}
+
+/* Keep the customer sign-in and first card below the curved brand header; avoid header overlap. */
+.hero{isolation:isolate;overflow:visible}
+.badge-wrap{top:78px;right:max(16px,calc((100vw - 1100px) / 2))}
+main{position:relative;z-index:4;clear:both;padding-top:28px}
+@media(max-width:700px){.hero{padding-bottom:34px}.hero-in{align-items:flex-start;flex-wrap:wrap}.badge-wrap{position:relative;top:auto;right:auto;width:min(100% - 32px,1100px);margin:-18px auto 0}.meter-badge{min-width:0;width:100%}main{padding-top:18px}}
 </style>
 </head>
 <body>
@@ -198,7 +204,7 @@ input:focus{background:#fff;border-color:#0b91a7;box-shadow:0 0 0 4px rgba(11,14
 <header class="hero">
   <div class="notch" aria-hidden="true"></div>
   <div class="hero-in">
-    <a class="brand" href="/"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Water</span></a>
+    <a class="brand" href="/"><svg class="ico" aria-hidden="true"><use href="#i-drop"/></svg><span>Mauriskade Management</span></a>
     <div class="user" id="userMenu" hidden>
       <button class="user-btn" id="userBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="userPanel">
         <span class="avatar" aria-hidden="true"><svg class="ico"><use href="#i-user"/></svg></span>
