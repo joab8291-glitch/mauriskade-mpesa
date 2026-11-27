@@ -175,7 +175,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
     (SELECT count(*) FROM meters m WHERE NOT EXISTS(SELECT 1 FROM rent_leases l WHERE l.meter_code=m.meter_code AND l.status='active' AND (l.end_date IS NULL OR l.end_date>=current_date)))::int vacant
   `,[from,to])).rows[0];
   const months=(await pool.query(`
-   SELECT to_char(date_trunc('month',d)::date,'YYYY-MM') month,
+   SELECT to_char(date_trunc('month',d)::date,'YYYY-MM') AS month_label,
     COALESCE((SELECT sum(c.amount) FROM rent_charges c WHERE c.period_start>=date_trunc('month',d)::date AND c.period_start<(date_trunc('month',d)+interval '1 month')::date),0)::bigint expected,
     COALESCE((SELECT sum(p.amount) FROM rent_payments p WHERE p.status IN ('confirmed','allocated') AND COALESCE(p.transaction_time,p.created_at)>=date_trunc('month',d) AND COALESCE(p.transaction_time,p.created_at)<date_trunc('month',d)+interval '1 month'),0)::bigint collected
    FROM generate_series(date_trunc('month',$1::date),date_trunc('month',$2::date),interval '1 month') d ORDER BY d
