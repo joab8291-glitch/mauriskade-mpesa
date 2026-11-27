@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const express = require('express');
 const { Pool } = require('pg');
-const { registerRentRoutes, processRentStkCallback } = require('./rent');
+const { registerRentRoutes, processRentStkCallback, processRentC2B } = require('./rent');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -447,7 +447,7 @@ async function adoptUnmatchedCallback(checkoutId, phone, amount) {
 
 /* ------------------------- token issuing (core) ------------------------- */
 
-async function issueToken(id) {
+async function issueToken(id, verifyHydroRecord = false) {
   // Atomic claim: only one caller can move PAID/RETRY -> ISSUING
   const { rows } = await pool.query(
     `UPDATE transactions
@@ -465,6 +465,34 @@ async function issueToken(id) {
 
     if (res.code === 0 && /^\d{20}$/.test(String(res.data))) {
       const token = String(res.data);
+      if (verifyHydroRecord) {
+        // Manual Paybill water payments are not complete until Hydro's own
+        // recharge ledger confirms this exact token, meter and paid amount.
+        let rec = null;
+        for (let attempt = 0; attempt < 6 && !rec; attempt++) {
+          if (attempt) await new Promise(resolve => setTimeout(resolve, 1500));
+          const records = await fetchRecords(tx.meter_number);
+          rec = records.find(r => String(r.rechargePassword || '') === token
+            && String(r.meterCode || '') === String(tx.meter_number)
+            && Number(r.rechargeAmount) === Number(tx.amount));
+        }
+        if (!rec) {
+          await pool.query(
+            `UPDATE transactions SET status='NEEDS_REVIEW', token=$2,
+                    last_error='Hydro returned a token but the matching meter/amount recharge record could not be verified. Do not recharge again until Hydro records are checked.',
+                    updated_at=now() WHERE id=$1`,
+            [id, token]);
+          log('C2B Hydro record not verified; held for review', id);
+          return;
+        }
+        await pool.query(
+          `UPDATE transactions SET status='TOKEN_ISSUED', token=$2, water_volume=$3,
+                  balance_after=$4, hydro_recharge_no=$5, last_error=NULL, updated_at=now()
+             WHERE id=$1`,
+          [id, token, rec.waterVolume ?? null, rec.balanceAfter ?? null, rec.rechargeNo ?? null]);
+        log('C2B water token issued after Hydro record verification', id);
+        return;
+      }
       await pool.query(
         `UPDATE transactions SET status='TOKEN_ISSUED', token=$2,
                 last_error = CASE WHEN last_error LIKE 'Amount mismatch%' THEN last_error ELSE NULL END,
@@ -1174,6 +1202,59 @@ app.post('/api/admin/recharge', wrap(async (req, res) => {
 app.get('/api/admin/audit', wrap(async (_req, res) => {
   const { rows } = await pool.query(`SELECT id, action, meter_number, status, detail, created_at FROM admin_actions ORDER BY created_at DESC LIMIT 50`);
   res.json({ ok: true, items: rows });
+}));
+
+
+/* ---------------- shared Paybill C2B from Webazi gateway ---------------- */
+app.post('/api/mpesa/shared-c2b', wrap(async (req, res) => {
+  const supplied = Buffer.from(String(req.get('x-mauriskade-c2b-secret') || ''));
+  const expected = Buffer.from(String(process.env.MAURISKADE_C2B_SECRET || ''));
+  if (!expected.length || supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
+    return res.sendStatus(403);
+  }
+  const b = req.body || {};
+  const receipt = String(b.TransID || '').trim();
+  const ref = String(b.BillRefNumber || '').trim();
+  const amount = Number(b.TransAmount);
+  if (!receipt || !Number.isSafeInteger(amount) || amount < 1 || !ref) {
+    return res.status(400).json({ ok: false, message: 'Invalid C2B confirmation.' });
+  }
+
+  if (/^RENT-/i.test(ref)) {
+    await processRentC2B(pool, b);
+    return res.status(200).json({ ok: true, accepted: true, ledger: 'rent' });
+  }
+
+  if (!/^WATER-/i.test(ref)) {
+    return res.status(400).json({ ok: false, message: 'Unsupported Mauriskade account reference.' });
+  }
+
+  const meter = (await pool.query(
+    'SELECT meter_code FROM meters WHERE water_account_ref=$1', [ref]
+  )).rows[0];
+  if (!meter) {
+    await audit('C2B_WATER_UNMATCHED', null, { receipt, amount, accountRef: ref, phone: String(b.MSISDN || '') }, 'NEEDS_REVIEW');
+    return res.status(200).json({ ok: true, accepted: true, matched: false });
+  }
+
+  const inserted = await pool.query(
+    `INSERT INTO transactions (meter_number, phone, amount, status, merchant_request_id, mpesa_receipt)
+     VALUES ($1,$2,$3,'PAID',$4,$5)
+     ON CONFLICT (mpesa_receipt) DO NOTHING
+     RETURNING id`,
+    [meter.meter_code, String(b.MSISDN || 'UNKNOWN'), amount, 'C2B:' + receipt, receipt]
+  );
+  if (inserted.rows[0]) {
+    await audit('C2B_WATER_PAYMENT_RECEIVED', meter.meter_code,
+      { receipt, amount, accountRef: ref, phone: String(b.MSISDN || '') }, 'STARTED');
+    const id = inserted.rows[0].id;
+    res.status(200).json({ ok: true, accepted: true, ledger: 'water', transactionId: id });
+    setImmediate(() => issueToken(id, true).catch(e => log('C2B water processing failed', id, e.message)));
+    return;
+  }
+
+  // Duplicate Daraja delivery: do not recharge twice.
+  return res.status(200).json({ ok: true, accepted: true, duplicate: true });
 }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
