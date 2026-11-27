@@ -395,6 +395,89 @@ input::placeholder{color:#647987}
 /* Avoid entrance motion being counted as unexpected visual movement. */
 @media(prefers-reduced-motion:no-preference){body[data-state="login"] #view-login{animation:none}}
 </style>
+<style>
+/* Tenant workspace: shared design language with admin, simplified for resident tasks */
+:root{--tenant-shell:#18272d;--tenant-accent:#129dce;--tenant-canvas:#f4f6f9;--tenant-ink:#202b32;--tenant-muted:#71818b;--tenant-line:#e5eaf0}
+html,body{background:var(--tenant-canvas);color:var(--tenant-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:grid;grid-template-columns:252px minmax(0,1fr);grid-template-rows:78px minmax(calc(100svh - 78px),auto);min-height:100svh}
+.hero{grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:30;min-height:78px;padding:0 30px;background:#fff;border:0;border-bottom:1px solid #e6ebef;box-shadow:0 3px 14px rgba(28,49,62,.035)}
+.hero:before,.hero:after,.hero .notch{display:none}
+.hero-in{width:100%;max-width:none;height:78px;margin:0;display:flex;align-items:center;justify-content:space-between}
+.hero .brand{color:#1d2c33;font-size:1.08rem;font-weight:800;letter-spacing:-.02em}
+.hero .brand .ico{width:30px;height:30px;padding:6px;color:#fff;background:#087e9e;border-radius:9px}
+.user-btn{color:#334750;background:#f5f7f8;border:1px solid #e8edf0;border-radius:12px}
+.user-panel{z-index:50}
+.badge-wrap{position:absolute;left:268px;bottom:8px;margin:0;padding:0}
+.meter-badge{padding:5px 10px;border:0;background:#f4f8fa;color:#536b77;border-radius:9px}
+.meter-badge small{font-size:.62rem}.meter-badge .code{font-size:.78rem}
+.portal-nav{grid-column:1;grid-row:2;position:sticky;top:78px;align-self:start;height:calc(100svh - 78px);overflow-y:auto;padding:20px 12px;background:var(--tenant-shell);border:0}
+.portal-nav-inner{display:flex;flex-direction:column;gap:5px;max-width:none;margin:0}
+.portal-nav-inner:before{content:"TENANT MENU";padding:6px 12px 12px;color:#8ea6af;font-size:.67rem;font-weight:800;letter-spacing:.14em}
+.portal-tab{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:47px;padding:0 13px;color:#bfd0d5;background:transparent;border:1px solid transparent;border-radius:10px;font-size:.9rem;font-weight:600;text-align:left}
+.portal-tab .ico{width:19px;height:19px;color:#9fb9c1;fill:none;stroke:currentColor;stroke-width:1.5}
+.portal-tab:hover{color:#fff;background:#243a42}
+.portal-tab.active{color:#fff;background:#263e47;border-color:#2e4d58;box-shadow:inset 3px 0 #16a4d4}
+.portal-tab.active .ico{color:#6bd7ef}
+main{grid-column:2;grid-row:2;min-width:0;width:100%;max-width:none;margin:0;padding:26px clamp(16px,2.8vw,40px) 54px}
+.portal-overview,.col{width:100%;max-width:1360px;margin:0 auto}
+.portal-welcome{padding:26px 30px;border-radius:18px;background:linear-gradient(110deg,#263b55,#3d6284 58%,#07869a);box-shadow:0 12px 30px rgba(30,70,100,.12)}
+.portal-welcome h1{font-size:clamp(1.65rem,3vw,2.25rem);letter-spacing:-.04em}
+.portal-overview-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+.portal-stat,.portal-quick,.portal-notice,.card{border:1px solid var(--tenant-line);border-radius:15px;box-shadow:0 3px 14px rgba(28,49,62,.045)}
+.portal-stat{padding:19px}.portal-stat strong{font-size:1.55rem}
+.portal-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-top:16px}
+.portal-quick{min-height:120px;padding:17px;background:#fff}
+.portal-quick:hover{transform:translateY(-2px);border-color:#c5dfe8}
+.portal-notice{margin-top:16px}
+.card{background:#fff;overflow:hidden}.card-head{padding:20px 23px;border-bottom:1px solid #edf0f2}
+.card-head h2{font-size:1.15rem;color:#24343c}
+.card-body{padding:22px 23px}
+.usage-summary{border-radius:12px;background:#f5f8fa;border:1px solid #e8edf0;padding:15px 17px}
+.table-wrap{border:1px solid #e6ebef;border-radius:12px;overflow-x:auto}
+table{border-collapse:separate;border-spacing:0}
+th{background:#f2f5f7;color:#5d707b;font-size:.76rem;font-weight:700}
+td{font-size:.86rem}
+button,.btn{border-radius:10px}
+#view-login,#view-pw{max-width:520px;margin:8vh auto 0;box-shadow:0 18px 48px rgba(22,49,64,.09)}
+.login-card-head{text-align:center;padding:30px 28px 20px}
+.login-emblem{margin:0 auto 12px}
+#view-rent .card-body{display:grid;gap:15px}
+#rentAccountData{display:grid;gap:15px;min-width:0}
+#rentPayForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px;border:1px solid #e6edf0;border-radius:13px;background:#fbfcfd}
+#rentPayForm .field{min-width:0}
+#rentPayForm button,#rentPayForm .msg{grid-column:1/-1}
+#rentNoAccount{padding:16px;border-radius:12px}
+#portal-agreement .agreement-body{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:1050px){
+ .portal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .portal-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ body{display:block;min-height:100svh}
+ .hero{position:sticky;top:0;padding:0 14px}
+ .hero-in{height:68px}.hero{min-height:68px}
+ .badge-wrap{display:none}
+ .portal-nav{position:sticky;top:68px;z-index:25;height:auto;padding:8px 10px;overflow:visible}
+ .portal-nav-inner{flex-direction:row;overflow-x:auto;gap:5px;padding-bottom:2px}
+ .portal-nav-inner:before{display:none}
+ .portal-tab{width:auto;flex:0 0 auto;min-height:42px;padding:0 12px;white-space:nowrap;font-size:.82rem}
+ main{padding:16px 12px 38px}
+ .portal-welcome{padding:22px 20px}
+ .portal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .portal-stat{padding:14px}.portal-stat strong{font-size:1.3rem}
+ .portal-quick-grid{grid-template-columns:1fr}
+ .card-head,.card-body{padding:17px}
+ #rentPayForm{grid-template-columns:1fr}
+ #rentPayForm button,#rentPayForm .msg{grid-column:auto}
+ #view-login,#view-pw{margin:5vh auto 0}
+}
+@media(max-width:420px){
+ .hero .brand{font-size:.92rem}.user-btn{padding:6px 8px}
+ .portal-tab{font-size:.76rem;padding:0 10px}
+ .portal-overview-grid{grid-template-columns:1fr}
+ .portal-stat{min-height:0}
+}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
