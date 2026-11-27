@@ -408,7 +408,7 @@ async function loadRentReports(){
  const range=rentReportRange();const q=new URLSearchParams();if(range.from)q.set('from',range.from);if(range.to)q.set('to',range.to);
  const j=await api('/api/admin/rent/reports?'+q.toString()),m=j.summary;
  $('#rentExpected').textContent='KSh '+fmt(m.expected);$('#rentCollected').textContent='KSh '+fmt(m.collected);$('#rentOutstanding').textContent='KSh '+fmt(m.outstanding);$('#rentOverdue').textContent='KSh '+fmt(m.overdue);$('#rentPerformance').textContent=Number(m.collectionRate).toFixed(2)+'%';$('#rentOccupancy').textContent=m.occupied+' / '+m.units;$('#rentVacancy').textContent='Vacant units: '+m.vacant;
- $('#rentMonthRows').innerHTML=j.months.map(x=>'<tr><td>'+esc(x.month)+'</td><td>KSh '+fmt(x.expected)+'</td><td>KSh '+fmt(x.collected)+'</td><td>'+(Number(x.expected)?(Number(x.collected)/Number(x.expected)*100).toFixed(1):'0.0')+'%</td></tr>').join('')||'<tr><td colspan="4">No monthly data.</td></tr>';
+ $('#rentMonthRows').innerHTML=j.months.map(x=>'<tr><td>'+esc(x.month_label)+'</td><td>KSh '+fmt(x.expected)+'</td><td>KSh '+fmt(x.collected)+'</td><td>'+(Number(x.expected)?(Number(x.collected)/Number(x.expected)*100).toFixed(1):'0.0')+'%</td></tr>').join('')||'<tr><td colspan="4">No monthly data.</td></tr>';
  $('#rentArrearsRows').innerHTML=j.arrears.map(x=>'<tr><td>'+esc(x.tenant_name)+' / '+esc(x.unit_label)+'</td><td>'+esc(x.rent_account_ref)+'</td><td>'+esc(String(x.oldest_due).slice(0,10))+'</td><td>KSh '+fmt(x.balance)+'</td></tr>').join('')||'<tr><td colspan="4">No overdue accounts.</td></tr>';
 }
 $('#rentReportRefresh').addEventListener('click',()=>loadRentReports().catch(e=>say(e.message,true)));
