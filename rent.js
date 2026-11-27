@@ -112,7 +112,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const charges=(await pool.query('SELECT c.id,c.period_start,c.period_end,c.due_date,c.amount,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id WHERE c.lease_id=$1 GROUP BY c.id ORDER BY c.period_start DESC LIMIT 36',[l.id])).rows;
   const payments=(await pool.query('SELECT p.id,p.amount,p.method,p.status,p.mpesa_receipt,p.created_at,r.id receipt_id,r.receipt_number FROM rent_payments p LEFT JOIN rent_receipts r ON r.payment_id=p.id WHERE p.lease_id=$1 ORDER BY p.created_at DESC LIMIT 50',[l.id])).rows;
   const credit=(await pool.query("SELECT COALESCE(sum(p.amount),0)-COALESCE((SELECT sum(a.amount) FROM rent_allocations a JOIN rent_payments x ON x.id=a.payment_id WHERE x.lease_id=$1),0) n FROM rent_payments p WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated')",[l.id])).rows[0].n;
-  const agreement=(await pool.query("SELECT title,body,version,issued_at FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[l.id])).rows[0]||null;
+  const agreement=(await pool.query("SELECT id,title,version,issued_at,split_part(body,E'\\n',2) AS file_mime,split_part(body,E'\\n',3) AS file_name FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' AND body LIKE 'MAURISKADE_AGREEMENT_FILE_V1%' ORDER BY version DESC LIMIT 1",[l.id])).rows[0]||null;
   res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,paybill:mpesaShortcode,arrears:charges.filter(c=>c.due_date<todayNairobi()&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
  }));
  app.post('/api/me/rent/pay',...customer,...(payLimit?[payLimit]:[]),wrap(async(req,res)=>{
@@ -258,15 +258,42 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  }));
 
  app.post(admin+'/c2b/register',wrap(async(_req,res)=>res.status(409).json({ok:false,message:'This shortcode uses the shared Webazi C2B gateway. Registering Mauriskade-specific URLs here would overwrite the shared callbacks. Manage registration from the Webazi Daraja service only.'})));
+ const agreementMeta = "id,lease_id,version,title,status,issued_at,created_at,CASE WHEN body LIKE 'MAURISKADE_AGREEMENT_FILE_V1%' THEN split_part(body,E'\\n',2) ELSE NULL END AS file_mime,CASE WHEN body LIKE 'MAURISKADE_AGREEMENT_FILE_V1%' THEN split_part(body,E'\\n',3) ELSE NULL END AS file_name,CASE WHEN body LIKE 'MAURISKADE_AGREEMENT_FILE_V1%' THEN length(split_part(body,E'\\n',4))*3/4 ELSE 0 END AS file_size";
+ const agreementFile = async (id) => {
+  const row=(await pool.query('SELECT id,lease_id,title,body,version,status FROM tenancy_agreements WHERE id=$1',[id])).rows[0];
+  if(!row||!row.body.startsWith('MAURISKADE_AGREEMENT_FILE_V1\\n'))return null;
+  const parts=row.body.split('\\n');if(parts.length!==4)return null;
+  return {row,mime:parts[1],name:parts[2],buffer:Buffer.from(parts[3],'base64')};
+ };
+ const sendAgreementFile = (res,file) => {res.setHeader('Content-Type',file.mime);res.setHeader('Content-Length',file.buffer.length);res.setHeader('Content-Disposition','inline; filename="tenancy-agreement"');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','private, no-store');res.send(file.buffer);};
  app.get(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
-  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});res.json({ok:true,lease:l,agreements:(await pool.query('SELECT * FROM tenancy_agreements WHERE lease_id=$1 ORDER BY version DESC',[l.id])).rows});
+  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});
+  const agreements=(await pool.query('SELECT '+agreementMeta+' FROM tenancy_agreements WHERE lease_id=$1 ORDER BY version DESC',[l.id])).rows;res.json({ok:true,lease:l,agreements});
  }));
  app.post(admin+'/agreements/:leaseId',wrap(async(req,res)=>{
-  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0],body=String(req.body&&req.body.body||'').trim(),title=String(req.body&&req.body.title||'Tenancy Agreement').trim();if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});if(body.length<100||body.length>30000)return res.status(400).json({ok:false,message:'Agreement must be between 100 and 30,000 characters.'});
-  const v=Number((await pool.query('SELECT COALESCE(max(version),0)+1 n FROM tenancy_agreements WHERE lease_id=$1',[l.id])).rows[0].n);const a=(await pool.query("INSERT INTO tenancy_agreements(lease_id,version,title,body,status) VALUES($1,$2,$3,$4,'draft') RETURNING *",[l.id,v,title,body])).rows[0];res.json({ok:true,agreement:a});
+  const l=(await pool.query('SELECT * FROM rent_leases WHERE id=$1',[req.params.leaseId])).rows[0];if(!l)return res.status(404).json({ok:false,message:'Tenancy not found.'});
+  const title=String(req.body&&req.body.title||'Tenancy Agreement').trim().slice(0,120),mime=String(req.body&&req.body.mime||'').toLowerCase(),name=String(req.body&&req.body.name||'').replace(/[\\r\\n"\\\\]/g,'_').slice(0,180),encoded=String(req.body&&req.body.data||'').replace(/^data:[^,]+;base64,/,'');
+  if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(mime))return res.status(400).json({ok:false,message:'Upload a PDF, JPG, PNG or WebP file.'});
+  if(!name||!encoded||encoded.length>Math.ceil(5*1024*1024*4/3)+8||!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded))return res.status(400).json({ok:false,message:'Choose a valid agreement file up to 5 MB.'});
+  const bytes=Buffer.from(encoded,'base64');if(!bytes.length||bytes.length>5*1024*1024)return res.status(400).json({ok:false,message:'Agreement file must be 5 MB or smaller.'});
+  const isPdf=bytes.subarray(0,5).toString()==='%PDF-',isJpg=bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff,isPng=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),isWebp=bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
+  if(!((mime==='application/pdf'&&isPdf)||(mime==='image/jpeg'&&isJpg)||(mime==='image/png'&&isPng)||(mime==='image/webp'&&isWebp)))return res.status(400).json({ok:false,message:'The selected file does not match its actual file type.'});
+  const v=Number((await pool.query('SELECT COALESCE(max(version),0)+1 n FROM tenancy_agreements WHERE lease_id=$1',[l.id])).rows[0].n),stored='MAURISKADE_AGREEMENT_FILE_V1\\n'+mime+'\\n'+name+'\\n'+bytes.toString('base64');
+  const saved=(await pool.query("INSERT INTO tenancy_agreements(lease_id,version,title,body,status) VALUES($1,$2,$3,$4,'draft') RETURNING id,lease_id,version,title,status,created_at",[l.id,v,title,stored])).rows[0];
+  await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('TENANCY_AGREEMENT_UPLOADED',$1,$2,'DONE')",[l.meter_code,JSON.stringify({agreementId:saved.id,leaseId:l.id,version:v,fileName:name,mime,size:bytes.length})]);
+  res.json({ok:true,agreement:{...saved,file_name:name,file_mime:mime,file_size:bytes.length}});
  }));
+ app.get(admin+'/agreements/:id/file',wrap(async(req,res)=>{const file=await agreementFile(req.params.id);if(!file)return res.status(404).json({ok:false,message:'Uploaded agreement file not found.'});sendAgreementFile(res,file);}));
  app.post(admin+'/agreements/:id/issue',wrap(async(req,res)=>{
-  const a=(await pool.query("UPDATE tenancy_agreements SET status='issued',issued_at=now() WHERE id=$1 AND status='draft' RETURNING *",[req.params.id])).rows[0];if(!a)return res.status(404).json({ok:false,message:'Draft agreement not found.'});await pool.query("UPDATE tenancy_agreements SET status='superseded' WHERE lease_id=$1 AND id<>$2 AND status='issued'",[a.lease_id,a.id]);await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('TENANCY_AGREEMENT_ISSUED',$1,'DONE')",[JSON.stringify({agreementId:a.id,leaseId:a.lease_id,version:a.version})]);res.json({ok:true,agreement:a});
+  const file=await agreementFile(req.params.id);if(!file)return res.status(409).json({ok:false,message:'Upload a valid agreement file before issuing it.'});
+  const a=(await pool.query("UPDATE tenancy_agreements SET status='issued',issued_at=now() WHERE id=$1 AND status='draft' RETURNING id,lease_id,version,title,status,issued_at",[req.params.id])).rows[0];if(!a)return res.status(404).json({ok:false,message:'Draft agreement not found.'});
+  await pool.query("UPDATE tenancy_agreements SET status='superseded' WHERE lease_id=$1 AND id<>$2 AND status='issued'",[a.lease_id,a.id]);
+  await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('TENANCY_AGREEMENT_ISSUED',$1,'DONE')",[JSON.stringify({agreementId:a.id,leaseId:a.lease_id,version:a.version})]);res.json({ok:true,agreement:a});
+ }));
+ app.get('/api/me/rent/agreement/file',...customer,wrap(async(req,res)=>{
+  const lease=(await pool.query("SELECT id FROM rent_leases WHERE meter_code=$1 AND status='active' ORDER BY created_at DESC LIMIT 1",[req.user.meter_code])).rows[0];if(!lease)return res.status(404).json({ok:false,message:'No active tenancy found.'});
+  const row=(await pool.query("SELECT id FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[lease.id])).rows[0];if(!row)return res.status(404).json({ok:false,message:'No issued tenancy agreement is available.'});
+  const file=await agreementFile(row.id);if(!file)return res.status(404).json({ok:false,message:'No uploaded agreement file is available.'});sendAgreementFile(res,file);
  }));
  app.post('/api/mpesa/rent-c2b/:secret/validation',(req,res)=>{if(String(req.params.secret)!==String(callbackSecret))return res.sendStatus(403);res.json({ResultCode:0,ResultDesc:'Accepted'});});
  app.post('/api/mpesa/rent-c2b/:secret/confirmation',wrap(async(req,res)=>{
