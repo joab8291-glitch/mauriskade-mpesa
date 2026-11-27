@@ -802,7 +802,7 @@ function adminAuth(req, res, next) {
 }
 app.use('/api/admin', adminLimit, adminAuth);
 
-registerRentRoutes({ app, pool, requireUser, requireReady, normPhone, darajaPost,
+registerRentRoutes({ app, pool, requireUser, requireReady, normPhone, darajaPost, payLimit,
   mpesaShortcode: MPESA_SHORTCODE, callbackBaseUrl: CALLBACK_BASE_URL, callbackSecret: CALLBACK_SECRET });
 
 app.get('/api/admin/summary', wrap(async (_req, res) => {
