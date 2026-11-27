@@ -206,3 +206,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_active_ref_uidx ON public.rent_lea
 CREATE INDEX IF NOT EXISTS rent_allocations_charge_id_idx ON public.rent_allocations(charge_id);
 
 ALTER TABLE public.rent_payments ADD COLUMN IF NOT EXISTS requested_amount integer;
+
+CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_one_active_per_meter_idx ON public.rent_leases(meter_code) WHERE status='active';
