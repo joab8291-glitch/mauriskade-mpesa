@@ -94,7 +94,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
    const changed=old.billing_frequency!==freq;
    await client.query('UPDATE rent_leases SET rent_amount=$2,billing_frequency=$3,due_day=$4,status=$5,updated_at=now() WHERE id=$1',[old.id,amount,freq,day,status]);
    if(changed)await client.query('DELETE FROM rent_charges c WHERE c.lease_id=$1 AND c.period_start >= $2 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)',[old.id,todayNairobi()]);
-   else await client.query('UPDATE rent_charges c SET amount=$2,due_date=(date_trunc('month',c.period_start)::date + (LEAST($3,extract(day from (date_trunc('month',c.period_start)+interval '1 month - 1 day'))::int)-1)) WHERE c.lease_id=$1 AND c.period_start >= $4 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)',[old.id,amount,day,todayNairobi()]);
+   else await client.query("UPDATE rent_charges c SET amount=$2,due_date=(date_trunc('month',c.period_start)::date + (LEAST($3,extract(day from (date_trunc('month',c.period_start)+interval '1 month - 1 day'))::int)-1)) WHERE c.lease_id=$1 AND c.period_start >= $4 AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=c.id)",[old.id,amount,day,todayNairobi()]);
    await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
   if(status==='active')await generateCharges(pool,req.params.id);
