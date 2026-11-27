@@ -1,4 +1,16 @@
 require('dotenv').config();
+
+// Clean the M-Pesa settings before anything reads them. Values pasted from .env.example into a
+// hosting dashboard often carry a trailing "# comment", stray spaces or a trailing slash, and any of
+// those silently breaks the STK request (wrong Password, wrong TransactionType, "//api" callback URL).
+for (const k of ['MPESA_ENV', 'MPESA_CONSUMER_KEY', 'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY',
+  'MPESA_TXN_TYPE', 'MPESA_PARTYB', 'CALLBACK_BASE_URL', 'CALLBACK_SECRET']) {
+  if (process.env[k] == null) continue;
+  let v = process.env[k].replace(/\s+#.*$/, '').trim();
+  if (k === 'CALLBACK_BASE_URL') v = v.replace(/\/+$/, '');
+  if (v === '') delete process.env[k]; else process.env[k] = v;
+}
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -317,8 +329,13 @@ async function darajaPost(apiPath, body, retriedAuth = false) {
   const raw = await r.text();
   let data;
   try { data = JSON.parse(raw); }
-  catch { throw darajaError(`Daraja returned an invalid response (HTTP ${r.status}).`, false); }
+  catch {
+    log('DARAJA_BAD_RESPONSE', apiPath, `HTTP ${r.status}`, raw.slice(0, 200));
+    throw darajaError(`Daraja returned an invalid response (HTTP ${r.status}).`, false);
+  }
   if (!r.ok) {
+    // The body holds Safaricom's own reason (requestId, errorCode, errorMessage). No secrets in it.
+    log('DARAJA_REJECTED', apiPath, `HTTP ${r.status}`, raw.slice(0, 300));
     throw darajaError(data.errorMessage || data.ResponseDescription || `Daraja request failed (HTTP ${r.status}).`,
       r.status >= 400 && r.status < 500);
   }
@@ -372,9 +389,11 @@ async function startPayment({ meter, phone, amount }) {
   try {
     owned = await lookupOwnedMeter(meter);
   } catch (e) {
+    log('PAY_BLOCKED_HYDRO_UNREACHABLE', { meter: String(meter).slice(-4), error: e.message });
     return { status: 502, body: { ok: false, message: 'We could not reach the meter system. Try again in a moment.' } };
   }
   if (!owned) {
+    log('PAY_BLOCKED_METER_NOT_OWNED', { meter: String(meter).slice(-4) });
     return { status: 409, body: { ok: false, message: `Your meter is not available on the system right now. Contact ${BUSINESS_NAME}.` } };
   }
 
