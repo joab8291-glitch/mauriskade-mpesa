@@ -62,7 +62,7 @@ async function processRentStkCallback(pool,checkoutId,cb){
  await pool.query("UPDATE rent_payments SET status='confirmed',mpesa_receipt=$2,payer_phone=COALESCE($3,payer_phone),raw_payload=$4,updated_at=now() WHERE id=$1 AND status='pending'",[p.id,receipt,items.PhoneNumber?String(items.PhoneNumber):null,JSON.stringify(cb)]);
  await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);return true;
 }
-function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaPost,mpesaShortcode,callbackBaseUrl,callbackSecret}){
+function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaPost,payLimit,mpesaShortcode,callbackBaseUrl,callbackSecret}){
  const customer=[requireUser,requireReady],admin='/api/admin/rent';
  app.get('/api/me/rent',...customer,wrap(async(req,res)=>{
   const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 ORDER BY created_at DESC LIMIT 1",[req.user.meter_code])).rows[0];
@@ -74,7 +74,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const agreement=(await pool.query("SELECT title,body,version,issued_at FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[l.id])).rows[0]||null;
   res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,paybill:mpesaShortcode,arrears:charges.filter(c=>c.due_date<todayNairobi()&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
  }));
- app.post('/api/me/rent/pay',...customer,wrap(async(req,res)=>{
+ app.post('/api/me/rent/pay',...customer,...(payLimit?[payLimit]:[]),wrap(async(req,res)=>{
   const amount=Number(req.body&&req.body.amount),phone=normPhone(req.body&&req.body.phone);
   if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)return res.status(400).json({ok:false,message:'Enter a valid rent amount.'});
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
