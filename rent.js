@@ -175,9 +175,10 @@ async function processRentC2B(pool,b){
  const receipt=String(b.TransID||'').trim(),ref=String(b.BillRefNumber||'').trim(),amount=Number(b.TransAmount);
  if(!receipt||!/^RENT-/i.test(ref)||!Number.isSafeInteger(amount)||amount<1)throw new Error('Invalid Mauriskade rent C2B payload');
  const l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rows[0];
- const t=String(b.TransTime||''),time=/^\\d{14}$/.test(t)?new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10)-3,+t.slice(10,12),+t.slice(12,14))).toISOString():null;
+ const t=String(b.TransTime||''),time=/^\d{14}$/.test(t)?new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10)-3,+t.slice(10,12),+t.slice(12,14))).toISOString():null;
  const p=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,method,status,mpesa_receipt,transaction_time,raw_payload) VALUES($1,$2,$3,$4,'mpesa_paybill',$5,$6,$7,$8) ON CONFLICT(mpesa_receipt) DO NOTHING RETURNING id",[l?l.id:null,ref,b.MSISDN?String(b.MSISDN):null,amount,l?'confirmed':'unallocated',receipt,time,JSON.stringify(b)])).rows[0];
  if(p){if(l){await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);}await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_C2B_RECEIVED',$1,$2,'DONE')",[l?l.meter_code:null,JSON.stringify({receipt,amount,accountRef:ref,matched:!!l})]);}
  return {duplicate:!p,matched:!!l};
 }
-\nmodule.exports={registerRentRoutes,processRentStkCallback,processRentC2B,generateCharges,allocateRentPayment};
+
+module.exports={registerRentRoutes,processRentStkCallback,processRentC2B,generateCharges,allocateRentPayment};
