@@ -99,3 +99,15 @@ CREATE TABLE IF NOT EXISTS admin_actions (
 REVOKE ALL PRIVILEGES ON TABLE public.admin_actions FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON SEQUENCE public.admin_actions_id_seq FROM PUBLIC, anon, authenticated;
 ALTER TABLE public.admin_actions ENABLE ROW LEVEL SECURITY;
+
+
+-- These four tables are private to the Mauriskade application backend.
+-- Customer authentication is handled by server.js sessions (not Supabase Auth),
+-- so do not create broad anon/authenticated policies. The backend connects with
+-- DATABASE_URL; service_role remains available for trusted server-side operations.
+REVOKE ALL PRIVILEGES ON TABLE public.meters, public.sessions, public.transactions, public.users
+  FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.meters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
