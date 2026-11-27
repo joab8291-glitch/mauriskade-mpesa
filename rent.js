@@ -1,6 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const FREQUENCIES = {monthly:1,quarterly:3,half_yearly:6,annually:12};
+const todayNairobi = () => iso(new Date(Date.now()+3*3600000));
 const iso = d => d.toISOString().slice(0,10);
 const addMonths = (s,n) => { const d=new Date(s+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d; };
 const dueDate = (s,day) => {const d=new Date(s+'T00:00:00Z');d.setUTCDate(Math.min(Number(day)||1,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return iso(d);};
@@ -22,7 +23,7 @@ async function allocateRentPayment(pool,id){
 }
 async function generateCharges(pool,id){
  const l=(await pool.query("SELECT * FROM rent_leases WHERE id=$1 AND status='active'",[id])).rows[0];if(!l)return 0;
- const step=FREQUENCIES[l.billing_frequency],today=iso(new Date()),horizon=addMonths(today,18);let period=String(l.start_date).slice(0,10),count=0;
+ const step=FREQUENCIES[l.billing_frequency],today=todayNairobi(),horizon=addMonths(today,18);let period=String(l.start_date).slice(0,10),count=0;
  for(let n=0;n<240;n++){if(new Date(period+'T00:00:00Z')>horizon)break;const next=addMonths(period,step),end=new Date(next.getTime()-86400000);if(l.end_date&&period>String(l.end_date).slice(0,10))break;
   const r=await pool.query('INSERT INTO rent_charges(lease_id,period_start,period_end,due_date,amount) VALUES($1,$2,$3,$4,$5) ON CONFLICT(lease_id,period_start) DO NOTHING',[id,period,iso(end),dueDate(period,l.due_day),l.rent_amount]);count+=r.rowCount;period=iso(next);}
  const ps=(await pool.query("SELECT id FROM rent_payments WHERE lease_id=$1 AND status IN ('confirmed','unallocated','allocated') ORDER BY created_at",[id])).rows;for(const p of ps)await allocateRentPayment(pool,p.id);return count;
@@ -50,13 +51,14 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const payments=(await pool.query('SELECT p.id,p.amount,p.method,p.status,p.mpesa_receipt,p.created_at,r.id receipt_id,r.receipt_number FROM rent_payments p LEFT JOIN rent_receipts r ON r.payment_id=p.id WHERE p.lease_id=$1 ORDER BY p.created_at DESC LIMIT 50',[l.id])).rows;
   const credit=(await pool.query("SELECT COALESCE(sum(p.amount),0)-COALESCE((SELECT sum(a.amount) FROM rent_allocations a JOIN rent_payments x ON x.id=a.payment_id WHERE x.lease_id=$1),0) n FROM rent_payments p WHERE p.lease_id=$1 AND p.status IN ('confirmed','allocated')",[l.id])).rows[0].n;
   const agreement=(await pool.query("SELECT title,body,version,issued_at FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[l.id])).rows[0]||null;
-  res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,arrears:charges.filter(c=>c.due_date<iso(new Date())&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
+  res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,paybill:mpesaShortcode,arrears:charges.filter(c=>c.due_date<todayNairobi()&&Number(c.balance)>0).reduce((n,c)=>n+Number(c.balance),0)});
  }));
  app.post('/api/me/rent/pay',...customer,wrap(async(req,res)=>{
   const amount=Number(req.body&&req.body.amount),phone=normPhone(req.body&&req.body.phone);
   if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)return res.status(400).json({ok:false,message:'Enter a valid rent amount.'});
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
   const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active'",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
+  await generateCharges(pool,l.id);
   const id=(await pool.query("INSERT INTO rent_payments(lease_id,rent_account_ref,payer_phone,amount,method,status) VALUES($1,$2,$3,$4,'mpesa_stk','pending') RETURNING id",[l.id,l.rent_account_ref,phone,amount])).rows[0].id;
   try{const stamp=new Date(Date.now()+10800000).toISOString().replace(/[-:T]/g,'').slice(0,14),pass=Buffer.from(String(mpesaShortcode)+process.env.MPESA_PASSKEY+stamp).toString('base64');
    const j=await darajaPost('/mpesa/stkpush/v1/processrequest',{BusinessShortCode:mpesaShortcode,Password:pass,Timestamp:stamp,TransactionType:process.env.MPESA_TXN_TYPE||'CustomerPayBillOnline',Amount:amount,PartyA:phone,PartyB:process.env.MPESA_PARTYB||mpesaShortcode,PhoneNumber:phone,CallBackURL:callbackBaseUrl+'/api/mpesa/callback/'+callbackSecret,AccountReference:String(l.rent_account_ref).slice(0,12),TransactionDesc:'House rent'});
