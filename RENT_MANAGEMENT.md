@@ -28,3 +28,16 @@ The rent module runs alongside the existing water-credit service. Rent and water
 Rental tables: `rent_leases`, `rent_charges`, `rent_payments`, `rent_allocations`, `tenancy_agreements`, and `rent_receipts`. All have RLS enabled, browser-role grants revoked, and restrictive deny policies for `anon` and `authenticated`. The existing trusted backend connection continues to perform all rent operations.
 
 No water transactions, Hydro meter records, customer passwords, or existing audit records are removed or rewritten by the rent module.
+
+
+## Dashboard, occupancy and reports
+
+- Rent dashboard KPIs are calculated from rent charges, confirmed rent payments, arrears and current meter/tenancy assignments for the selected date range.
+- The default report period is the current calendar month. Administrators can choose another date range.
+- Occupancy is measured against registered meter units: active leases with no end date or an end date on/after today are occupied; the remaining registered meters are vacant.
+- Tenancy creation and editing support an optional end date. Expired tenancies stop receiving new generated charges, cannot initiate rent STK payments, and do not match new incoming Paybill confirmations.
+- Monthly collection reports show expected charges and confirmed collections by month.
+- Arrears exports list overdue unpaid charges by tenant and unit.
+- Tenant statement CSVs include opening balance, dated rent charges, confirmed payments, M-Pesa receipt references, allocations and running/closing balance.
+- Payment reconciliation detail distinguishes unmatched payments, partial allocations and customer credit not yet applied. CSV exports are generated server-side and require the admin key.
+- Reports do not fabricate records: a new installation with no lease/payment records will correctly show zero financial activity and all registered units vacant.
