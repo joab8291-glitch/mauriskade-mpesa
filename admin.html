@@ -216,6 +216,10 @@ tr:hover td{background:#f7fbfc}
 .home-link{display:inline-flex;align-items:center;gap:9px;padding:8px 0;color:#087f91;background:none;border:0;box-shadow:none;font-size:.86rem;font-weight:750;white-space:nowrap}
 .home-link:hover{background:none;filter:none;color:#075a70}
 .home-link span{font-size:1.2rem}
+#stats .kpi{padding:18px 18px 16px 56px}
+.kpi-icon{position:absolute;left:17px;top:17px;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;color:#07899a;background:#eaf7f7}
+.kpi-icon .ico{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#stats .kpi-label{display:block;padding-top:3px}
 .home-rent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .home-metric{display:grid;grid-template-columns:42px minmax(0,1fr);column-gap:12px;align-items:center;padding:16px 17px;background:#fff;border:1px solid #e3ebef;border-radius:16px;box-shadow:0 7px 22px rgba(26,67,88,.045);min-width:0}
 .home-metric-icon{grid-row:span 2;display:grid;place-items:center;width:42px;height:42px;border-radius:13px}
@@ -324,7 +328,7 @@ tr:hover td{background:#f7fbfc}
         <article class="home-report-card"><div class="home-card-head"><div><h3>Monthly rent collections</h3><p>Expected against confirmed payments</p></div><span class="home-card-icon"><svg class="ico"><use href="#a-chart"/></svg></span></div><div class="table-wrap"><table><thead><tr><th>Month</th><th>Expected</th><th>Collected</th><th>Rate</th></tr></thead><tbody id="homeRentMonthRows"><tr><td colspan="4" class="empty">Loading rent report…</td></tr></tbody></table></div></article>
         <article class="home-report-card"><div class="home-card-head"><div><h3>Tenants in arrears</h3><p>Accounts with unpaid overdue rent</p></div><span class="home-card-icon rose"><svg class="ico"><use href="#a-alert"/></svg></span></div><div class="table-wrap"><table><thead><tr><th>Tenant / unit</th><th>Account</th><th>Balance</th></tr></thead><tbody id="homeRentArrearsRows"><tr><td colspan="3" class="empty">Loading arrears…</td></tr></tbody></table></div></article>
       </div>
-      <div class="home-section-heading water-heading"><div><span class="section-kicker">SMART METER OPERATIONS</span><h2>Water dashboard &amp; reports</h2><p>Hydro meter activity, water issued, payments and device health.</p></div><button class="home-link" type="button" data-home-tab="devices">Open water reports <span>→</span></button></div>
+      <div class="home-section-heading water-heading"><div><span class="section-kicker">SMART METER OPERATIONS</span><h2>Water dashboard &amp; reports</h2><p>Hydro meter activity, water issued, payments and device health.</p></div><button class="home-link" type="button" data-home-tab="devices">View device health <span>→</span></button></div>
       <div class="grid" id="stats"></div>
       <div class="two">
         <div class="panel">
@@ -540,7 +544,8 @@ function spark(vals,color){
   return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" aria-hidden="true" preserveAspectRatio="none"><polygon points="0,'+h+' '+line+' '+w+','+h+'" fill="'+color+'" opacity=".14"/><polyline points="'+line+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
 function kpi(label,value,unit,sub,tone,sp){
-  return '<div class="kpi"><span class="kpi-label">'+esc(label)+'</span><div class="kpi-val-row"><strong class="kpi-val '+tone+'">'+esc(value)+'</strong>'+(unit?'<span class="kpi-unit '+tone+'">'+esc(unit)+'</span>':'')+'</div>'+(sp||'')+'<span class="kpi-sub">'+esc(sub)+'</span></div>';
+  const icon=label.includes('Water issued')?'#i-drop':label.includes('Collected')?'#a-wallet':label.includes('Registered')?'#a-chip':'#a-alert';
+  return '<div class="kpi"><span class="kpi-icon"><svg class="ico" aria-hidden="true"><use href="'+icon+'"/></svg></span><span class="kpi-label">'+esc(label)+'</span><div class="kpi-val-row"><strong class="kpi-val '+tone+'">'+esc(value)+'</strong>'+(unit?'<span class="kpi-unit '+tone+'">'+esc(unit)+'</span>':'')+'</div>'+(sp||'')+'<span class="kpi-sub">'+esc(sub)+'</span></div>';
 }
 function renderKpis(){
   if(!S)return;
