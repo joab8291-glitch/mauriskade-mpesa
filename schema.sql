@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS meters (
   last_seen_at    timestamptz NOT NULL DEFAULT now()
 );
 
+-- Separate customer-facing room references; Hydro meter_code remains the immutable device identifier.
+ALTER TABLE meters ADD COLUMN IF NOT EXISTS rent_account_ref text;
+ALTER TABLE meters ADD COLUMN IF NOT EXISTS water_account_ref text;
+CREATE UNIQUE INDEX IF NOT EXISTS meters_rent_account_ref_uidx ON meters (rent_account_ref) WHERE rent_account_ref IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS meters_water_account_ref_uidx ON meters (water_account_ref) WHERE water_account_ref IS NOT NULL;
+
 -- One login per meter. Username is a distinct login field, initially set to meter_code.
 CREATE TABLE IF NOT EXISTS users (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
