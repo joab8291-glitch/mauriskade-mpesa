@@ -218,7 +218,7 @@ main{position:relative;z-index:4;clear:both;padding-top:28px}
 .agreement-meta{margin:10px 0;padding:12px 14px;border-radius:10px;background:#eff7f8;color:#087782;font-weight:700}
 .agreement-body{max-height:70vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;border:1px solid #e0e9ed;border-radius:13px;background:#fff;color:#304d5f;font:.9rem/1.75 Inter,system-ui,sans-serif}
 main[data-portal-tab="overview"]>.col,main[data-portal-tab="payments"]>.col,main[data-portal-tab="agreement"]>.col{display:none}
-main[data-portal-tab="overview"] #portal-overview,main[data-portal-tab="payments"] #portal-payments,main[data-portal-tab="agreement"] #portal-agreement{display:block}
+
 main[data-portal-tab="overview"] #view-rent,main[data-portal-tab="payments"] #view-rent,main[data-portal-tab="agreement"] #view-rent{display:none}
 main[data-portal-tab="payments"] #view-pay,main[data-portal-tab="payments"] #view-help,main[data-portal-tab="agreement"] #view-pay,main[data-portal-tab="agreement"] #view-help{display:none}
 main[data-portal-tab="water"] #view-rent,main[data-portal-tab="water"] #portal-overview,main[data-portal-tab="water"] #portal-payments,main[data-portal-tab="water"] #portal-agreement{display:none}
@@ -558,8 +558,27 @@ body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
     if(!allowed.includes(name))name='overview';
     if(name==='rent'&&$('#rentTab').hidden)name='water';
     if(name==='agreement'&&$('#agreementTab').hidden)name='water';
-    $('main').dataset.portalTab=name;
-    document.querySelectorAll('[data-portal-tab]').forEach(b=>{const active=b.dataset.portalTab===name;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false');});
+
+    const main=$('main');
+    const standalone=['overview','payments','agreement'].includes(name);
+    main.dataset.portalTab=name;
+
+    // Drive visibility from one source of truth; do not rely on CSS overriding [hidden].
+    $('#portal-overview').hidden=name!=='overview';
+    $('#portal-payments').hidden=name!=='payments';
+    $('#portal-agreement').hidden=name!=='agreement';
+    const contentCol=main.querySelector(':scope > .col');
+    if(contentCol)contentCol.hidden=standalone;
+    $('#view-pay').hidden=name!=='water';
+    $('#view-help').hidden=name!=='water';
+    $('#view-rent').hidden=name!=='rent';
+    $('#recent').hidden=true;
+
+    document.querySelectorAll('[data-portal-tab]').forEach(b=>{
+      const active=b.dataset.portalTab===name;
+      b.classList.toggle('active',active);
+      b.setAttribute('aria-current',active?'page':'false');
+    });
     $('#portalNav').hidden=false;
     menu(false);
   }
@@ -758,9 +777,11 @@ body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
   async function loadRecent() {
     try {
       const j = await api('/api/me/transactions');
-      renderRecent(j.items);
+      renderRecent(Array.isArray(j.items)?j.items:[]);
     } catch (err) {
       if (err.status === 401) return sessionEnded();
+      $('#portalWaterPayments').textContent='—';
+      $('#portalWaterHistory').innerHTML='<tr><td colspan="6">Payment history is temporarily unavailable. Please refresh.</td></tr>';
     }
   }
 
@@ -779,7 +800,8 @@ body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
   }
 
   function renderRecent(items) {
-    const list = items.filter((t) => t.status !== 'waiting_for_payment' || Date.now() - new Date(t.createdAt) < 30 * 60000);
+    const safeItems=Array.isArray(items)?items:[];
+    const list = safeItems.filter((t) => t.status !== 'waiting_for_payment' || Date.now() - new Date(t.createdAt) < 30 * 60000);
     recentCount = list.length;
     $('#recent').hidden = recentCount === 0 || $('#view-pay').hidden;
     $('#portalWaterPayments').textContent=String(list.length);
