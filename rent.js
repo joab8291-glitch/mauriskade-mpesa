@@ -181,4 +181,4 @@ async function processRentC2B(pool,b){
  return {duplicate:!p,matched:!!l};
 }
 
-module.exports={registerRentRoutes,processRentStkCallback,processRentC2B,generateCharges,allocateRentPayment};
+module.exports={registerRentRoutes,processRentStkCallback,processRentC2B,generateCharges,allocateRentPayment,makeReceiptPdf};
