@@ -593,8 +593,8 @@ main{position:relative;z-index:4;clear:both;padding-top:28px}
       $('#rentArrears').textContent='KSh '+fmt(j.arrears);
       $('#rentCredit').textContent='Available credit: KSh '+fmt(j.credit);
       $('#rentAccountInfo').textContent='Paybill: '+j.paybill+' · Rent account reference: '+j.lease.rent_account_ref+' · Unit: '+j.lease.unit_label;
-      $('#rentPayBtn').disabled=j.lease.status!=='active';
-      if(j.lease.status!=='active')$('#rentPayMsg').textContent='This tenancy is '+j.lease.status+'. Rent payments are currently disabled; contact the property office.';
+      const leaseExpired=!!j.lease.end_date&&String(j.lease.end_date).slice(0,10)<new Date().toISOString().slice(0,10);$('#rentPayBtn').disabled=j.lease.status!=='active'||leaseExpired;
+      if(j.lease.status!=='active'||leaseExpired)$('#rentPayMsg').textContent=leaseExpired?'This tenancy has reached its end date. Rent payments are disabled; contact the property office.':'This tenancy is '+j.lease.status+'. Rent payments are currently disabled; contact the property office.';
       $('#rentAnnualWarning').hidden=j.lease.billing_frequency!=='annually';
       if(me.phone&&!$('#rentPayPhone').value)$('#rentPayPhone').value=String(me.phone).replace(/^254/,'');
       $('#rentChargeRows').innerHTML=j.charges.map(c=>'<tr><td>'+dateOf(c.period_start)+' – '+dateOf(c.period_end)+'</td><td>'+dateOf(c.due_date)+'</td><td>KSh '+fmt(c.amount)+'</td><td>KSh '+fmt(c.paid)+'</td><td>KSh '+fmt(c.balance)+'</td></tr>').join('')||'<tr><td colspan="5">No rent charges yet.</td></tr>';
