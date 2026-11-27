@@ -78,7 +78,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   const amount=Number(req.body&&req.body.amount),phone=normPhone(req.body&&req.body.phone);
   if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)return res.status(400).json({ok:false,message:'Enter a valid rent amount.'});
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
-  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active'",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
+  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date)",[req.user.meter_code])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
   await generateCharges(pool,l.id);
   const client=await pool.connect();let id;
   try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent:'+l.id]);
@@ -143,7 +143,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  app.post(admin+'/leases/:id/generate',wrap(async(req,res)=>res.json({ok:true,created:await generateCharges(pool,req.params.id)})));
  app.get(admin+'/payments/unallocated',wrap(async(_req,res)=>res.json({ok:true,items:(await pool.query("SELECT * FROM rent_payments WHERE status IN ('unallocated','review') OR (lease_id IS NULL AND status='confirmed') ORDER BY created_at DESC LIMIT 200")).rows})));
  app.post(admin+'/payments/:id/reconcile',wrap(async(req,res)=>{
-  const ref=String(req.body&&req.body.rentAccountRef||'').trim(),l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active'",[ref])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active tenancy matches that rent account.'});
+  const ref=String(req.body&&req.body.rentAccountRef||'').trim(),l=(await pool.query("SELECT * FROM rent_leases WHERE rent_account_ref=$1 AND status='active' AND (end_date IS NULL OR end_date>=current_date)",[ref])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active tenancy matches that rent account.'});
   const p=(await pool.query('SELECT * FROM rent_payments WHERE id=$1',[req.params.id])).rows[0];if(!p||p.status==='failed')return res.status(404).json({ok:false,message:'Payment not found or failed.'});if(p.lease_id&&p.lease_id!==l.id)return res.status(409).json({ok:false,message:'Payment belongs to another tenancy.'});
   await pool.query("UPDATE rent_payments SET lease_id=$2,rent_account_ref=$3,status='confirmed',updated_at=now() WHERE id=$1",[p.id,l.id,l.rent_account_ref]);await generateCharges(pool,l.id);await allocateRentPayment(pool,p.id);await createReceipt(pool,p.id);
   await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_PAYMENT_RECONCILED',$1,$2,'DONE')",[l.meter_code,JSON.stringify({paymentId:p.id,amount:p.amount,accountRef:ref})]);res.json({ok:true});
