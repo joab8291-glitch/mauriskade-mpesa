@@ -111,3 +111,24 @@ ALTER TABLE public.meters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+
+-- Explicit restrictive deny policy for browser/API roles on every backend-only table.
+-- The application uses its own signed-cookie sessions and trusted DATABASE_URL pool,
+-- not Supabase Auth/JWT, so no anon/authenticated row access is appropriate.
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['meters','sessions','transactions','users','admin_actions'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname='public' AND tablename=t
+        AND policyname='deny_client_api_access'
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY deny_client_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
+        t
+      );
+    END IF;
+  END LOOP;
+END $$;
