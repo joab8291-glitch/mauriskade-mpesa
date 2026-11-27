@@ -5,15 +5,138 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mauriskade Management Bill Payment | M-Pesa Water Top-Up</title>
 <meta name="description" content="Pay your Mauriskade Management water bill securely with M-Pesa and top up your water meter credit. Choose an amount, approve the payment prompt and receive your water token.">
-<link rel="canonical" href="https://mauriskade.co.ke/">
+<link rel="canonical" href="https://water.mauriskade.co.ke/">
+<meta property="og:url" content="https://water.mauriskade.co.ke/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Mauriskade Management Bill Payment">
 <meta property="og:description" content="Top up your Mauriskade Management meter using M-Pesa and receive your water token online.">
 <meta name="theme-color" content="#0a4f82">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/theme.css">
+<style>
+/* Critical shared theme inlined to avoid a render-blocking stylesheet request. */
+/* Shared look for the customer portal, the admin dashboard and the legal pages.
+   Light "water" theme: deep-blue header band, white cards, sky-blue card headers, green for money actions.
+   CSS only, no images. Page-specific layout lives in each page. */
+:root{
+  color-scheme:light;
+  --navy:#0a4f82;
+  --blue:#0c6aa6;
+  --sky:#5aaee6;
+  --sky-50:#e3f1fb;
+  --sky-100:#cfe5f6;
+  --ink:#12283d;
+  --muted:#5a7186;
+  --line:#dce7f1;
+  --bg:#f2f7fb;
+  --card:#fff;
+  --green:#1e9e52;
+  --green-700:#16803f;
+  --green-50:#e7f6ec;
+  --green-100:#d3efdc;
+  --amber:#a8650a;
+  --amber-50:#fff3dc;
+  --red:#cf3a47;
+  --red-50:#fdecee;
+  --teal:#0f9d94;
+  --teal-50:#e1f5f3;
+
+  /* names the legal pages already use */
+  --text:var(--ink);
+  --aqua:var(--sky);
+  --foam:var(--sky-50);
+  --link:#0b66a8;
+  --danger:var(--red);
+
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Martian Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(16,42,67,.06),0 10px 28px -14px rgba(16,42,67,.22);
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;min-height:100vh;color:var(--ink);background:var(--bg);font:400 1rem/1.55 var(--font)}
+h1,h2,h3{margin:0;line-height:1.2;letter-spacing:-.02em}
+p{margin:0 0 12px}
+a{color:var(--link);text-underline-offset:.2em}
+a:hover{color:var(--navy)}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px;border-radius:8px}
+[hidden]{display:none!important}
+.ico{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Brand mark */
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:1.2rem;letter-spacing:-.02em;color:#fff;text-decoration:none}
+.brand .ico{width:30px;height:30px;fill:#fff;stroke:none}
+
+/* Card: white panel with an optional coloured head */
+.card,.glass{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-head{padding:16px 22px;background:var(--sky);color:#fff}
+.card-head h2{font-size:clamp(1.35rem,3vw,1.7rem);font-weight:800;letter-spacing:-.025em}
+.card-head h2:focus{outline:none}
+.card-head.green{background:var(--green-100);color:var(--green-700)}
+.card-head.plain{background:var(--sky-50);color:var(--navy)}
+.card-strip{padding:11px 22px;background:var(--sky-50);border-bottom:1px solid var(--sky-100);font-weight:600;color:var(--ink);font-size:.95rem}
+.card-body{padding:clamp(18px,3vw,24px) 22px 24px}
+
+/* Forms */
+label,.label{display:block;margin:0 0 7px;font-weight:600;font-size:.95rem;color:var(--ink)}
+.field{margin:0 0 18px}
+.hint{margin:8px 0 0;color:var(--muted);font-size:.9rem}
+.msg{min-height:1.4rem;margin:12px 0 0;color:var(--muted)}
+.msg.err{color:var(--red);font-weight:600}
+input,select,textarea{width:100%;min-height:50px;padding:0 14px;font:inherit;color:var(--ink);background:#fff;border:1.5px solid var(--sky-100);border-radius:10px;outline:none;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:#8da1b4}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(12,106,166,.14)}
+.input-group{display:flex;align-items:stretch;border:1.5px solid var(--sky-100);border-radius:10px;background:#fff;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.input-group:focus-within{border-color:var(--blue);box-shadow:0 0 0 4px rgba(12,106,166,.14)}
+.input-group .addon{display:flex;align-items:center;padding:0 14px;background:var(--sky-50);color:var(--navy);font-weight:700;white-space:nowrap}
+.input-group input{border:0;border-radius:0;box-shadow:none;min-height:48px}
+.input-group input:focus{box-shadow:none}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;padding:0 20px;font:inherit;font-weight:700;color:#fff;background:var(--blue);border:0;border-radius:10px;cursor:pointer;box-shadow:0 8px 18px -10px rgba(12,106,166,.7);transition:transform .15s var(--ease),filter .15s,box-shadow .15s}
+.btn:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+.btn:active:not(:disabled){transform:none}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.green{background:var(--green);box-shadow:0 8px 18px -10px rgba(30,158,82,.8)}
+.btn.quiet{color:var(--navy);background:#fff;border:1.5px solid var(--sky-100);box-shadow:none}
+.btn.auto{width:auto}
+.link{min-height:40px;padding:4px 0;font:inherit;font-weight:600;color:var(--link);background:none;border:0;text-decoration:underline;text-underline-offset:.22em;cursor:pointer}
+.link:hover{color:var(--navy)}
+
+/* Amount chips: amount on top, water volume underneath */
+.chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:62px;padding:8px 6px;font:inherit;color:var(--ink);background:#fff;border:2px solid var(--navy);border-radius:12px;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.chip b{font-size:1rem;font-weight:700}
+.chip small{color:var(--muted);font-size:.85rem}
+.chip:hover{background:var(--sky-50)}
+.chip[aria-pressed=true]{background:var(--green-50);border-color:var(--green);box-shadow:0 0 0 3px rgba(30,158,82,.14)}
+.chip[aria-pressed=true] small{color:var(--green-700)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;font-size:.78rem;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:999px}
+.pill.good{color:var(--green-700);background:var(--green-50);border-color:var(--green-100)}
+.pill.warn{color:var(--amber);background:var(--amber-50);border-color:#f3dcae}
+.pill.bad{color:var(--red);background:var(--red-50);border-color:#f6cdd1}
+
+/* Tables */
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{border-collapse:collapse;width:100%}
+th,td{padding:13px 16px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--line)}
+th{font-size:.85rem;font-weight:600;color:var(--muted);background:#f7fafd;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#f8fbfe}
+
+.notice{padding:12px 14px;border-radius:10px;background:var(--sky-50);border:1px solid var(--sky-100);color:var(--ink);white-space:pre-wrap}
+.notice.bad{color:var(--red);background:var(--red-50);border-color:#f6cdd1}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+@media print{body{background:#fff}}
+
+</style>
 <style>
 /* Customer portal layout. Colours, buttons, cards, chips and tables come from /theme.css. */
 
@@ -256,6 +379,21 @@ body[data-state="login"] #loginMsg{min-height:1.2em;margin:8px 0 0;text-align:ce
 body[data-state="login"] .site-foot{width:min(100% - 32px,1120px);margin:0 auto}
 @media(max-width:600px){body[data-state="login"] .hero{padding:17px 0 20px;border-radius:0 0 21px 21px}body[data-state="login"] .hero-in{width:calc(100% - 30px)}body[data-state="login"] main{width:calc(100% - 28px);min-height:calc(100svh - 72px);padding:32px 0 38px}body[data-state="login"] #view-login{border-radius:22px}body[data-state="login"] #view-login .login-card-head{padding:28px 22px 18px}body[data-state="login"] #view-login .card-body{padding:22px 22px 26px}}
 @media(prefers-reduced-motion:no-preference){body[data-state="login"] #view-login{animation:loginLift .55s cubic-bezier(.2,.75,.25,1) both}@keyframes loginLift{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}}
+</style>
+
+<style>
+/* PageSpeed: keep the initial mobile layout stable while session state resolves. */
+main[data-state="login"]{min-height:clamp(460px,calc(100svh - 150px),760px);align-content:start}
+@media(max-width:600px){body[data-state="login"] main{min-height:calc(100svh - 72px)}}
+/* Use system fonts: avoid a third-party font swap and its associated layout movement. */
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.portal-tab{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root{--muted:#526a7b;--link:#086b86}
+.hint,.quote,.msg,.site-foot{color:#526a7b}
+.portal-tab{color:#496477}
+input::placeholder{color:#647987}
+/* Avoid entrance motion being counted as unexpected visual movement. */
+@media(prefers-reduced-motion:no-preference){body[data-state="login"] #view-login{animation:none}}
 </style>
 </head>
 <body>
