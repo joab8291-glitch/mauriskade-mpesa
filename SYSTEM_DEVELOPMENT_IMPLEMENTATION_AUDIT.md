@@ -27,7 +27,7 @@
 | 10 | Reconcile wrong references/unmatched payments and review exceptions against provider/bank statements. | ✓ IMPLEMENTED | Unmatched Paybill assignment, missing-payment reports, verified reconciliation notes, bank statement import, line matching, duplicate guards and controlled posting are implemented. |
 | 11 | Issue numbered downloadable receipts showing payment reference and allocation; maintain reversed receipt history and paper receipt number. | ✓ IMPLEMENTED | Numbered PDF receipts show rental-period allocations and remaining credit. Manual paper receipt numbers are stored. Approved reversals preserve the receipt and mark it reversed rather than deleting history. |
 | 12 | Retain overpayments as credit; track security deposits separately; approve refunds/deductions/transfers. | ✓ IMPLEMENTED | Rent credit, rent-credit refunds/transfers, deposit receipts, deductions, deposit refunds and deposit transfers use separate ledgers. Refunds require independent approval and actual payment reference before marked paid. |
-| 13 | Tenant portal: view rent, arrears, credits, due dates, statements, receipts, documents; pay and report missing payments. | ◐ PARTIALLY IMPLEMENTED | Current tenant portal supports rent balances, arrears, credits, payment history, statements, receipts, agreement and missing-payment reports. Former tenant history remains available to authorized admins, but former tenants do not retain a separate archived portal login after their meter login is revoked. |
+| 13 | Tenant portal: view rent, arrears, credits, due dates, statements, receipts, documents; pay and report missing payments. | ✓ IMPLEMENTED | Current tenants can view rent balances, arrears, credits, due dates, statements, receipts and agreements, pay rent and report missing payments. On final move-out, former-tenant portal access is ended completely; historical tenancy and financial records remain available to administrators only, as agreed. |
 | 14 | Move-out: stop billing, calculate final rent, approve deductions, settle deposit and issue final statement; preserve former balances. | ✓ IMPLEMENTED | Final settlement previews prorated rent, releases future advance allocations into credit, calculates deposit deduction/refund, requires independent approval, records actual refund payment and provides a downloadable final statement PDF. Rejected settlements restore the original tenancy and full-period charge. |
 | 15 | Dashboard: billed, current-month recovered, prior arrears recovered, cash, overdue, credits, deposits, occupancy and unmatched payments. | ✓ IMPLEMENTED | Rent dashboard and extended operations KPIs include current-period expected/collected, prior arrears recovered, cash received, arrears, deposit liability, occupancy/vacancy, unmatched payments and excess credit. |
 | 16 | Arrears ageing and downloadable reports by property, unit and period. | ✓ IMPLEMENTED | Ageing buckets (0–30, 31–60, 61–90, 90+ days) support property, unit and date filters and server-generated CSV export. Monthly collections and tenant statements remain available. |
@@ -40,8 +40,8 @@
 
 ### Status totals
 
-- **✓ IMPLEMENTED:** 16 requirements
-- **◐ PARTIALLY IMPLEMENTED:** 6 requirements
+- **✓ IMPLEMENTED:** 17 requirements
+- **◐ PARTIALLY IMPLEMENTED:** 5 requirements
 - **✗ NOT IMPLEMENTED:** 0 requirements
 
 The remaining partial items are explicit boundaries, not hidden or simulated functionality. Provider-dependent functions remain blocked until the client supplies/configures the relevant services and credentials.
