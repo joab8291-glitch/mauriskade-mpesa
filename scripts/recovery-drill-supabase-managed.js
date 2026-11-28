@@ -24,7 +24,8 @@ async function inspectB2Scope(keyId, applicationKey, expectedBucket) {
     signal: AbortSignal.timeout(30000)
   });
   if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + ').');
-  const allowed = (await response.json()).allowed || {};
+  const auth = await response.json();
+  const allowed = (auth.apiInfo && auth.apiInfo.storageApi && auth.apiInfo.storageApi.allowed) || {};
   const buckets = Array.isArray(allowed.buckets) ? allowed.buckets : null;
   if (buckets && !buckets.some(item => item && item.name === expectedBucket)) throw new Error('Backblaze application key is not authorized for the configured bucket.');
   const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
