@@ -163,10 +163,15 @@ async function main(env = process.env) {
       AWS_SECRET_ACCESS_KEY: b2Key,
       AWS_DEFAULT_REGION: b2Region,
       AWS_REGION: b2Region,
-      AWS_EC2_METADATA_DISABLED: 'true'
+      AWS_EC2_METADATA_DISABLED: 'true',
+      AWS_RETRY_MODE: 'standard',
+      AWS_MAX_ATTEMPTS: '5',
+      AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
+      AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required'
     };
     const endpointArgs = ['--endpoint-url', b2Endpoint.replace(/\/$/, ''), '--region', b2Region];
-    await run('aws', ['s3api', 'put-object', '--bucket', b2Bucket, '--key', objectKey, '--body', encryptedPath, '--metadata', 'sha256=' + digest, ...endpointArgs], { env: awsEnv });
+    console.log(JSON.stringify({ status: 'managed_archive_ready_for_b2', bytes: encrypted.length, storageBuckets: storageSummary.length, storageObjects: storageSummary.reduce((sum, item) => sum + item.objects, 0) }));
+    await run('aws', ['s3', 'cp', encryptedPath, 's3://' + b2Bucket + '/' + objectKey, '--metadata', 'sha256=' + digest, ...endpointArgs, '--no-progress'], { env: awsEnv });
     const head = await run('aws', ['s3api', 'head-object', '--bucket', b2Bucket, '--key', objectKey, ...endpointArgs, '--output', 'json'], { env: awsEnv });
     const meta = JSON.parse(head.stdout);
     if (Number(meta.ContentLength) !== encrypted.length || !meta.Metadata || meta.Metadata.sha256 !== digest) throw new Error('Managed backup B2 HEAD verification failed.');
