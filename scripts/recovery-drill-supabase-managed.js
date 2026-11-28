@@ -7,7 +7,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { decryptArchive } = require('./backup-database');
 const execFileAsync = promisify(execFile);
-function hasAuthUsersEntry(listing) { return /TABLE\s+auth\s+users\\b/.test(String(listing)); }
+function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
 const NAME = /^mauriskade-supabase-managed-(\d{4}-\d{2}-\d{2})\.tar\.gz\.mrbk$/;
 function required(name, min = 1) {
   const value = String(process.env[name] || '');
