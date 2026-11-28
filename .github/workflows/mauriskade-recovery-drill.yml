@@ -1,6 +1,11 @@
 name: Mauriskade independent backup recovery drill
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mauriskade-recovery-drill.yml'
+      - 'scripts/recovery-drill.js'
   schedule:
     - cron: "0 1 1 1,4,7,10 *" # Quarterly: 04:00 Africa/Nairobi on Jan/Apr/Jul/Oct 1
   workflow_dispatch:
