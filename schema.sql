@@ -317,7 +317,15 @@ CREATE INDEX IF NOT EXISTS admin_staff_sessions_expiry_idx ON public.admin_staff
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_id text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_name text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_role text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_username text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_source text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS entity_type text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS entity_id text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS before_after jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- Audit identity is written once by the trusted backend. Public browser roles have no table privileges.
+CREATE INDEX IF NOT EXISTS admin_actions_actor_created_idx ON public.admin_actions(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_actions_entity_created_idx ON public.admin_actions(entity_type, entity_id, created_at DESC);
 
 -- Financial records are append-only; approvals are requested by one staff member and
 -- must be decided by a different person. The legacy ADMIN_KEY owner is the bootstrap approver.

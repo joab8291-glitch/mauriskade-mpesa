@@ -9,11 +9,19 @@ const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10
 const dateText = v => v instanceof Date ? v.toISOString().slice(0,10) : String(v||'').slice(0,10);
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
 const money = n => Number.isSafeInteger(Number(n)) && Number(n) > 0 && Number(n) <= 100000000;
-const actor = req => req.adminActor || { id: 'legacy-owner', username: 'owner', displayName: 'Property Owner', role: 'owner' };
+const actor = req => req.adminActor || { id: 'legacy-owner', username: 'owner', displayName: 'Property Owner', role: 'owner', source: 'legacy_key' };
 const roles = (...allowed) => (req, res, next) => allowed.includes(actor(req).role) ? next() : res.status(403).json({ ok: false, message: 'Your staff role does not permit this action.' });
-const audit = (pool, req, action, detail, status = 'DONE', meter = null) => {
- const a = actor(req);
- return pool.query('INSERT INTO admin_actions(action,meter_number,detail,status,actor_id,actor_name,actor_role) VALUES($1,$2,$3,$4,$5,$6,$7)', [action, meter, JSON.stringify(detail || {}), status, a.id, a.displayName, a.role]);
+const audit = async (pool, req, action, detail, status = 'DONE', meter = null) => {
+ const a = actor(req), d = detail && typeof detail === 'object' ? detail : { value: detail };
+ const entityId = d.entityId || d.leaseId || d.paymentId || d.settlementId || d.approvalId || d.id || null;
+ const entityType = d.entityType || (/SETTLEMENT/.test(action) ? 'settlement' : /APPROVAL/.test(action) ? 'approval' : /PAYMENT|BANK|CREDIT/.test(action) ? 'payment' : /LEASE|TENANCY|NOTICE|TRANSFER|DEPOSIT/.test(action) ? 'tenancy' : /UNIT|PROPERTY/.test(action) ? 'property' : 'operation');
+ const beforeAfter = d.beforeAfter || (Object.prototype.hasOwnProperty.call(d, 'before') || Object.prototype.hasOwnProperty.call(d, 'after')
+   ? { before: d.before ?? null, after: d.after ?? null } : {});
+ const result = await pool.query(
+  'INSERT INTO admin_actions(action,meter_number,detail,status,actor_id,actor_name,actor_role,actor_username,actor_source,entity_type,entity_id,before_after) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+  [action, meter, JSON.stringify(d), status, a.id, a.displayName, a.role, a.username || null, a.source || (a.id === 'legacy-owner' ? 'legacy_key' : 'staff_session'), entityType, entityId == null ? null : String(entityId), JSON.stringify(beforeAfter)]);
+ req.auditRecorded = true;
+ return result;
 };
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(e => {
  console.error('rent workflow', req.method, req.path, e.message);

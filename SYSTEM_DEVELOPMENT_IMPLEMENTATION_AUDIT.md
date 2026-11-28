@@ -27,12 +27,12 @@
 | 10 | Reconcile wrong references/unmatched payments and review exceptions against provider/bank statements. | ✓ IMPLEMENTED | Unmatched Paybill assignment, missing-payment reports, verified reconciliation notes, bank statement import, line matching, duplicate guards and controlled posting are implemented. |
 | 11 | Issue numbered downloadable receipts showing payment reference and allocation; maintain reversed receipt history and paper receipt number. | ✓ IMPLEMENTED | Numbered PDF receipts show rental-period allocations and remaining credit. Manual paper receipt numbers are stored. Approved reversals preserve the receipt and mark it reversed rather than deleting history. |
 | 12 | Retain overpayments as credit; track security deposits separately; approve refunds/deductions/transfers. | ✓ IMPLEMENTED | Rent credit, rent-credit refunds/transfers, deposit receipts, deductions, deposit refunds and deposit transfers use separate ledgers. Refunds require independent approval and actual payment reference before marked paid. |
-| 13 | Tenant portal: view rent, arrears, credits, due dates, statements, receipts, documents; pay and report missing payments. | ◐ PARTIALLY IMPLEMENTED | Current tenant portal supports rent balances, arrears, credits, payment history, statements, receipts, agreement and missing-payment reports. Former tenant history remains available to authorized admins, but former tenants do not retain a separate archived portal login after their meter login is revoked. |
+| 13 | Tenant portal: view rent, arrears, credits, due dates, statements, receipts, documents; pay and report missing payments. | ✓ IMPLEMENTED | Current tenants can view rent balances, arrears, credits, due dates, statements, receipts and agreements, pay rent and report missing payments. On final move-out, former-tenant portal access is ended completely; historical tenancy and financial records remain available to administrators only, as agreed. |
 | 14 | Move-out: stop billing, calculate final rent, approve deductions, settle deposit and issue final statement; preserve former balances. | ✓ IMPLEMENTED | Final settlement previews prorated rent, releases future advance allocations into credit, calculates deposit deduction/refund, requires independent approval, records actual refund payment and provides a downloadable final statement PDF. Rejected settlements restore the original tenancy and full-period charge. |
 | 15 | Dashboard: billed, current-month recovered, prior arrears recovered, cash, overdue, credits, deposits, occupancy and unmatched payments. | ✓ IMPLEMENTED | Rent dashboard and extended operations KPIs include current-period expected/collected, prior arrears recovered, cash received, arrears, deposit liability, occupancy/vacancy, unmatched payments and excess credit. |
 | 16 | Arrears ageing and downloadable reports by property, unit and period. | ✓ IMPLEMENTED | Ageing buckets (0–30, 31–60, 61–90, 90+ days) support property, unit and date filters and server-generated CSV export. Monthly collections and tenant statements remain available. |
 | 17 | Role-specific manager, finance and caretaker access; approvals for sensitive actions. | ✓ IMPLEMENTED | Individual manager, finance and caretaker accounts, hashed passwords, expiring sessions, first-login password change, role-scoped endpoints and maker/checker approvals are implemented. Legacy owner-key access remains for the property owner. |
-| 18 | Record who changed what and when. | ◐ PARTIALLY IMPLEMENTED | New sensitive actions record staff/owner actor, role, timestamps, approval decisions, verification notes and allocation adjustments. Older legacy-key actions cannot always be attributed to an individual person retrospectively. |
+| 18 | Record who changed what and when. | ✓ IMPLEMENTED | New administrative and rent-management audit events record actor ID, display name, username, role, authentication source, event timestamp, action, entity context, status and details. Audit identity/event context is written by the trusted backend and is not rewritten by application workflows; provider workflows may finalize status/detail. Public browser roles have no access to the audit table. Older legacy-key actions remain explicitly unattributed to a named individual where historical evidence does not exist. |
 | 19 | Agree backup schedule, test restoration and provide data export. | ◐ PARTIALLY IMPLEMENTED | Encrypted backup export, scheduled remote webhook delivery, backup history and temporary-table staging restore verification are implemented. The client must configure a durable remote storage webhook and encryption key; the staging test is not a full production restore drill. |
 | 20 | Keep water/internet payments separate from rent unless an authorized reallocation occurs. | ◐ PARTIALLY IMPLEMENTED | Water/Hydro/ST​S and rent ledgers and payment handlers remain separate; rent never issues a water token. A distinct internet/service-charge ledger and an approved cross-ledger reallocation workflow are not included. |
 | 21 | Reminders 3 days before, on due date, 3/7 days overdue; live balance checks, pending holds, payment plans, channel history and staff follow-up. | ◐ PARTIALLY IMPLEMENTED | Reminder scheduler, pending-payment/dispute/payment-plan holds, SMS/WhatsApp/email webhook adapter, delivery callback history, payment plans, follow-ups and approved formal notices are implemented. No messages are sent until the client configures a provider and approved templates/recipient channels. |
@@ -40,8 +40,8 @@
 
 ### Status totals
 
-- **✓ IMPLEMENTED:** 15 requirements
-- **◐ PARTIALLY IMPLEMENTED:** 7 requirements
+- **✓ IMPLEMENTED:** 17 requirements
+- **◐ PARTIALLY IMPLEMENTED:** 5 requirements
 - **✗ NOT IMPLEMENTED:** 0 requirements
 
 The remaining partial items are explicit boundaries, not hidden or simulated functionality. Provider-dependent functions remain blocked until the client supplies/configures the relevant services and credentials.
@@ -60,6 +60,7 @@ The remaining partial items are explicit boundaries, not hidden or simulated fun
 10. Added encrypted backup export, scheduled remote delivery hook and isolated staging restore verification.
 11. Added voided-charge history and a partial unique index so changing a future schedule never deletes rows referenced by payment allocations.
 12. Updated admin operations UI and documentation while preserving the existing M-Pesa, water/Hydro/STS, customer login and tenant payment paths.
+13. Completed actor attribution for new audit events, added entity context and immutable audit identity/event metadata, and exposed actor/role/source in the admin audit table.
 
 ## Validation performed
 
