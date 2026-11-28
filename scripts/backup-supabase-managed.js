@@ -7,7 +7,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { encryptArchive, decryptArchive, localDate } = require('./backup-database');
 const execFileAsync = promisify(execFile);
-function hasAuthUsersEntry(listing) { return /TABLE\s+auth\s+users\\b/.test(String(listing)); }
+function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
 
 function required(env, name, min = 1) {
   const value = String(env[name] || '');
@@ -111,7 +111,7 @@ async function main(env = process.env) {
     // Auth's users, password hashes, identities and session records live in the managed auth schema.
     await run('pg_dump', ['--format=custom', '--compress=6', '--schema=auth', '--no-owner', '--no-acl', '--file', authDump, databaseUrl]);
     const authListing = await run('pg_restore', ['--list', authDump]);
-    if (!/TABLE public\.|TABLE auth\./.test(authListing.stdout) || !/users/.test(authListing.stdout)) {
+    if (!hasAuthUsersEntry(authListing.stdout)) {
       throw new Error('Auth schema dump did not contain the expected auth.users table.');
     }
     const bucketsResponse = await apiRequest(supabaseUrl, serviceKey, '/storage/v1/bucket');
