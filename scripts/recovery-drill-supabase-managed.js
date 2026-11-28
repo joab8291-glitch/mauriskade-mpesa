@@ -18,6 +18,19 @@ async function run(command, args, options = {}) {
   try { return await execFileAsync(command, args, { maxBuffer: 32 * 1024 * 1024, ...options }); }
   catch (error) { throw new Error(command + ' failed: ' + String(error.stderr || error.message || '').slice(-4000)); }
 }
+async function inspectB2Scope(keyId, applicationKey, expectedBucket) {
+  const response = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+    headers: { authorization: 'Basic ' + Buffer.from(keyId + ':' + applicationKey).toString('base64') },
+    signal: AbortSignal.timeout(30000)
+  });
+  if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + ').');
+  const allowed = (await response.json()).allowed || {};
+  if (allowed.bucketName && allowed.bucketName !== expectedBucket) throw new Error('Backblaze application key is restricted to a different bucket.');
+  const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
+  const missing = ['listFiles', 'readFiles'].filter(capability => !capabilities.includes(capability));
+  if (missing.length) throw new Error('Backblaze application key is missing recovery capabilities: ' + missing.join(', '));
+  return { namePrefix: allowed.namePrefix || 'database/' };
+}
 async function main() {
   const encryptionKey = required('RENT_BACKUP_ENCRYPTION_KEY', 32);
   const endpoint = required('B2_S3_ENDPOINT');
@@ -25,12 +38,13 @@ async function main() {
   const bucket = required('B2_BUCKET');
   const keyId = required('B2_APPLICATION_KEY_ID', 5);
   const key = required('B2_APPLICATION_KEY', 10);
+  const b2Scope = await inspectB2Scope(keyId, key, bucket);
   if (!/^https:\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com\/?$/.test(endpoint) || !endpoint.includes('s3.' + region + '.')) throw new Error('B2 endpoint and region do not match.');
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-managed-recovery-'));
   try {
     const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' };
     const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
-    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', 'database/supabase-managed/', ...args, '--output', 'json'], { env });
+    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', b2Scope.namePrefix + 'supabase-managed/', ...args, '--output', 'json'], { env });
     const objects = (JSON.parse(listed.stdout).Contents || []).filter(o => o && typeof o.Key === 'string' && NAME.test(o.Key.split('/').pop())).sort((a,b)=>a.Key.localeCompare(b.Key));
     if (!objects.length) throw new Error('No dated Supabase-managed backup archive found in B2.');
     const latest = objects[objects.length - 1];
@@ -84,4 +98,4 @@ async function main() {
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
 
-module.exports = { hasAuthUsersEntry };
+module.exports = { hasAuthUsersEntry, inspectB2Scope };
