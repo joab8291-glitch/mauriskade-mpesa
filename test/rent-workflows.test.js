@@ -8,6 +8,7 @@ const { createReceipt, generateCharges } = require('../rent');
 
 const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+const addCalendarMonth = value => { const d=new Date(value+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d.toISOString().slice(0,10); };
 
 async function fixture(env = {}) {
   const db = new PGlite();
@@ -455,13 +456,15 @@ test('tenant move-out notice enforces one calendar month and records the intende
   const f = await fixture();
   try {
     const l = await f.lease({ meter: 'NOTICE-PERIOD-1', ref: 'RENT-NOTICE1' });
-    const noticeDate = '2026-11-28';
-    let r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate, noticeEndDate: '2026-12-20' }, 'manager', 'notice-manager');
+    const noticeDate = today();
+    const earliest = addCalendarMonth(noticeDate);
+    const tooEarly = new Date(new Date(earliest+'T00:00:00Z').getTime()-86400000).toISOString().slice(0,10);
+    let r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate, noticeEndDate: tooEarly }, 'manager', 'notice-manager');
     assert.equal(r.statusCode, 400);
     assert.match(r.body.message, /one calendar month/i);
     r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate }, 'manager', 'notice-manager');
     assert.equal(r.statusCode, 200);
     assert.equal(r.body.lease.notice_date, noticeDate);
-    assert.equal(String(r.body.lease.notice_end_date).slice(0,10), '2026-12-28');
+    assert.equal(String(r.body.lease.notice_end_date).slice(0,10), earliest);
   } finally { await f.close(); }
 });
