@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
 
 function required(env, name, min = 1) {
-  const value = String(env[name] || '');
+  const value = String(env[name] || '').trim();
   if (value.length < min) throw new Error('Missing or invalid required secret/configuration: ' + name);
   return value;
 }
