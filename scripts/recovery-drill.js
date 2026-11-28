@@ -8,7 +8,7 @@ const { execFile } = require('node:child_process');
 const { decryptArchive } = require('./backup-database');
 const execFileAsync = promisify(execFile);
 const BUCKET_DEFAULT = 'mauriskade-db-backups';
-const ARCHIVE_PATTERN = /^mauriskade-system-backup-(\\d{4}-\\d{2}-\\d{2})\\.mrbk$/;
+const ARCHIVE_PATTERN = /^mauriskade-system-backup-(\d{4}-\d{2}-\d{2})\.mrbk$/;
 
 function requiredEnv(name, min = 1) {
   const value = String(process.env[name] || '');
@@ -37,7 +37,7 @@ async function run(command, args) {
   catch (error) { throw new Error(command + ' failed: ' + String(error.stderr || error.message || '').slice(-4000)); }
 }
 async function storageRequest(baseUrl, key, route, options) {
-  const response = await fetch(baseUrl.replace(/\\/$/, '') + '/storage/v1' + route, {
+  const response = await fetch(baseUrl.replace(/\/$/, '') + '/storage/v1' + route, {
     ...(options || {}),
     headers: { apikey: key, authorization: 'Bearer ' + key, ...((options && options.headers) || {}) },
     signal: AbortSignal.timeout(120000)
@@ -85,7 +85,7 @@ async function main() {
   try {
     fs.writeFileSync(dumpPath, plain, { mode: 0o600 });
     const listing = await run('pg_restore', ['--list', dumpPath]);
-    if (!/TABLE DATA|TABLE public\\./.test(listing.stdout)) throw new Error('Decrypted file is not a valid PostgreSQL custom archive.');
+    if (!/TABLE DATA|TABLE public\./.test(listing.stdout)) throw new Error('Decrypted file is not a valid PostgreSQL custom archive.');
     await run('pg_restore', ['--exit-on-error', '--clean', '--if-exists', '--no-owner', '--no-acl', '--dbname', recoveryUrl, dumpPath]);
     const counts = await verifyRestoredDatabase(recoveryUrl);
     const sha256 = crypto.createHash('sha256').update(encrypted).digest('hex');
