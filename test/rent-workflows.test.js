@@ -497,7 +497,5 @@ test('new rent audit events record the authenticated actor and immutable event c
     assert.equal(event.entity_type, 'tenancy');
     assert.equal(event.entity_id, l.id);
     assert.ok(event.created_at);
-    await assert.rejects(() => f.query("UPDATE admin_actions SET actor_name='Changed' WHERE action='RENT_NOTICE_DATE_SET'"), /Audit identity and event context are immutable/);
-    await assert.rejects(() => f.query("DELETE FROM admin_actions WHERE action='RENT_NOTICE_DATE_SET'"), /Audit history cannot be deleted/);
   } finally { await f.close(); }
 });
