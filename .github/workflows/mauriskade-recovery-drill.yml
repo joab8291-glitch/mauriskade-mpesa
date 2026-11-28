@@ -35,12 +35,14 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - name: Install AWS CLI for Backblaze B2
         run: pipx install awscli
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
+          aws --version
       - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
