@@ -5,7 +5,7 @@ The rent module runs alongside the existing water-credit service. Rent and water
 ## Admin workflow
 
 1. Open the administrator panel and select **Rent management**.
-2. Create a tenancy against a registered Hydro meter. Enter the tenant, unit, unique rent account reference, amount per period, billing frequency, start date and due day.
+2. Create a tenancy against a registered property unit. A Hydro meter is optional. For a meterless unit, the system creates a rent-only customer login using the unique rent account reference as the username and generates a one-time temporary password; the tenant must change it at first sign-in. Meter-linked tenancies continue using their existing meter login.
 3. The service generates rent charges through the next 18 months. The admin can edit rent details and schedule future rent changes. Existing allocations are preserved. An actual move-out must use final settlement; the direct tenancy editor will not bypass prorating or release prepaid rent.
 4. Use **Agreement** to draft or revise the tenancy agreement. Save a draft, then issue it. Issued agreements appear in the customer's rent account.
 5. The shortcode uses the existing Webazi Daraja shared C2B callback registration. Do not register Mauriskade-specific callback URLs from the Mauriskade admin panel. Webazi routes `RENT-` references here and `WATER-` references into the Hydro recharge workflow. Both Render services must have the same `MAURISKADE_C2B_SECRET`; Webazi also needs `MAURISKADE_C2B_URL=https://api.mauriskade.co.ke/api/mpesa/shared-c2b`.
@@ -21,7 +21,7 @@ The rent module runs alongside the existing water-credit service. Rent and water
 - For shared Paybill water payments, a 20-digit token is not shown as issued until Hydro's recharge record matches the same meter, token and amount. Ambiguous or unverified outcomes go to review and must not be blindly recharged.
 - A rent receipt is created for confirmed STK and Paybill payments. The customer can download the receipt PDF from their account.
 - Annual tenants are warned to verify the official Paybill and their unique rent account reference before sending funds.
-- Customer logins continue to use the existing account system. Create or disable a tenant login in **Meter registry** after the rent account reference has been assigned.
+- Meter-linked customer logins continue to use the existing account system and retain water access. Meterless rent-only tenants receive a separate login record bound directly to their tenancy; they can view rent charges, balances, statements, receipts, agreements, report missing payments and initiate rent STK payments without a Hydro meter. Their portal does not expose water top-up controls. Their username is the tenancy rent reference, the temporary password is shown once when the tenancy is created, and the tenant must change it before accessing the portal.
 
 ## Database and security
 
@@ -34,7 +34,7 @@ No water transactions, Hydro meter records, customer passwords, or existing audi
 
 - Rent dashboard KPIs are calculated from rent charges, confirmed rent payments, arrears and current meter/tenancy assignments for the selected date range.
 - The default report period is the current calendar month. Administrators can choose another date range.
-- Occupancy is measured against registered meter units: active leases with no end date or an end date on/after today are occupied; the remaining registered meters are vacant.
+- Occupancy is measured against registered property units, including units without Hydro meters: active leases with no end date or an end date on/after today are occupied; the remaining available registered units are vacant.
 - Tenancy creation and editing support an optional end date. Expired tenancies stop receiving new generated charges, cannot initiate rent STK payments, and do not match new incoming Paybill confirmations.
 - Monthly collection reports show expected charges and confirmed collections by month.
 - Arrears exports list overdue unpaid charges by tenant and unit.
@@ -50,7 +50,7 @@ No water transactions, Hydro meter records, customer passwords, or existing audi
 - The payment allocation policy is stored centrally. The default is oldest due rent first; administrators can select oldest period first or newest due rent first.
 - Staff can record a verified cash/bank payment with a unique external reference and verification note. Repeating the same request for the same tenancy and amount is idempotent; a reused reference for another payment is rejected.
 - Tenants can view a running rent statement and submit a missing-payment report using an M-Pesa transaction code. Reports enter an admin review queue and are never auto-posted. A matching Paybill confirmation or verified manual payment resolves the report. A transaction-code collision between manual and Paybill records is held in the admin audit log instead of double-posting.
-- Rent receipts show allocations to rental periods and any remaining unallocated credit. Payment polling and receipt downloads are scoped to the latest tenancy on the signed-in meter.
+- Rent receipts show allocations to rental periods and any remaining unallocated credit. Payment polling and receipt downloads are scoped to the authenticated tenancy for rent-only users or to the current tenancy on the signed-in meter for legacy meter users.
 
 ## Expanded operations, controls and remaining configuration
 
