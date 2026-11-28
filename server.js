@@ -57,7 +57,8 @@ if (ADMIN_KEY && ADMIN_KEY.length < 12) {
 }
 if (!ADMIN_KEY) console.warn('ADMIN_KEY is not set: the admin panel is switched off, so no logins can be created.');
 
-const pool = new Pool({ connectionString: DATABASE_URL });
+// Supabase session pooler is capped at 15 clients; leave capacity for administration and scheduled jobs.
+const pool = new Pool({ connectionString: DATABASE_URL, max: 5, connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000 });
 pool.on('error', (e) => console.error('pg pool error', e.message));
 
 const DARAJA = MPESA_ENV === 'production'
