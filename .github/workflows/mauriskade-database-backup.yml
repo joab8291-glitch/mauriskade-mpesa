@@ -33,6 +33,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install AWS CLI for Backblaze B2
+        run: pipx install awscli
       - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
@@ -57,4 +59,9 @@ jobs:
           RESTORE_DATABASE_URL: postgresql://postgres:restore-only-password@localhost:5432/restore_test
           RENT_BACKUP_STORAGE_BUCKET: mauriskade-db-backups
           RENT_BACKUP_RETENTION_DAYS: "90"
+          B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+          B2_REGION: ${{ secrets.B2_REGION }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
         run: node scripts/backup-database.js
