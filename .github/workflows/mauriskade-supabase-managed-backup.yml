@@ -1,0 +1,45 @@
+name: Mauriskade Supabase managed services backup
+
+on:
+  schedule:
+    - cron: "30 23 * * *" # 02:30 Africa/Nairobi daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-supabase-managed-backup
+  cancel-in-progress: false
+
+jobs:
+  export-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install AWS CLI and PostgreSQL 17 client
+        run: |
+          pipx install awscli
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+          sudo gpg --batch --yes --dearmor --output /etc/apt/keyrings/postgresql-pgdg.gpg /tmp/pgdg.asc
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql-pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo ${VERSION_CODENAME})-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Export Auth, Storage objects and project configuration; encrypt and replicate to B2
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: glqwedodptzgjvmbbceh
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
+          B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+          B2_REGION: ${{ secrets.B2_REGION }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: node scripts/backup-supabase-managed.js
