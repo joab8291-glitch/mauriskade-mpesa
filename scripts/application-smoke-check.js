@@ -31,7 +31,15 @@ async function main(env = process.env) {
   const readiness = await checkJsonEndpoint(apiBase + '/health/ready', ['database']);
   const daraja = await checkJsonEndpoint(apiBase + '/health/mpesa', ['darajaAuth']);
   const database = await checkDatabase(env.DATABASE_URL);
-  console.log(JSON.stringify({ status: 'application_smoke_test_passed', paymentActionsPerformed: false, endpoints: { health: health.status, databaseReadiness: readiness.status, darajaAuth: daraja.status }, database }));
+  let customDomain = null;
+  if (env.CUSTOM_API_BASE_URL) {
+    const customUrl = normalizeApiBaseUrl(env.CUSTOM_API_BASE_URL) + '/health';
+    try {
+      const response = await fetch(customUrl, { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } });
+      customDomain = { status: response.status, healthy: response.ok && (await response.json()).ok === true };
+    } catch (error) { customDomain = { healthy: false, error: error.name || 'request_failed' }; }
+  }
+  console.log(JSON.stringify({ status: 'application_smoke_test_passed', paymentActionsPerformed: false, endpoints: { health: health.status, databaseReadiness: readiness.status, darajaAuth: daraja.status }, customDomain, database }));
 }
 if (require.main === module) main().catch(error => { console.error('Application smoke test failed: ' + error.message); process.exitCode = 1; });
 module.exports = { normalizeApiBaseUrl, checkJsonEndpoint, checkDatabase };
