@@ -39,7 +39,7 @@ async function run(command, args) {
 async function restoreAndVerify(dumpPath, restoreUrl) {
   if (!restoreUrl) throw new Error('RESTORE_DATABASE_URL is required; refusing to publish an unverified backup.');
   const target = new URL(restoreUrl);
-  if (target.pathname.replace(/^\\//, '') !== 'restore_test') throw new Error('Restore target must be the isolated restore_test database.');
+  if (target.pathname.split('/').filter(Boolean).join('/') !== 'restore_test') throw new Error('Restore target must be the isolated restore_test database.');
   const listing = await run('pg_restore', ['--list', dumpPath]);
   if (!/TABLE DATA|TABLE public\./.test(listing.stdout)) throw new Error('PostgreSQL archive is missing expected public schema entries.');
   await run('pg_restore', ['--exit-on-error', '--clean', '--if-exists', '--no-owner', '--no-acl', '--dbname', restoreUrl, dumpPath]);
