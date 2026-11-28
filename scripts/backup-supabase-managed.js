@@ -93,7 +93,10 @@ async function inspectB2ApplicationKey(keyId, applicationKey, expectedBucket) {
   const auth = await response.json();
   const allowed = auth.allowed || {};
   if (allowed.bucketName && allowed.bucketName !== expectedBucket) throw new Error('Backblaze application key is restricted to a different bucket.');
-  const summary = { bucketName: allowed.bucketName || null, namePrefix: allowed.namePrefix || null, capabilities: Array.isArray(allowed.capabilities) ? allowed.capabilities : [] };
+  const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
+  const missing = ['listFiles', 'readFiles', 'writeFiles'].filter(capability => !capabilities.includes(capability));
+  if (missing.length) throw new Error('Backblaze application key is missing required bucket capabilities: ' + missing.join(', '));
+  const summary = { bucketName: allowed.bucketName || null, namePrefix: allowed.namePrefix || null, capabilities };
   console.log(JSON.stringify({ status: 'b2_application_key_scope_verified', ...summary }));
   return summary;
 }
