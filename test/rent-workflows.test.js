@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { PGlite } = require('@electric-sql/pglite');
 const { registerRentWorkflowRoutes, runRentAutomation, parseCsv, csvDate } = require('../rent-workflows');
-const { createReceipt } = require('../rent');
+const { createReceipt, generateCharges } = require('../rent');
 
 const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
@@ -428,5 +428,25 @@ test('cross-unit transfer keeps outgoing access until move-out then scheduled wo
     await runRentAutomation(f.pool,{});
     assert.equal((await f.query('SELECT disabled FROM users WHERE id=$1',[oldUser.id])).rows[0].disabled,true);
     assert.equal((await f.query('SELECT count(*)::int n FROM sessions WHERE user_id=$1',[oldUser.id])).rows[0].n,0);
+  } finally { await f.close(); }
+});
+
+test('standalone property units support meterless rent tenancies and tenant logins', async () => {
+  const f = await fixture();
+  try {
+    const property = (await f.query("INSERT INTO properties(name,address) VALUES('Standalone Rent Property','Nairobi') RETURNING id")).rows[0];
+    const unit = (await f.query("INSERT INTO property_units(property_id,meter_code,unit_label,status) VALUES($1,NULL,'Shop 01','available') RETURNING id", [property.id])).rows[0];
+    const lease = (await f.query(`INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,property_unit_id)
+      VALUES(NULL,'Rent Only Tenant','Shop 01','RENT-SHOP1',12000,'monthly',$1::date,1,$2) RETURNING *`, [today(), unit.id])).rows[0];
+    const user = (await f.query(`INSERT INTO users(meter_code,rent_lease_id,username,password_hash,must_change)
+      VALUES(NULL,$1,'RENT-SHOP1','scrypt$test$hash',true) RETURNING *`, [lease.id])).rows[0];
+    await f.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES('rent-only-session',$1,now()+interval '1 day')", [user.id]);
+    assert.equal(lease.meter_code, null);
+    assert.equal(user.rent_lease_id, lease.id);
+    assert.equal((await f.query("SELECT count(*)::int n FROM sessions s JOIN users u ON u.id=s.user_id JOIN rent_leases l ON l.id=u.rent_lease_id WHERE s.token_hash='rent-only-session' AND l.id=$1 AND l.status='active'", [lease.id])).rows[0].n, 1);
+    assert.ok(await generateCharges(f.pool, lease.id));
+    assert.ok((await f.query('SELECT count(*)::int n FROM rent_charges WHERE lease_id=$1', [lease.id])).rows[0].n > 0);
+    await assert.rejects(() => f.query("INSERT INTO users(meter_code,username,password_hash) VALUES(NULL,'INVALID-NO-LEASE','scrypt$test$hash')"), /users_customer_identity_check/);
+    await assert.rejects(() => f.query("INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,property_unit_id) VALUES(NULL,'Second Tenant','Shop 01','RENT-SHOP2',10000,'monthly',$1::date,1,$2)", [today(), unit.id]), /rent_leases_active_property_unit_uidx/);
   } finally { await f.close(); }
 });
