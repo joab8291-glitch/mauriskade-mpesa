@@ -36,7 +36,7 @@
 | 19 | Agree backup schedule, test restoration and provide data export. | ◐ PARTIALLY IMPLEMENTED | Daily PostgreSQL 17 custom-format backup of the application-owned `public` schema is AES-256-GCM encrypted and uploaded to the private Supabase Storage bucket after a successful isolated `restore_test` restore. Configurable 90-day retention is applied. A separate quarterly recovery-drill workflow now downloads the newest stored archive, decrypts it and restores it into a fresh `recovery_drill` PostgreSQL 17 database; its first post-merge execution is pending. Independent off-project archive replication and recovery of Supabase-managed Auth/Storage/platform configuration remain outside this backup scope. |
 | 20 | Keep water/internet payments separate from rent unless an authorized reallocation occurs. | ◐ PARTIALLY IMPLEMENTED | Water/Hydro/ST​S and rent ledgers and payment handlers remain separate; rent never issues a water token. A distinct internet/service-charge ledger and an approved cross-ledger reallocation workflow are not included. |
 | 21 | Reminders 3 days before, on due date, 3/7 days overdue; live balance checks, pending holds, payment plans, channel history and staff follow-up. | ◐ PARTIALLY IMPLEMENTED | Reminder scheduler, pending-payment/dispute/payment-plan holds, SMS/WhatsApp/email webhook adapter, delivery callback history, payment plans, follow-ups and approved formal notices are implemented. No messages are sent until the client configures a provider and approved templates/recipient channels. |
-| 22 | Complete the eight delivery acceptance tests in the client brief. | ◐ PARTIALLY IMPLEMENTED | 28 automated tests now cover database-backed rent workflows, schema idempotency, reversals, deposits, bank imports, proration, advance-credit release, transfer, payment plans, reminders, notices, staff, ageing, backup encryption and independent recovery-drill selection/target safeguards. Live Daraja transactions, Android-device end-to-end acceptance and production restore testing still require a controlled client test window. |
+| 22 | Complete the eight delivery acceptance tests in the client brief. | ◐ PARTIALLY IMPLEMENTED | 32 automated tests now cover database-backed rent workflows, schema idempotency, reversals, deposits, bank imports, proration, advance-credit release, transfer, payment plans, reminders, notices, staff, ageing, backup encryption and independent recovery-drill selection/target safeguards. Live Daraja transactions, Android-device end-to-end acceptance and production restore testing still require a controlled client test window. |
 
 ### Status totals
 
@@ -65,9 +65,9 @@ The remaining partial items are explicit boundaries, not hidden or simulated fun
 
 ## Validation performed
 
-- `npm test`: previous baseline **21 passed, 0 failed**; three new recovery-drill unit tests cover latest-archive selection, invalid listings and the production-target guard. Re-run the full suite after merge.
+- `npm test`: **32 passed, 0 failed** on PR #15; the three new recovery-drill unit tests cover latest-archive selection, invalid listings and the production-target guard.
 - `schema.sql` executed twice against an isolated PostgreSQL-compatible database: **idempotency passed**.
-- `node --check server.js`, `rent.js`, `rent-workflows.js`: passed.
+- `node --check server.js`, `rent.js`, `rent-workflows.js`, `scripts/backup-database.js`, `scripts/recovery-drill.js`: passed.
 - Customer/admin inline JavaScript syntax checks: passed.
 - `git diff --check`: passed.
 - PDF receipt and final settlement statement generation: exercised.
