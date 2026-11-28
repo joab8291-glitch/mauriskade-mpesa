@@ -2,6 +2,9 @@
 const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const execFileAsync = promisify(execFile);
 const PREFIX = 'mauriskade-system-backup-';
 const PATTERN = /^mauriskade-system-backup-(\d{4}-\d{2}-\d{2})\.mrbk$/;
@@ -24,15 +27,18 @@ function b2Config(env = process.env) {
   return { endpoint: endpoint.replace(/\/$/, ''), region, bucket };
 }
 async function aws(args, env = process.env) {
+  const configPath = path.join(os.tmpdir(), 'mauriskade-aws-' + process.pid + '.config');
+  const region = requiredEnv(env, 'B2_REGION');
+  fs.writeFileSync(configPath, '[default]\\nregion = ' + region + '\\ns3 =\\n  addressing_style = path\\n  signature_version = s3v4\\n', { mode: 0o600 });
   try {
     const result = await execFileAsync('aws', args, {
       maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, ...env, AWS_ACCESS_KEY_ID: env.B2_APPLICATION_KEY_ID, AWS_SECRET_ACCESS_KEY: env.B2_APPLICATION_KEY, AWS_DEFAULT_REGION: env.B2_REGION, AWS_REGION: env.B2_REGION, AWS_EC2_METADATA_DISABLED: 'true' }
+      env: { ...process.env, ...env, AWS_CONFIG_FILE: configPath, AWS_ACCESS_KEY_ID: env.B2_APPLICATION_KEY_ID, AWS_SECRET_ACCESS_KEY: env.B2_APPLICATION_KEY, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true' }
     });
     return result.stdout;
   } catch (error) {
     throw new Error('Backblaze B2 S3 operation failed: ' + String(error.stderr || error.message || '').slice(-3000));
-  }
+  } finally { fs.rmSync(configPath, { force: true }); }
 }
 function sha256File(filePath) {
   const hash = crypto.createHash('sha256');
