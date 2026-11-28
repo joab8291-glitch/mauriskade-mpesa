@@ -1,0 +1,58 @@
+name: Mauriskade encrypted database backup
+
+on:
+  schedule:
+    - cron: "0 23 * * *" # 02:00 Africa/Nairobi
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup-and-restore-test:
+    runs-on: ubuntu-latest
+    services:
+      restore-db:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore-only-password
+          POSTGRES_DB: restore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d restore_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo ${VERSION_CODENAME})-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Prepare isolated restore database
+        env:
+          RESTORE_DATABASE_URL: postgresql://postgres:restore-only-password@localhost:5432/restore_test
+        run: |
+          psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;"
+          test "$(psql "$RESTORE_DATABASE_URL" -Atc "SELECT current_database()")" = "restore_test"
+      - name: Dump, encrypt, restore-test, then upload
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
+          RESTORE_DATABASE_URL: postgresql://postgres:restore-only-password@localhost:5432/restore_test
+          RENT_BACKUP_STORAGE_BUCKET: mauriskade-db-backups
+          RENT_BACKUP_RETENTION_DAYS: "90"
+        run: node scripts/backup-database.js
