@@ -18,6 +18,13 @@ const addMonths = (s,n) => { const d=new Date(dateOnly(s)+'T00:00:00Z'),day=d.ge
 const dueDate = (s,day) => {const d=new Date(dateOnly(s)+'T00:00:00Z');d.setUTCDate(Math.min(Number(day)||1,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return iso(d);};
 const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const adminActor = req => req.adminActor || {id:'legacy-owner',displayName:'Property Owner',role:'owner'};
+const tenantPassword = () => crypto.randomBytes(9).toString('base64url');
+const tenantPasswordHash = password => {const salt=crypto.randomBytes(16),hash=crypto.scryptSync(password,salt,64);return `scrypt${salt.toString('base64')}${hash.toString('base64')}`;};
+async function customerLease(pool,user){
+ if(user.rent_lease_id)return (await pool.query("SELECT * FROM rent_leases WHERE id=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date)",[user.rent_lease_id,todayNairobi()])).rows[0]||null;
+ if(!user.meter_code)return null;
+ return (await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[user.meter_code,todayNairobi()])).rows[0]||null;
+}
 const wrap = fn => (req,res,next)=>Promise.resolve(fn(req,res,next)).catch(e=>{console.error('rent route',req.method,req.path,e.message);if(!res.headersSent)res.status(500).json({ok:false,message:'Rental service error. Please try again.'});});
 
 async function allocateRentPayment(pool,id){
@@ -123,7 +130,7 @@ async function processRentStkCallback(pool,checkoutId,cb){
 function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaPost,payLimit,mpesaShortcode,callbackBaseUrl,callbackSecret}){
  const customer=[requireUser,requireReady],admin='/api/admin/rent';
  app.get('/api/me/rent',...customer,wrap(async(req,res)=>{
-  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0];
+  const l=await customerLease(pool,req.user);
   if(!l)return res.json({ok:true,lease:null,charges:[],payments:[],credit:0,arrears:0});
   await generateCharges(pool,l.id);
   const charges=(await pool.query('SELECT c.id,c.period_start,c.period_end,c.due_date,c.amount,(c.due_date<$2::date) AS overdue,COALESCE(sum(a.amount),0)::int paid,(c.amount-COALESCE(sum(a.amount),0))::int balance FROM rent_charges c LEFT JOIN rent_allocations a ON a.charge_id=c.id AND a.reversed_at IS NULL WHERE c.lease_id=$1 AND c.voided_at IS NULL GROUP BY c.id ORDER BY c.period_start DESC LIMIT 36',[l.id,todayNairobi()])).rows;
@@ -134,7 +141,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   res.json({ok:true,lease:l,charges,payments,agreement,credit:Number(credit)||0,paybill:mpesaShortcode,arrears:Number(arrears)||0});
  }));
  app.get('/api/me/rent/statement',...customer,wrap(async(req,res)=>{
-  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0];if(!l)return res.json({ok:true,lease:null,entries:[],balance:0});
+  const l=await customerLease(pool,req.user);if(!l)return res.json({ok:true,lease:null,entries:[],balance:0});
   const rows=(await pool.query(`SELECT date,description,amount,reference,allocated FROM (
    SELECT c.period_start::date date,'Rent charge '||to_char(c.period_start,'YYYY-MM-DD') description,c.amount::bigint amount,NULL::text reference,COALESCE((SELECT sum(a.amount) FROM rent_allocations a WHERE a.charge_id=c.id AND a.reversed_at IS NULL),0)::bigint allocated FROM rent_charges c WHERE c.lease_id=$1 AND c.voided_at IS NULL
    UNION ALL
@@ -154,7 +161,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)return res.status(400).json({ok:false,message:'Enter a valid rent amount.'});
   if(!phone)return res.status(400).json({ok:false,message:'Enter a valid Safaricom number.'});
   if(String((await pool.query("SELECT rent_account_ref FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0]?.rent_account_ref||'').length>12)return res.status(409).json({ok:false,message:'Your rent account reference needs to be updated by the property office before using an M-Pesa prompt.'});
-  const l=(await pool.query("SELECT * FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});if((await pool.query("SELECT 1 FROM rent_settlements WHERE lease_id=$1 AND status='awaiting_approval'",[l.id])).rowCount)return res.status(409).json({ok:false,message:'Your final rent settlement is being reviewed. Please contact the property office before making another payment.'});
+  const l=await customerLease(pool,req.user);if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});if((await pool.query("SELECT 1 FROM rent_settlements WHERE lease_id=$1 AND status='awaiting_approval'",[l.id])).rowCount)return res.status(409).json({ok:false,message:'Your final rent settlement is being reviewed. Please contact the property office before making another payment.'});
   await generateCharges(pool,l.id);
   const client=await pool.connect();let id;
   try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent:'+l.id]);
@@ -168,9 +175,9 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
    await pool.query('UPDATE rent_payments SET checkout_request_id=$2,merchant_request_id=$3,updated_at=now() WHERE id=$1',[id,j.CheckoutRequestID,j.MerchantRequestID||null]);res.json({ok:true,paymentId:id});
   }catch(e){console.error(new Date().toISOString(),'RENT_STK_PUSH_FAILED',{paymentId:id,phone:String(phone).slice(0,5)+'****'+String(phone).slice(-3),error:e.message});await pool.query("UPDATE rent_payments SET status='failed',notes=$2,updated_at=now() WHERE id=$1",[id,e.message]);res.status(502).json({ok:false,message:'Could not start the rent payment prompt. Please try again.'});}
  }));
- app.get('/api/me/rent/payment/:id',...customer,wrap(async(req,res)=>{const p=(await pool.query(`SELECT id,status,amount,mpesa_receipt,created_at FROM rent_payments WHERE id=$1 AND lease_id=(SELECT id FROM rent_leases WHERE meter_code=$2 AND status='active' AND start_date<=$3::date AND (end_date IS NULL OR end_date>=$3::date) ORDER BY start_date DESC,created_at DESC LIMIT 1)`,[req.params.id,req.user.meter_code,todayNairobi()])).rows[0];if(!p)return res.status(404).json({ok:false,message:'Rent payment not found.'});res.json({ok:true,payment:p});}));
+ app.get('/api/me/rent/payment/:id',...customer,wrap(async(req,res)=>{const lease=await customerLease(pool,req.user);const p=lease?(await pool.query('SELECT id,status,amount,mpesa_receipt,created_at FROM rent_payments WHERE id=$1 AND lease_id=$2',[req.params.id,lease.id])).rows[0]:null;if(!p)return res.status(404).json({ok:false,message:'Rent payment not found.'});res.json({ok:true,payment:p});}));
  app.get('/api/me/rent/receipt/:id',...customer,wrap(async(req,res)=>{
-  const p=(await pool.query(`SELECT p.*,r.receipt_number,l.tenant_name,l.unit_label,l.rent_account_ref FROM rent_payments p JOIN rent_receipts r ON r.payment_id=p.id JOIN rent_leases l ON l.id=p.lease_id WHERE r.id=$1 AND l.id=(SELECT id FROM rent_leases WHERE meter_code=$2 AND status='active' AND start_date<=$3::date AND (end_date IS NULL OR end_date>=$3::date) ORDER BY start_date DESC,created_at DESC LIMIT 1)`,[req.params.id,req.user.meter_code,todayNairobi()])).rows[0];if(!p)return res.status(404).send('Receipt not found');
+  const lease=await customerLease(pool,req.user);const p=lease?(await pool.query('SELECT p.*,r.receipt_number,l.tenant_name,l.unit_label,l.rent_account_ref FROM rent_payments p JOIN rent_receipts r ON r.payment_id=p.id JOIN rent_leases l ON l.id=p.lease_id WHERE r.id=$1 AND l.id=$2',[req.params.id,lease.id])).rows[0]:null;if(!p)return res.status(404).send('Receipt not found');
   const allocations=(await pool.query('SELECT c.period_start,c.period_end,a.amount FROM rent_allocations a JOIN rent_charges c ON c.id=a.charge_id WHERE a.payment_id=$1 AND a.reversed_at IS NULL ORDER BY c.period_start',[p.id])).rows;
   const allocated=allocations.reduce((n,a)=>n+Number(a.amount),0);
   const lines=[
@@ -193,30 +200,29 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   res.send(pdf);
  }));
  app.get(admin+'/leases',wrap(async(req,res)=>{
-  const sql=req.adminActor&&req.adminActor.role==='caretaker'?'SELECT l.id,l.meter_code,l.tenant_name,l.unit_label,l.start_date,l.end_date,l.status FROM rent_leases l JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC':'SELECT l.*,m.phone FROM rent_leases l JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC';
+  const sql=req.adminActor&&req.adminActor.role==='caretaker'?'SELECT l.id,l.meter_code,l.tenant_name,l.unit_label,l.start_date,l.end_date,l.status FROM rent_leases l LEFT JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC':'SELECT l.*,m.phone FROM rent_leases l LEFT JOIN meters m ON m.meter_code=l.meter_code ORDER BY l.created_at DESC';
   const items=(await pool.query(sql)).rows;res.json({ok:true,items});
  }));
  app.post(admin+'/leases',wrap(async(req,res)=>{
-  const b=req.body||{},meter=String(b.meterCode||''),tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim().toUpperCase(),amount=Number(b.rentAmount),freq=String(b.billingFrequency||'monthly'),start=String(b.startDate||'').slice(0,10),end=b.endDate?String(b.endDate).slice(0,10):null,day=Number(b.dueDay||1),deposit=Number(b.securityDeposit||0),email=String(b.tenantEmail||'').trim().toLowerCase();
-  if(!meter||!tenant||!unit||!validRentReference(ref)||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^\d{4}-\d{2}-\d{2}$/.test(start)||(end&&(!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start))||day<1||day>28||!Number.isSafeInteger(deposit)||deposit<0||deposit>10000000||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
+  const b=req.body||{},meter=String(b.meterCode||'').trim()||null,propertyUnitId=String(b.propertyUnitId||'').trim()||null,tenant=String(b.tenantName||'').trim(),unit=String(b.unitLabel||'').trim(),ref=String(b.rentAccountRef||'').trim().toUpperCase(),amount=Number(b.rentAmount),freq=String(b.billingFrequency||'monthly'),start=String(b.startDate||'').slice(0,10),end=b.endDate?String(b.endDate).slice(0,10):null,day=Number(b.dueDay||1),deposit=Number(b.securityDeposit||0),email=String(b.tenantEmail||'').trim().toLowerCase();
+  if((!meter&&!propertyUnitId)||!tenant||!unit||!validRentReference(ref)||!Number.isSafeInteger(amount)||amount<1||!FREQUENCIES[freq]||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(start)||(end&&(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(end)||end<start))||day<1||day>28||!Number.isSafeInteger(deposit)||deposit<0||deposit>10000000||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))return res.status(400).json({ok:false,message:'Complete all tenancy fields with valid values.'});
   if(!validDate(start)||(end&&!validDate(end)))return res.status(400).json({ok:false,message:'Enter valid tenancy dates.'});
-  const client=await pool.connect();let l,previousLoginDisabled=false;
-  try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent-unit:'+meter]);await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent-ref:'+ref]);
-   if(!(await client.query('SELECT 1 FROM meters WHERE meter_code=$1',[meter])).rowCount){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Select a registered meter.'});}
-   if((await client.query("SELECT 1 FROM property_units WHERE meter_code=$1 AND status='unavailable'",[meter])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This unit is marked unavailable and cannot receive a new tenancy.'});}
-   await client.query("UPDATE rent_leases SET status='ended',updated_at=now() WHERE meter_code=$1 AND status='active' AND end_date<$2::date",[meter,todayNairobi()]);
-   if((await client.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=$2::date)",[meter,todayNairobi()])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This unit already has an active tenancy. End the old tenancy before creating another.'});}
+  const client=await pool.connect();let l,previousLoginDisabled=false,temporaryCredentials=null,unitId=propertyUnitId;
+  try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent-unit:'+(propertyUnitId||meter)]);await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['rent-ref:'+ref]);
+   if(meter&&!(await client.query('SELECT 1 FROM meters WHERE meter_code=$1',[meter])).rowCount){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Select a registered meter.'});}
+   if(unitId){const u=(await client.query('SELECT * FROM property_units WHERE id=$1 FOR UPDATE',[unitId])).rows[0];if(!u){await client.query('ROLLBACK');return res.status(404).json({ok:false,message:'Select a registered property unit.'});}if(u.status==='unavailable'){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This unit is marked unavailable and cannot receive a new tenancy.'});}if(meter&&u.meter_code&&u.meter_code!==meter){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'The selected property unit is linked to a different Hydro meter.'});}if(meter&&!u.meter_code)await client.query('UPDATE property_units SET meter_code=$2,updated_at=now() WHERE id=$1',[unitId,meter]);}
+   else if(meter)unitId=(await client.query('SELECT id FROM property_units WHERE meter_code=$1',[meter])).rows[0]?.id||null;
+   if(meter){await client.query("UPDATE rent_leases SET status='ended',updated_at=now() WHERE meter_code=$1 AND status='active' AND end_date<$2::date",[meter,todayNairobi()]);if((await client.query("SELECT 1 FROM rent_leases WHERE meter_code=$1 AND status='active' AND (end_date IS NULL OR end_date>=$2::date)",[meter,todayNairobi()])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This unit already has an active tenancy. End the old tenancy before creating another.'});}}
+   if(unitId){await client.query("UPDATE rent_leases SET status='ended',updated_at=now() WHERE property_unit_id=$1 AND status='active' AND end_date<$2::date",[unitId,todayNairobi()]);if((await client.query("SELECT 1 FROM rent_leases WHERE property_unit_id=$1 AND status='active' AND (end_date IS NULL OR end_date>=$2::date)",[unitId,todayNairobi()])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'This property unit already has an active tenancy. End or transfer the current tenancy first.'});}}
    if((await client.query('SELECT 1 FROM rent_leases WHERE rent_account_ref=$1',[ref])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'Rent account reference has already been used by a current or former tenancy. Use a new reference.'});}
-   const previous=(await client.query('SELECT tenant_name FROM rent_leases WHERE meter_code=$1 ORDER BY created_at DESC LIMIT 1',[meter])).rows[0];
-   if(previous){
-    const revoked=(await client.query('UPDATE users SET disabled=true WHERE meter_code=$1 RETURNING id',[meter])).rows;
-    if(revoked.length){previousLoginDisabled=true;await client.query('DELETE FROM sessions WHERE user_id=ANY($1::uuid[])',[revoked.map(x=>x.id)]);await client.query("INSERT INTO admin_actions(action,meter_number,detail,status) VALUES('RENT_PREVIOUS_TENANT_LOGIN_DISABLED',$1,$2,'DONE')",[meter,JSON.stringify({previousTenant:previous.tenant_name,newTenant:tenant,reason:'New tenancy assigned; issue fresh customer credentials.'})]);}
-   }
-   await client.query('UPDATE meters SET rent_account_ref=$2,tenant_name=$3,flat=$4,tenant_email=$5 WHERE meter_code=$1',[meter,ref,tenant,unit,email||null]);
-   l=(await client.query(`INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,end_date,due_day,agreement_terms,security_deposit,tenant_email,property_unit_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,(SELECT id FROM property_units WHERE meter_code=$1)) RETURNING *`,[meter,tenant,unit,ref,amount,freq,start,end,day,String(b.terms||''),deposit,email||null])).rows[0];
+   if(meter){const previous=(await client.query('SELECT tenant_name FROM rent_leases WHERE meter_code=$1 ORDER BY created_at DESC LIMIT 1',[meter])).rows[0];if(previous){const revoked=(await client.query('UPDATE users SET disabled=true WHERE meter_code=$1 RETURNING id',[meter])).rows;if(revoked.length){previousLoginDisabled=true;await client.query('DELETE FROM sessions WHERE user_id=ANY($1::uuid[])',[revoked.map(x=>x.id)]);}}}
+   if(unitId){const oldUsers=(await client.query("UPDATE users SET disabled=true WHERE rent_lease_id IN (SELECT id FROM rent_leases WHERE property_unit_id=$1 AND status='ended') RETURNING id",[unitId])).rows;if(oldUsers.length){previousLoginDisabled=true;await client.query('DELETE FROM sessions WHERE user_id=ANY($1::uuid[])',[oldUsers.map(x=>x.id)]);}}
+   if(meter)await client.query('UPDATE meters SET rent_account_ref=$2,tenant_name=$3,flat=$4,tenant_email=$5 WHERE meter_code=$1',[meter,ref,tenant,unit,email||null]);
+   l=(await client.query(`INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,end_date,due_day,agreement_terms,security_deposit,tenant_email,property_unit_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,[meter,tenant,unit,ref,amount,freq,start,end,day,String(b.terms||''),deposit,email||null,unitId])).rows[0];
+   if(!meter){if((await client.query('SELECT 1 FROM users WHERE username=$1',[ref])).rowCount){await client.query('ROLLBACK');return res.status(409).json({ok:false,message:'That rent account reference is already used as a customer login username.'});}const password=tenantPassword();await client.query('INSERT INTO users(meter_code,rent_lease_id,username,password_hash,must_change,disabled) VALUES(NULL,$1,$2,$3,true,false)',[l.id,ref,tenantPasswordHash(password)]);temporaryCredentials={username:ref,password};}
    await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
-  await generateCharges(pool,l.id);await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status,actor_id,actor_name,actor_role) VALUES('RENT_LEASE_CREATED',$1,$2,'DONE',$3,$4,$5)",[meter,JSON.stringify({leaseId:l.id,tenant,unit,amount,frequency:freq,accountRef:ref}),adminActor(req).id,adminActor(req).displayName,adminActor(req).role]);res.json({ok:true,lease:l,previousLoginDisabled});
+  await generateCharges(pool,l.id);await pool.query("INSERT INTO admin_actions(action,meter_number,detail,status,actor_id,actor_name,actor_role) VALUES('RENT_LEASE_CREATED',$1,$2,'DONE',$3,$4,$5)",[meter,JSON.stringify({leaseId:l.id,tenant,unit,amount,frequency:freq,accountRef:ref,propertyUnitId:unitId,meterLinked:!!meter,rentOnlyLoginCreated:!!temporaryCredentials}),adminActor(req).id,adminActor(req).displayName,adminActor(req).role]);res.json({ok:true,lease:l,previousLoginDisabled,temporaryCredentials});
  }));
  app.patch(admin+'/leases/:id',wrap(async(req,res)=>{
   const b=req.body||{},amount=Number(b.rentAmount),freq=String(b.billingFrequency||''),day=Number(b.dueDay||1),status=String(b.status||'active'),end=b.endDate?String(b.endDate).slice(0,10):null;
@@ -286,7 +292,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
  app.post('/api/me/rent/missing-payment',...customer,wrap(async(req,res)=>{
   const b=req.body||{},code=String(b.transactionCode||'').trim().toUpperCase(),amount=b.amount==null||b.amount===''?null:Number(b.amount),description=String(b.description||'').trim();
   if(!/^[A-Z0-9]{6,24}$/.test(code)||(amount!==null&&(!Number.isSafeInteger(amount)||amount<1||amount>10000000))||description.length>500)return res.status(400).json({ok:false,message:'Enter a valid M-Pesa transaction code and optional amount or description.'});
-  const l=(await pool.query("SELECT id FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0];if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
+  const l=await customerLease(pool,req.user);if(!l)return res.status(404).json({ok:false,message:'No active rent account is linked to this login.'});
   try{const report=(await pool.query('INSERT INTO rent_payment_reports(lease_id,transaction_code,amount,description) VALUES($1,$2,$3,$4) RETURNING id,created_at,status',[l.id,code,amount,description||null])).rows[0];res.status(201).json({ok:true,report});}
   catch(e){if(e.code==='23505')return res.status(409).json({ok:false,message:'This transaction code has already been reported for your tenancy.'});throw e;}
  }));
@@ -394,7 +400,7 @@ function registerRentRoutes({app,pool,requireUser,requireReady,normPhone,darajaP
   await pool.query("INSERT INTO admin_actions(action,detail,status) VALUES('TENANCY_AGREEMENT_ISSUED',$1,'DONE')",[JSON.stringify({agreementId:a.id,leaseId:a.lease_id,version:a.version})]);res.json({ok:true,agreement:a});
  }));
  app.get('/api/me/rent/agreement/file',...customer,wrap(async(req,res)=>{
-  const lease=(await pool.query("SELECT id FROM rent_leases WHERE meter_code=$1 AND status='active' AND start_date<=$2::date AND (end_date IS NULL OR end_date>=$2::date) ORDER BY start_date DESC,created_at DESC LIMIT 1",[req.user.meter_code,todayNairobi()])).rows[0];if(!lease)return res.status(404).json({ok:false,message:'No active tenancy found.'});
+  const lease=await customerLease(pool,req.user);if(!lease)return res.status(404).json({ok:false,message:'No active tenancy found.'});
   const row=(await pool.query("SELECT id FROM tenancy_agreements WHERE lease_id=$1 AND status='issued' ORDER BY version DESC LIMIT 1",[lease.id])).rows[0];if(!row)return res.status(404).json({ok:false,message:'No issued tenancy agreement is available.'});
   const file=await agreementFile(row.id);if(!file)return res.status(404).json({ok:false,message:'No uploaded agreement file is available.'});sendAgreementFile(res,file);
  }));
