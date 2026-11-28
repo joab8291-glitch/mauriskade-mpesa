@@ -1,5 +1,10 @@
 'use strict';
 const crypto = require('crypto');
+const BACKUP_TABLES=['meters','users','sessions','transactions','admin_actions','rent_settings','rent_backup_runs','rent_backup_tests','properties','property_units','admin_staff','admin_staff_sessions','rent_leases','rent_charges','rent_payments','rent_allocations','rent_receipts','rent_deposit_transactions','rent_approvals','rent_scheduled_changes','rent_settlements','rent_payment_reports','rent_bank_imports','rent_bank_statement_lines','rent_reminder_jobs','rent_followup_tasks','rent_payment_plans','rent_payment_plan_installments','rent_disputes','rent_communication_log','rent_formal_notices','rent_credit_refunds','rent_credit_transfers','rent_allocation_adjustments','tenancy_agreements'];
+function encryptBackup(data,secret){const plain=Buffer.from(JSON.stringify(data)),key=crypto.createHash('sha256').update(secret).digest(),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv),encrypted=Buffer.concat([cipher.update(plain),cipher.final()]);return Buffer.concat([Buffer.from('MRBK1'),iv,cipher.getAuthTag(),encrypted]);}
+function decryptBackup(payload,secret){if(payload.length<33||payload.subarray(0,5).toString()!=='MRBK1')throw new Error('Backup file header is invalid.');const key=crypto.createHash('sha256').update(secret).digest(),iv=payload.subarray(5,17),tag=payload.subarray(17,33),cipher=crypto.createDecipheriv('aes-256-gcm',key,iv);cipher.setAuthTag(tag);return JSON.parse(Buffer.concat([cipher.update(payload.subarray(33)),cipher.final()]).toString('utf8'));}
+const sha256 = value => crypto.createHash('sha256').update(String(value)).digest('hex');
+
 const { allocateRentPayment, generateCharges, createReceipt, addMonths, makeReceiptPdf } = require('./rent');
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
 const dateText = v => v instanceof Date ? v.toISOString().slice(0,10) : String(v||'').slice(0,10);
