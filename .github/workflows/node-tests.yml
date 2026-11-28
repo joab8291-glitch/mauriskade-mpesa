@@ -25,3 +25,4 @@ jobs:
           node --check server.js
           node --check rent.js
           node --check rent-workflows.js
+          node --check scripts/backup-database.js
