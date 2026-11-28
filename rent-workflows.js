@@ -1,10 +1,11 @@
 'use strict';
 const crypto = require('crypto');
-const { allocateRentPayment, generateCharges, createReceipt, addMonths, makeReceiptPdf } = require('./rent');
 const BACKUP_TABLES=['meters','users','sessions','transactions','admin_actions','rent_settings','rent_backup_runs','rent_backup_tests','properties','property_units','admin_staff','admin_staff_sessions','rent_leases','rent_charges','rent_payments','rent_allocations','rent_receipts','rent_deposit_transactions','rent_approvals','rent_scheduled_changes','rent_settlements','rent_payment_reports','rent_bank_imports','rent_bank_statement_lines','rent_reminder_jobs','rent_followup_tasks','rent_payment_plans','rent_payment_plan_installments','rent_disputes','rent_communication_log','rent_formal_notices','rent_credit_refunds','rent_credit_transfers','rent_allocation_adjustments','tenancy_agreements'];
 function encryptBackup(data,secret){const plain=Buffer.from(JSON.stringify(data)),key=crypto.createHash('sha256').update(secret).digest(),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv),encrypted=Buffer.concat([cipher.update(plain),cipher.final()]);return Buffer.concat([Buffer.from('MRBK1'),iv,cipher.getAuthTag(),encrypted]);}
 function decryptBackup(payload,secret){if(payload.length<33||payload.subarray(0,5).toString()!=='MRBK1')throw new Error('Backup file header is invalid.');const key=crypto.createHash('sha256').update(secret).digest(),iv=payload.subarray(5,17),tag=payload.subarray(17,33),cipher=crypto.createDecipheriv('aes-256-gcm',key,iv);cipher.setAuthTag(tag);return JSON.parse(Buffer.concat([cipher.update(payload.subarray(33)),cipher.final()]).toString('utf8'));}
 const sha256 = value => crypto.createHash('sha256').update(String(value)).digest('hex');
+
+const { allocateRentPayment, generateCharges, createReceipt, addMonths, makeReceiptPdf } = require('./rent');
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
 const dateText = v => v instanceof Date ? v.toISOString().slice(0,10) : String(v||'').slice(0,10);
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
@@ -381,7 +382,7 @@ function registerRentWorkflowRoutes({app,pool,env={}}){
   catch(e){await client.query('ROLLBACK').catch(()=>{});await pool.query("INSERT INTO rent_backup_tests(file_sha256,tables_tested,rows_tested,status,details,tested_by) VALUES($1,$2,$3,'failed',$4::jsonb,$5)",[sha256(payload),checked,rows,JSON.stringify({error:e.message,detail}),actor(req).id]);return res.status(422).json({ok:false,message:'Staging restore verification failed: '+e.message});}finally{client.release();}
   await pool.query("INSERT INTO rent_backup_tests(file_sha256,tables_tested,rows_tested,status,details,tested_by) VALUES($1,$2,$3,'passed',$4::jsonb,$5)",[sha256(payload),checked,rows,JSON.stringify({format:data.format,createdAt:data.createdAt,detail}),actor(req).id]);await audit(pool,req,'RENT_BACKUP_RESTORE_TEST_PASSED',{sha256:sha256(payload),tables:checked,rows});res.json({ok:true,verified:true,mode:'isolated temporary-table restore test; production records were not modified',tablesTested:checked,rowsTested:rows,sha256:sha256(payload)});
  }));
- app.get(base+'/backups/status',owner,wrap(async(_req,res)=>res.json({ok:true,runs:(await pool.query('SELECT * FROM rent_backup_runs ORDER BY backup_date DESC LIMIT 30')).rows,tests:(await pool.query('SELECT * FROM rent_backup_tests ORDER BY created_at DESC LIMIT 20')).rows,configured:!!(env.RENT_BACKUP_WEBHOOK_URL&&String(env.RENT_BACKUP_ENCRYPTION_KEY||'').length>=32)})));
+ app.get(base+'/backups/status',owner,wrap(async(_req,res)=>res.json({ok:true,runs:(await pool.query('SELECT * FROM rent_backup_runs ORDER BY backup_date DESC LIMIT 30')).rows,tests:(await pool.query('SELECT * FROM rent_backup_tests ORDER BY created_at DESC LIMIT 20')).rows,configured:!!(env.SUPABASE_URL&&String(env.SUPABASE_SERVICE_ROLE_KEY||'').length>=20&&String(env.RENT_BACKUP_ENCRYPTION_KEY||'').length>=32)})));
 }
 
 let rentAutomationRunning=false;
@@ -396,20 +397,9 @@ async function runRentAutomation(pool,env={}){
  // Apply future-dated rent changes once, without rewriting already allocated charges.
  const changes=(await pool.query("SELECT * FROM rent_scheduled_changes WHERE status='scheduled' AND effective_date<=$1::date ORDER BY effective_date LIMIT 100",[day])).rows;
  for(const c of changes){const client=await pool.connect();try{await client.query('BEGIN');const row=(await client.query("SELECT * FROM rent_scheduled_changes WHERE id=$1 AND status='scheduled' FOR UPDATE",[c.id])).rows[0];if(row){await generateCharges(client,row.lease_id);await client.query('UPDATE rent_leases SET rent_amount=$2,updated_at=now() WHERE id=$1',[row.lease_id,row.new_rent_amount]);await client.query("UPDATE rent_charges SET voided_at=now(),void_reason='Scheduled rent change; future schedule regenerated' WHERE lease_id=$1 AND period_start >= $2::date AND voided_at IS NULL AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=rent_charges.id AND a.reversed_at IS NULL)",[row.lease_id,row.effective_date]);await client.query("UPDATE rent_scheduled_changes SET status='applied',applied_at=now() WHERE id=$1",[row.id]);await client.query("INSERT INTO admin_actions(action,detail,status,actor_id,actor_name,actor_role) VALUES('RENT_SCHEDULED_CHANGE_APPLIED',$1,'DONE','system','Rent scheduler','system')",[JSON.stringify(row)]);}await client.query('COMMIT');}catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}await generateCharges(pool,c.lease_id);}
- // Daily encrypted backup delivery is attempted only when a durable remote webhook and key exist.
- const hour=new Date(Date.now()+3*3600000).getUTCHours();const backupUrl=String(env.RENT_BACKUP_WEBHOOK_URL||''),backupKey=String(env.RENT_BACKUP_ENCRYPTION_KEY||'');
- if(hour>=Number(env.RENT_BACKUP_HOUR||2)){
-  const exists=(await pool.query('SELECT id,status,attempts FROM rent_backup_runs WHERE backup_date=$1::date',[day])).rows[0];
-  if(!exists||(exists.status!=='sent'&&Number(exists.attempts||0)<3)){
-   if(!backupUrl||backupKey.length<32){if(!exists)await pool.query("INSERT INTO rent_backup_runs(backup_date,status,destination,last_error) VALUES($1,'blocked_config',$2,$3) ON CONFLICT(backup_date) DO NOTHING",[day,backupUrl||null,'Configure RENT_BACKUP_WEBHOOK_URL and a 32+ character RENT_BACKUP_ENCRYPTION_KEY.']);}
-   else{
-    if(exists)await pool.query("UPDATE rent_backup_runs SET status='queued',attempts=attempts+1,destination=$2,last_error=NULL,updated_at=now() WHERE id=$1",[exists.id,backupUrl]);else await pool.query("INSERT INTO rent_backup_runs(backup_date,status,attempts,destination) VALUES($1,'queued',1,$2) ON CONFLICT(backup_date) DO NOTHING",[day,backupUrl]);
-    const data={format:'mauriskade-rent-backup-v1',createdAt:new Date().toISOString(),tables:{}};for(const t of BACKUP_TABLES)data.tables[t]=(await pool.query('SELECT * FROM '+t)).rows;const file=encryptBackup(data,backupKey),digest=sha256(file);
-    try{const headers={'content-type':'application/json'};if(env.RENT_BACKUP_WEBHOOK_SECRET)headers.authorization='Bearer '+env.RENT_BACKUP_WEBHOOK_SECRET;const response=await fetch(backupUrl,{method:'POST',headers,signal:AbortSignal.timeout(30000),body:JSON.stringify({fileName:'mauriskade-system-backup-'+day+'.mrbk',backupDate:day,sha256:digest,encryptedBase64:file.toString('base64'),format:data.format})});const body=await response.text();if(!response.ok)throw new Error('Backup destination HTTP '+response.status+': '+body.slice(0,200));await pool.query("UPDATE rent_backup_runs SET status='sent',file_sha256=$2,file_bytes=$3,destination=$4,last_error=NULL,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,backupUrl]);}
-    catch(e){await pool.query("UPDATE rent_backup_runs SET status='failed',file_sha256=$2,file_bytes=$3,destination=$4,last_error=$5,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,backupUrl,e.message]);}
-   }
-  }
- }
+
+ // Full database backups are performed by the dedicated GitHub Actions pg_dump workflow.
+ // The application scheduler intentionally does not export table-only JSON snapshots.
  // Materialize the four requested reminders from due dates. The unique key prevents repeats on reruns.
  const channels=String(env.RENT_NOTIFICATION_CHANNELS||'sms').split(',').map(x=>x.trim().toLowerCase()).filter(x=>['sms','whatsapp','email'].includes(x));
  const due=(await pool.query(`SELECT c.*,l.tenant_name,l.rent_account_ref,l.id lease_id,l.tenant_email,m.phone FROM rent_charges c JOIN rent_leases l ON l.id=c.lease_id LEFT JOIN meters m ON m.meter_code=l.meter_code WHERE l.status='active' AND c.voided_at IS NULL AND (l.end_date IS NULL OR l.end_date>=$1::date) AND c.due_date BETWEEN $1::date-interval '365 days' AND $1::date+interval '3 days'`,[day])).rows;

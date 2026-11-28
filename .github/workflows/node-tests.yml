@@ -6,6 +6,7 @@ on:
       - main
       - feature/rent-only-tenancies
       - feature/complete-audit-attribution
+      - feature/mauriskade-private-storage-backups
   pull_request:
     branches:
       - main
@@ -25,3 +26,4 @@ jobs:
           node --check server.js
           node --check rent.js
           node --check rent-workflows.js
+          node --check scripts/backup-database.js
