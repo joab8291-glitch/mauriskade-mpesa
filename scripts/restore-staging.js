@@ -56,6 +56,7 @@ async function main(env = process.env) {
     const payload = path.join(work,'payload'); fs.mkdirSync(payload,{mode:0o700});
     await run('tar',['-xzf',tarPath,'-C',payload,'--no-same-owner','--no-same-permissions']);
     const manifest = JSON.parse(fs.readFileSync(path.join(payload,'BACKUP-MANIFEST.json'),'utf8'));
+    if (manifest.projectRef !== PROD_REF) throw new Error('Managed archive does not belong to the configured production project.');
     const bucketManifest = JSON.parse(fs.readFileSync(path.join(payload,'storage-buckets.json'),'utf8'));
     const authDump = path.join(payload,'auth-schema.dump');
     const authListing = (await run('pg_restore',['--list',authDump])).stdout;
@@ -74,13 +75,14 @@ async function main(env = process.env) {
     const dbPlain = decryptArchive(fs.readFileSync(dbEncrypted),encryptionKey);
     fs.writeFileSync(dbArchive,dbPlain,{mode:0o600});
     await run('pg_restore',['--exit-on-error','--no-owner','--no-acl','--dbname',databaseUrl,dbArchive]);
-    const restoredTables = await run('psql',[databaseUrl,'-X','-v','ON_ERROR_STOP=1','-Atc',"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'"]);
-    if (Number(restoredTables.stdout.trim()) < 10) throw new Error('Staging public database restore did not produce the expected application tables.');
+    const restoredTables = await run('psql',[databaseUrl,'-X','-v','ON_ERROR_STOP=1','-Atc',"SELECT json_build_object('tables',(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'),'rlsTables',(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity),'policies',(SELECT count(*) FROM pg_policies WHERE schemaname='public'),'keyTables',(SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('rent_leases','rent_payments','rent_allocations','rent_settlements','tenancy_agreements','admin_actions')) )::text"]);
+    const verification = JSON.parse(restoredTables.stdout.trim());
+    if (verification.tables < 10 || verification.rlsTables !== verification.tables || verification.policies < 1 || verification.keyTables !== 6) throw new Error('Staging public database restore verification failed: ' + JSON.stringify(verification));
     let restoredObjects = 0, restoredBytes = 0;
     for (const bucket of bucketManifest) {
       if (!bucket || !/^[a-z0-9][a-z0-9._-]{1,62}$/.test(bucket.name)) throw new Error('Invalid Storage bucket name in backup manifest.');
       const settings = bucket.bucketSettings || {};
-      await storageRequest(supabaseUrl,serviceKey,'/bucket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:bucket.name,public:Boolean(bucket.public),file_size_limit:settings.file_size_limit ?? null,allowed_mime_types:settings.allowed_mime_types ?? null})});
+      await storageRequest(supabaseUrl,serviceKey,'/bucket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:bucket.name,public:Boolean(bucket.public),fileSizeLimit:settings.file_size_limit ?? null,allowedMimeTypes:settings.allowed_mime_types ?? null})});
       const bucketDir = path.join(payload,'storage',bucket.name);
       const manifestPath = path.join(bucketDir,'.objects-manifest.json');
       const objects = JSON.parse(fs.readFileSync(manifestPath,'utf8'));
@@ -97,7 +99,7 @@ async function main(env = process.env) {
         restoredObjects++; restoredBytes += bytes.length;
       }
     }
-    console.log(JSON.stringify({status:'staging_public_database_and_storage_restore_passed',targetProjectRef:projectRef,sourceDatabaseArchive:dbSource.key,sourceManagedArchive:latest.fileName,publicTables:Number(restoredTables.stdout.trim()),storageBuckets:bucketManifest.length,storageObjects:restoredObjects,storageBytes:restoredBytes,authArchiveValidated:true,authRestore:'pending_platform_aware_operator_migration',projectConfig:'exported_for_manual_review',productionModified:false}));
+    console.log(JSON.stringify({status:'staging_public_database_and_storage_restore_passed',targetProjectRef:projectRef,sourceDatabaseArchive:dbSource.key,sourceManagedArchive:latest.fileName,publicTables:verification.tables,rlsTables:verification.rlsTables,policies:verification.policies,storageBuckets:bucketManifest.length,storageObjects:restoredObjects,storageBytes:restoredBytes,authArchiveValidated:true,authRestore:'pending_platform_aware_operator_migration',projectConfig:'exported_for_manual_review',productionModified:false}));
   } finally { fs.rmSync(work,{recursive:true,force:true}); }
 }
 if (require.main === module) main().catch(error => { console.error('Staging restore failed: ' + error.message); process.exitCode = 1; });
