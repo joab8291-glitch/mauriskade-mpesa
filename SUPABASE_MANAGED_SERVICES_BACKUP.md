@@ -4,11 +4,11 @@ This supplements the application-owned `public` PostgreSQL archive. It runs dail
 
 ## Included in the encrypted artifact
 
-- **Auth schema:** a PostgreSQL custom-format dump of `auth`, including the user table/password hashes, identities and related Auth records that the database connection can read. Auth data is highly sensitive and is encrypted with the same AES-256-GCM key as the main database backup.
+- **Auth schema:** a PostgreSQL custom-format dump of `auth`, including `auth.users` and its user records/password hashes. The manifest records which Auth tables' data was included by `pg_dump`; the workflow refuses to publish an archive unless `auth.users` data is present. Auth data is highly sensitive and is encrypted with the same AES-256-GCM key as the main database backup.
 - **Storage objects:** downloads every object in every bucket using the Storage API, recursively traversing folders and paginating listings. The artifact includes actual file bytes, per-object manifests and bucket metadata/settings returned by the API. Empty buckets are recorded too.
 - **Project configuration:** GET `/v2/projects/{ref}/config` from the Supabase Management API, preserving the effective database, pooler, Auth, Data API, Realtime and Storage configuration. Supabase returns Auth secrets as HMAC values, not plaintext credentials; this is a configuration record, not a credential escrow.
 
-The tar archive is encrypted before upload. The workflow checks the B2 object size and metadata, downloads it again, and compares SHA-256. Temporary files are deleted when the job exits.
+The tar archive is encrypted before upload. The workflow checks the B2 object size and SHA-256 metadata, downloads it again, and compares SHA-256. B2 archive discovery uses the Backblaze Native API v4 (avoiding the S3 ListObjects signature issue seen in the previous recovery workflow); S3-compatible transfers are retained for object upload/download. Temporary files are deleted when the job exits.
 
 ## Required additional GitHub secret
 
