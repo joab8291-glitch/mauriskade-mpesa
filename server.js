@@ -920,6 +920,31 @@ app.post('/api/admin/staff/login', staffLoginLimit, wrap(async (req, res) => {
 }));
 app.use('/api/admin', adminLimit, adminAuth);
 
+// Catch every authenticated admin mutation, including registry/settings actions without
+// a specialized audit event. Only field names are stored; submitted values/secrets are not.
+app.use('/api/admin', (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  res.once('finish', () => {
+    if (req.auditRecorded) return;
+    const a = req.adminActor || { id: 'unknown', username: null, displayName: 'Unknown actor', role: 'unknown', source: 'unknown' };
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const changedFields = Object.keys(body).filter(k => !/(password|secret|token|authorization|cookie|phone|msisdn|pin|passkey)/i.test(k)).slice(0, 40);
+    const path = String(req.originalUrl || req.path || '').split('?')[0].slice(0, 300);
+    const params = req.params || {};
+    const entityId = params.id || params.leaseId || params.meter || params.meterCode || null;
+    const entityType = /staff/i.test(path) ? 'staff' : /lease|tenanc|settlement|notice/i.test(path) ? 'tenancy' : /payment|deposit|refund|bank|credit/i.test(path) ? 'financial_record' : /unit|propert/i.test(path) ? 'property' : 'admin_operation';
+    const status = res.statusCode >= 500 ? 'FAILED' : res.statusCode >= 400 ? 'REFUSED' : 'DONE';
+    pool.query(
+      `INSERT INTO admin_actions(action,detail,status,actor_id,actor_name,actor_role,actor_username,actor_source,entity_type,entity_id,before_after)
+       VALUES($1,$2::jsonb,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)`,
+      ['ADMIN_MUTATION:' + req.method + ':' + path, JSON.stringify({ method: req.method, path, changedFields, responseStatus: res.statusCode }),
+       status, a.id, a.displayName, a.role, a.username || null, a.source || (a.id === 'legacy-owner' ? 'legacy_key' : 'staff_session'),
+       entityType, entityId == null ? null : String(entityId), JSON.stringify({ changedFields, responseStatus: res.statusCode })]
+    ).catch(e => log('admin audit capture failed', e.message));
+  });
+  next();
+});
+
 registerRentRoutes({ app, pool, requireUser, requireReady, normPhone, darajaPost, payLimit,
   mpesaShortcode: MPESA_SHORTCODE, callbackBaseUrl: CALLBACK_BASE_URL, callbackSecret: CALLBACK_SECRET });
 registerRentWorkflowRoutes({ app, pool, env: process.env });
@@ -1161,10 +1186,14 @@ app.post('/api/admin/review/:id', wrap(async (req, res) => {
 const ADMIN_RECHARGE_ENABLED = String(process.env.ADMIN_RECHARGE_ENABLED || '').toLowerCase() === 'true';
 const intOrNull = (v) => (v === '' || v == null || !Number.isInteger(Number(v)) ? null : Number(v));
 
-async function audit(action, meter, detail, status = 'DONE') {
+async function audit(action, meter, detail, status = 'DONE', actor = null) {
+  const a = actor || { id: 'system', username: 'system', displayName: 'System / M-Pesa callback', role: 'system', source: 'provider_callback' };
   const r = await pool.query(
-    `INSERT INTO admin_actions (action, meter_number, detail, status) VALUES ($1,$2,$3,$4) RETURNING id`,
-    [action, meter || null, JSON.stringify(detail || {}), status]);
+    `INSERT INTO admin_actions (action, meter_number, detail, status, actor_id, actor_name, actor_role, actor_username, actor_source, entity_type, entity_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+    [action, meter || null, JSON.stringify(detail || {}), status, a.id, a.displayName, a.role, a.username || null, a.source || 'system',
+      action.toLowerCase().includes('recharge') || action.toLowerCase().includes('payment') ? 'payment' : 'water_transaction',
+      detail && (detail.transactionId || detail.id) ? String(detail.transactionId || detail.id) : null]);
   return r.rows[0].id;
 }
 
@@ -1244,7 +1273,7 @@ app.post('/api/admin/pay', payLimit, wrap(async (req, res) => {
     return res.status(404).json({ ok: false, message: 'That meter is not in the Mauriskade registry.' });
   }
   const out = await startPayment({ meter, phone, amount });
-  await audit('mpesa_prompt', meter, { amount, phone: phone.slice(0, 5) + '****' + phone.slice(-3), ok: out.body.ok === true });
+  await audit('mpesa_prompt', meter, { amount, phone: phone.slice(0, 5) + '****' + phone.slice(-3), ok: out.body.ok === true }, 'DONE', req.adminActor); req.auditRecorded = true;
   res.status(out.status).json(out.body);
 }));
 
@@ -1273,7 +1302,7 @@ app.post('/api/admin/recharge', wrap(async (req, res) => {
   const owned = await lookupOwnedMeter(meter).catch(() => null);
   if (!owned) return res.status(409).json({ ok: false, message: 'Hydro does not return this meter right now.' });
 
-  const auditId = await audit('sts_recharge', meter, { mode: byVolume ? 'volume' : 'amount', value, reason: reason.slice(0, 300) }, 'STARTED');
+  const auditId = await audit('sts_recharge', meter, { mode: byVolume ? 'volume' : 'amount', value, reason: reason.slice(0, 300) }, 'STARTED', req.adminActor); req.auditRecorded = true;
   try {
     const r = byVolume
       ? await hydro('POST', '/api/recharge/sts/stsRecharge', { meterNumber: meter, waterVolume: value })
@@ -1291,7 +1320,7 @@ app.post('/api/admin/recharge', wrap(async (req, res) => {
 }));
 
 app.get('/api/admin/audit', wrap(async (_req, res) => {
-  const { rows } = await pool.query(`SELECT id, action, meter_number, status, detail, created_at FROM admin_actions ORDER BY created_at DESC LIMIT 50`);
+  const { rows } = await pool.query(`SELECT id, action, meter_number, status, detail, actor_id, actor_name, actor_role, actor_username, actor_source, entity_type, entity_id, before_after, created_at FROM admin_actions ORDER BY created_at DESC LIMIT 100`);
   res.json({ ok: true, items: rows });
 }));
 
