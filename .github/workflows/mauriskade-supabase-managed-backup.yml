@@ -2,7 +2,7 @@ name: Mauriskade Supabase managed services backup
 
 on:
   push:
-    branches: [backup/supabase-managed-services]
+    branches: [main, backup/supabase-managed-services]
     paths:
       - '.github/workflows/mauriskade-supabase-managed-backup.yml'
       - 'scripts/backup-supabase-managed.js'
