@@ -939,7 +939,7 @@ app.use('/api/admin', (req, res, next) => {
        VALUES($1,$2::jsonb,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)`,
       ['ADMIN_MUTATION:' + req.method + ':' + path, JSON.stringify({ method: req.method, path, changedFields, responseStatus: res.statusCode }),
        status, a.id, a.displayName, a.role, a.username || null, a.source || (a.id === 'legacy-owner' ? 'legacy_key' : 'staff_session'),
-       entityType, entityId == null ? null : String(entityId), JSON.stringify({ changedFields, responseStatus: res.statusCode })]
+       entityType, entityId == null ? null : String(entityId), JSON.stringify({})]
     ).catch(e => log('admin audit capture failed', e.message));
   });
   next();
