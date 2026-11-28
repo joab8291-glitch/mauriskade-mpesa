@@ -6,6 +6,7 @@ on:
       - main
       - feature/rent-only-tenancies
       - feature/complete-audit-attribution
+      - feature/mauriskade-private-storage-backups
   pull_request:
     branches:
       - main
