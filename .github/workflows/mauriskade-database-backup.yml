@@ -1,6 +1,12 @@
 name: Mauriskade encrypted database backup
 
 on:
+  push:
+    branches: [backup/supabase-managed-services]
+    paths:
+      - '.github/workflows/mauriskade-database-backup.yml'
+      - 'scripts/backup-database.js'
+      - 'scripts/b2-backup-storage.js'
   schedule:
     - cron: "0 23 * * *" # 02:00 Africa/Nairobi
   workflow_dispatch:
