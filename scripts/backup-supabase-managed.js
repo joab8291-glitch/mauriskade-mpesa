@@ -91,7 +91,7 @@ async function inspectB2ApplicationKey(keyId, applicationKey, expectedBucket) {
   });
   if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + '): ' + (await response.text()).slice(0, 500));
   const auth = await response.json();
-  const allowed = auth.allowed || {};
+  const allowed = (auth.apiInfo && auth.apiInfo.storageApi && auth.apiInfo.storageApi.allowed) || {};
   const buckets = Array.isArray(allowed.buckets) ? allowed.buckets : null;
   if (buckets && !buckets.some(item => item && item.name === expectedBucket)) throw new Error('Backblaze application key is not authorized for the configured bucket.');
   const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
