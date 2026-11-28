@@ -1,4 +1,5 @@
 'use strict';
+// Read-only policy audit: never mutates bucket lifecycle rules.
 function required(env, name, min = 1) { const value = String(env[name] || '').trim(); if (value.length < min) throw new Error('Missing required GitHub Actions secret/configuration: ' + name); return value; }
 function hasRecommendedRetention(rules) { return Array.isArray(rules) && rules.some(rule => rule && rule.fileNamePrefix === 'database/' && Number(rule.daysFromUploadingToHiding) === 90 && Number(rule.daysFromHidingToDeleting) === 1); }
 async function audit(env = process.env) {
