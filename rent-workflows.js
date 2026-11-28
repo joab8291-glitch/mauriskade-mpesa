@@ -5,6 +5,45 @@ const BACKUP_TABLES=['meters','users','sessions','transactions','admin_actions',
 function encryptBackup(data,secret){const plain=Buffer.from(JSON.stringify(data)),key=crypto.createHash('sha256').update(secret).digest(),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv),encrypted=Buffer.concat([cipher.update(plain),cipher.final()]);return Buffer.concat([Buffer.from('MRBK1'),iv,cipher.getAuthTag(),encrypted]);}
 function decryptBackup(payload,secret){if(payload.length<33||payload.subarray(0,5).toString()!=='MRBK1')throw new Error('Backup file header is invalid.');const key=crypto.createHash('sha256').update(secret).digest(),iv=payload.subarray(5,17),tag=payload.subarray(17,33),cipher=crypto.createDecipheriv('aes-256-gcm',key,iv);cipher.setAuthTag(tag);return JSON.parse(Buffer.concat([cipher.update(payload.subarray(33)),cipher.final()]).toString('utf8'));}
 const sha256 = value => crypto.createHash('sha256').update(String(value)).digest('hex');
+const BACKUP_BUCKET_DEFAULT='mauriskade-db-backups';
+function backupStorageConfig(env={}) {
+ const url=String(env.SUPABASE_URL||'').replace(/\\/$/,'');
+ const key=String(env.SUPABASE_SERVICE_ROLE_KEY||'');
+ const bucket=String(env.RENT_BACKUP_STORAGE_BUCKET||BACKUP_BUCKET_DEFAULT).trim();
+ if(!/^https:\\/\\//i.test(url)||key.length<20||!/^[-a-z0-9_]{3,63}$/.test(bucket)) throw new Error('Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a valid RENT_BACKUP_STORAGE_BUCKET.');
+ return {url,key,bucket};
+}
+async function backupStorageFetch(env,path,options={}) {
+ const cfg=backupStorageConfig(env);
+ const response=await fetch(cfg.url+'/storage/v1'+path,{...options,headers:{apikey:cfg.key,authorization:'Bearer '+cfg.key,...(options.headers||{})},signal:AbortSignal.timeout(60000)});
+ if(!response.ok){const detail=(await response.text()).slice(0,240);throw new Error('Supabase Storage HTTP '+response.status+(detail?': '+detail:''));}
+ return response;
+}
+async function uploadBackupToStorage(env,fileName,payload) {
+ const cfg=backupStorageConfig(env);
+ const response=await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket)+'/'+encodeURIComponent(fileName),{method:'POST',headers:{'content-type':'application/octet-stream','cache-control':'no-store','x-upsert':'true'},body:payload});
+ return {bucket:cfg.bucket,path:fileName,bytes:payload.length};
+}
+async function pruneBackupStorage(env) {
+ const cfg=backupStorageConfig(env);
+ const retention=Math.max(7,Math.min(3650,Number.parseInt(env.RENT_BACKUP_RETENTION_DAYS||'90',10)||90));
+ const cutoff=new Date(Date.now()+3*3600000-retention*86400000).toISOString().slice(0,10);
+ let offset=0,listed=[],page=[];
+ do {
+  const response=await backupStorageFetch(env,'/object/list/'+encodeURIComponent(cfg.bucket),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prefix:'',limit:1000,offset,sortBy:{column:'name',order:'asc'}})});
+  page=await response.json();
+  if(!Array.isArray(page))throw new Error('Supabase Storage returned an invalid object listing.');
+  listed.push(...page.filter(x=>x&&typeof x.name==='string'&&/^mauriskade-system-backup-\\d{4}-\\d{2}-\\d{2}\\.mrbk$/.test(x.name)));
+  offset+=page.length;
+ } while(page.length===1000);
+ const stale=listed.filter(x=>x.name.slice('mauriskade-system-backup-'.length,10)<cutoff).map(x=>x.name);
+ for(let i=0;i<stale.length;i+=1000){
+  const response=await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket),{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({prefixes:stale.slice(i,i+1000)})});
+  await response.text();
+ }
+ return {retentionDays:retention,cutoff,deleted:stale.length,retained:listed.length-stale.length};
+}
+
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
 const dateText = v => v instanceof Date ? v.toISOString().slice(0,10) : String(v||'').slice(0,10);
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
@@ -381,7 +420,7 @@ function registerRentWorkflowRoutes({app,pool,env={}}){
   catch(e){await client.query('ROLLBACK').catch(()=>{});await pool.query("INSERT INTO rent_backup_tests(file_sha256,tables_tested,rows_tested,status,details,tested_by) VALUES($1,$2,$3,'failed',$4::jsonb,$5)",[sha256(payload),checked,rows,JSON.stringify({error:e.message,detail}),actor(req).id]);return res.status(422).json({ok:false,message:'Staging restore verification failed: '+e.message});}finally{client.release();}
   await pool.query("INSERT INTO rent_backup_tests(file_sha256,tables_tested,rows_tested,status,details,tested_by) VALUES($1,$2,$3,'passed',$4::jsonb,$5)",[sha256(payload),checked,rows,JSON.stringify({format:data.format,createdAt:data.createdAt,detail}),actor(req).id]);await audit(pool,req,'RENT_BACKUP_RESTORE_TEST_PASSED',{sha256:sha256(payload),tables:checked,rows});res.json({ok:true,verified:true,mode:'isolated temporary-table restore test; production records were not modified',tablesTested:checked,rowsTested:rows,sha256:sha256(payload)});
  }));
- app.get(base+'/backups/status',owner,wrap(async(_req,res)=>res.json({ok:true,runs:(await pool.query('SELECT * FROM rent_backup_runs ORDER BY backup_date DESC LIMIT 30')).rows,tests:(await pool.query('SELECT * FROM rent_backup_tests ORDER BY created_at DESC LIMIT 20')).rows,configured:!!(env.RENT_BACKUP_WEBHOOK_URL&&String(env.RENT_BACKUP_ENCRYPTION_KEY||'').length>=32)})));
+ app.get(base+'/backups/status',owner,wrap(async(_req,res)=>res.json({ok:true,runs:(await pool.query('SELECT * FROM rent_backup_runs ORDER BY backup_date DESC LIMIT 30')).rows,tests:(await pool.query('SELECT * FROM rent_backup_tests ORDER BY created_at DESC LIMIT 20')).rows,configured:!!(env.SUPABASE_URL&&String(env.SUPABASE_SERVICE_ROLE_KEY||'').length>=20&&String(env.RENT_BACKUP_ENCRYPTION_KEY||'').length>=32)})));
 }
 
 let rentAutomationRunning=false;
@@ -396,17 +435,32 @@ async function runRentAutomation(pool,env={}){
  // Apply future-dated rent changes once, without rewriting already allocated charges.
  const changes=(await pool.query("SELECT * FROM rent_scheduled_changes WHERE status='scheduled' AND effective_date<=$1::date ORDER BY effective_date LIMIT 100",[day])).rows;
  for(const c of changes){const client=await pool.connect();try{await client.query('BEGIN');const row=(await client.query("SELECT * FROM rent_scheduled_changes WHERE id=$1 AND status='scheduled' FOR UPDATE",[c.id])).rows[0];if(row){await generateCharges(client,row.lease_id);await client.query('UPDATE rent_leases SET rent_amount=$2,updated_at=now() WHERE id=$1',[row.lease_id,row.new_rent_amount]);await client.query("UPDATE rent_charges SET voided_at=now(),void_reason='Scheduled rent change; future schedule regenerated' WHERE lease_id=$1 AND period_start >= $2::date AND voided_at IS NULL AND NOT EXISTS(SELECT 1 FROM rent_allocations a WHERE a.charge_id=rent_charges.id AND a.reversed_at IS NULL)",[row.lease_id,row.effective_date]);await client.query("UPDATE rent_scheduled_changes SET status='applied',applied_at=now() WHERE id=$1",[row.id]);await client.query("INSERT INTO admin_actions(action,detail,status,actor_id,actor_name,actor_role) VALUES('RENT_SCHEDULED_CHANGE_APPLIED',$1,'DONE','system','Rent scheduler','system')",[JSON.stringify(row)]);}await client.query('COMMIT');}catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}await generateCharges(pool,c.lease_id);}
- // Daily encrypted backup delivery is attempted only when a durable remote webhook and key exist.
- const hour=new Date(Date.now()+3*3600000).getUTCHours();const backupUrl=String(env.RENT_BACKUP_WEBHOOK_URL||''),backupKey=String(env.RENT_BACKUP_ENCRYPTION_KEY||'');
+
+ // Daily encrypted backup delivery to the private Supabase Storage bucket.
+ const hour=new Date(Date.now()+3*3600000).getUTCHours();
+ const backupKey=String(env.RENT_BACKUP_ENCRYPTION_KEY||'');
+ const backupConfigured=!!(env.SUPABASE_URL&&String(env.SUPABASE_SERVICE_ROLE_KEY||'').length>=20&&backupKey.length>=32);
  if(hour>=Number(env.RENT_BACKUP_HOUR||2)){
   const exists=(await pool.query('SELECT id,status,attempts FROM rent_backup_runs WHERE backup_date=$1::date',[day])).rows[0];
   if(!exists||(exists.status!=='sent'&&Number(exists.attempts||0)<3)){
-   if(!backupUrl||backupKey.length<32){if(!exists)await pool.query("INSERT INTO rent_backup_runs(backup_date,status,destination,last_error) VALUES($1,'blocked_config',$2,$3) ON CONFLICT(backup_date) DO NOTHING",[day,backupUrl||null,'Configure RENT_BACKUP_WEBHOOK_URL and a 32+ character RENT_BACKUP_ENCRYPTION_KEY.']);}
-   else{
-    if(exists)await pool.query("UPDATE rent_backup_runs SET status='queued',attempts=attempts+1,destination=$2,last_error=NULL,updated_at=now() WHERE id=$1",[exists.id,backupUrl]);else await pool.query("INSERT INTO rent_backup_runs(backup_date,status,attempts,destination) VALUES($1,'queued',1,$2) ON CONFLICT(backup_date) DO NOTHING",[day,backupUrl]);
-    const data={format:'mauriskade-rent-backup-v1',createdAt:new Date().toISOString(),tables:{}};for(const t of BACKUP_TABLES)data.tables[t]=(await pool.query('SELECT * FROM '+t)).rows;const file=encryptBackup(data,backupKey),digest=sha256(file);
-    try{const headers={'content-type':'application/json'};if(env.RENT_BACKUP_WEBHOOK_SECRET)headers.authorization='Bearer '+env.RENT_BACKUP_WEBHOOK_SECRET;const response=await fetch(backupUrl,{method:'POST',headers,signal:AbortSignal.timeout(30000),body:JSON.stringify({fileName:'mauriskade-system-backup-'+day+'.mrbk',backupDate:day,sha256:digest,encryptedBase64:file.toString('base64'),format:data.format})});const body=await response.text();if(!response.ok)throw new Error('Backup destination HTTP '+response.status+': '+body.slice(0,200));await pool.query("UPDATE rent_backup_runs SET status='sent',file_sha256=$2,file_bytes=$3,destination=$4,last_error=NULL,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,backupUrl]);}
-    catch(e){await pool.query("UPDATE rent_backup_runs SET status='failed',file_sha256=$2,file_bytes=$3,destination=$4,last_error=$5,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,backupUrl,e.message]);}
+   if(!backupConfigured){
+    if(!exists)await pool.query("INSERT INTO rent_backup_runs(backup_date,status,destination,last_error) VALUES($1,'blocked_config',$2,$3) ON CONFLICT(backup_date) DO NOTHING",[day,'supabase-storage://'+String(env.RENT_BACKUP_STORAGE_BUCKET||BACKUP_BUCKET_DEFAULT),'Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a 32+ character RENT_BACKUP_ENCRYPTION_KEY.']);
+   } else {
+    const bucket=String(env.RENT_BACKUP_STORAGE_BUCKET||BACKUP_BUCKET_DEFAULT);
+    const destination='supabase-storage://'+bucket;
+    if(exists)await pool.query("UPDATE rent_backup_runs SET status='queued',attempts=attempts+1,destination=$2,last_error=NULL,updated_at=now() WHERE id=$1",[exists.id,destination]);
+    else await pool.query("INSERT INTO rent_backup_runs(backup_date,status,attempts,destination) VALUES($1,'queued',1,$2) ON CONFLICT(backup_date) DO NOTHING",[day,destination]);
+    const data={format:'mauriskade-rent-backup-v1',createdAt:new Date().toISOString(),tables:{}};
+    for(const t of BACKUP_TABLES)data.tables[t]=(await pool.query('SELECT * FROM '+t)).rows;
+    const file=encryptBackup(data,backupKey),digest=sha256(file),fileName='mauriskade-system-backup-'+day+'.mrbk';
+    try{
+     await uploadBackupToStorage(env,fileName,file);
+     let retentionWarning=null;
+     try{await pruneBackupStorage(env);}catch(cleanupError){retentionWarning='Backup uploaded, but retention cleanup failed: '+cleanupError.message;}
+     await pool.query("UPDATE rent_backup_runs SET status='sent',file_sha256=$2,file_bytes=$3,destination=$4,last_error=$5,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,destination+( '/' + fileName),retentionWarning]);
+    }catch(e){
+     await pool.query("UPDATE rent_backup_runs SET status='failed',file_sha256=$2,file_bytes=$3,destination=$4,last_error=$5,updated_at=now() WHERE backup_date=$1::date",[day,digest,file.length,destination+'/'+fileName,e.message]);
+    }
    }
   }
  }
@@ -444,4 +498,4 @@ async function runRentAutomation(pool,env={}){
  }finally{rentAutomationRunning=false;}
 }
 
-module.exports={registerRentWorkflowRoutes,runRentAutomation,parseCsv,csvDate,depositBalance,prorateFinalCharge,makeFinalSettlementPdf};
+module.exports={registerRentWorkflowRoutes,runRentAutomation,parseCsv,csvDate,depositBalance,prorateFinalCharge,makeFinalSettlementPdf,backupStorageConfig,uploadBackupToStorage,pruneBackupStorage};
