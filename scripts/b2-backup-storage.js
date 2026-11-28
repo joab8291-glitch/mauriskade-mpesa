@@ -52,7 +52,7 @@ async function replicateToB2(filePath, fileName, env = process.env) {
   const digest = sha256File(filePath);
   const key = 'database/' + fileName;
   await aws(['s3', 'cp', filePath, 's3://' + config.bucket + '/' + key, '--metadata', 'sha256=' + digest, '--endpoint-url', config.endpoint, '--no-progress'], env);
-  const head = JSON.parse(await aws(['s3api', 'head-object', '--bucket', config.bucket, '--key', key, '--endpoint-url', config.endpoint, '--region', config.region, '--output', 'json'], env));
+  const head = JSON.parse(await aws(['s3api', 'head-object', '--bucket', config.bucket, '--key', key, '--endpoint-url', config.endpoint, '--output', 'json'], env));
   if (Number(head.ContentLength) !== require('node:fs').statSync(filePath).size || !head.Metadata || head.Metadata.sha256 !== digest) {
     throw new Error('Backblaze B2 object verification failed after upload.');
   }
@@ -62,14 +62,14 @@ async function replicateToB2(filePath, fileName, env = process.env) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-b2-check-'));
   const downloaded = path.join(temp, 'verified.mrbk');
   try {
-    await aws(['s3api', 'get-object', '--bucket', config.bucket, '--key', key, '--endpoint-url', config.endpoint, '--region', config.region, downloaded], env);
+    await aws(['s3api', 'get-object', '--bucket', config.bucket, '--key', key, '--endpoint-url', config.endpoint, downloaded], env);
     if (sha256File(downloaded) !== digest) throw new Error('Backblaze B2 upload/download SHA-256 verification failed.');
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
   return { provider: 'backblaze_b2', bucket: config.bucket, key, bytes: head.ContentLength, sha256: digest, verifiedByDownload: true };
 }
 async function latestB2Archive(env = process.env) {
   const config = b2Config(env);
-  const output = await aws(['s3api', 'list-objects-v2', '--bucket', config.bucket, '--prefix', 'database/', '--endpoint-url', config.endpoint, '--region', config.region, '--output', 'json'], env);
+  const output = await aws(['s3api', 'list-objects-v2', '--bucket', config.bucket, '--prefix', 'database/', '--endpoint-url', config.endpoint, '--output', 'json'], env);
   const parsed = JSON.parse(output || '{}');
   const objects = (parsed.Contents || []).filter(item => item && typeof item.Key === 'string' && /^database\/mauriskade-system-backup-\d{4}-\d{2}-\d{2}\.mrbk$/.test(item.Key));
   objects.sort((a, b) => a.Key.localeCompare(b.Key));
