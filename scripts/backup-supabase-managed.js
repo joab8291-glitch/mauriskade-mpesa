@@ -8,6 +8,8 @@ const { execFile } = require('node:child_process');
 const { encryptArchive, decryptArchive, localDate } = require('./backup-database');
 const execFileAsync = promisify(execFile);
 function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
+function hasAuthUsersData(listing) { return String(listing).includes('TABLE DATA auth users'); }
+function authDataTables(listing) { return String(listing).split('\\n').filter(line => line.includes('TABLE DATA auth ')).map(line => line.trim().split(/\\s+/).slice(4, 6).join(' ')); }
 
 function required(env, name, min = 1) {
   const value = String(env[name] || '').trim();
@@ -129,9 +131,10 @@ async function main(env = process.env) {
     // Auth's users, password hashes, identities and session records live in the managed auth schema.
     await run('pg_dump', ['--format=custom', '--compress=6', '--schema=auth', '--no-owner', '--no-acl', '--file', authDump, databaseUrl]);
     const authListing = await run('pg_restore', ['--list', authDump]);
-    if (!hasAuthUsersEntry(authListing.stdout)) {
-      throw new Error('Auth schema dump did not contain the expected auth.users table.');
+    if (!hasAuthUsersEntry(authListing.stdout) || !hasAuthUsersData(authListing.stdout)) {
+      throw new Error('Auth schema dump must include both the auth.users table definition and its user data.');
     }
+    const includedAuthDataTables = authDataTables(authListing.stdout);
     const bucketsResponse = await apiRequest(supabaseUrl, serviceKey, '/storage/v1/bucket');
     const buckets = await bucketsResponse.json();
     if (!Array.isArray(buckets)) throw new Error('Supabase Storage returned an invalid bucket list.');
@@ -149,7 +152,7 @@ async function main(env = process.env) {
         object.downloadedBytes = actual;
         bytes += actual;
       }
-      storageSummary.push({ name: bucket.name, id: bucket.id || null, public: Boolean(bucket.public), fileSizeLimit: bucket.file_size_limit ?? null, allowedMimeTypes: bucket.allowed_mime_types ?? null, objects: objects.length, bytes });
+      storageSummary.push({ name: bucket.name, id: bucket.id || null, public: Boolean(bucket.public), fileSizeLimit: bucket.file_size_limit ?? null, allowedMimeTypes: bucket.allowed_mime_types ?? null, bucketSettings: bucket, objects: objects.length, bytes });
       fs.writeFileSync(path.join(bucketDir, '.objects-manifest.json'), JSON.stringify(objects, null, 2), { mode: 0o600 });
     }
     const projectConfig = await getProjectConfig(projectRef, managementToken);
@@ -159,7 +162,7 @@ async function main(env = process.env) {
       format: 'mauriskade-supabase-managed-v1',
       createdAt: new Date().toISOString(),
       projectRef,
-      auth: { file: 'auth-schema.dump', includes: 'Supabase auth schema database objects and records, including user password hashes and identities' },
+      auth: { file: 'auth-schema.dump', includes: 'Supabase auth schema database objects and records', tableData: includedAuthDataTables },
       storage: storageSummary,
       configuration: { file: 'project-config.json', endpoint: '/v2/projects/{ref}/config', alpha: true, note: 'Auth secret values are returned as HMACs by Supabase; not plaintext credentials.' }
     }, null, 2), { mode: 0o600 });
@@ -200,6 +203,7 @@ async function main(env = process.env) {
       bytes: encrypted.length,
       sha256: digest,
       authDumpBytes: fs.statSync(authDump).size,
+      authDataTables: includedAuthDataTables,
       storage: storageSummary,
       configSections: Object.keys(projectConfig || {}),
       verifiedByDownload: true
@@ -209,4 +213,4 @@ async function main(env = process.env) {
   }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig, hasAuthUsersEntry, inspectB2ApplicationKey };
+module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig, hasAuthUsersEntry, hasAuthUsersData, authDataTables, inspectB2ApplicationKey };
