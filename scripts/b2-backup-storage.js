@@ -148,4 +148,4 @@ async function downloadLatestFromB2(destinationPath, env = process.env) {
   }
   return { ...latest, sha256: digest, bytes: require('node:fs').statSync(destinationPath).size };
 }
-module.exports = { b2Config, replicateToB2, latestB2Archive, downloadLatestFromB2, sha256File, authorizeB2, listB2Files };
+module.exports = { b2Config, replicateToB2, latestB2Archive, downloadLatestFromB2, sha256File, authorizeB2, listB2Files, aws };
