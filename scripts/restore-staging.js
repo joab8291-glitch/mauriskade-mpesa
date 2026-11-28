@@ -82,7 +82,10 @@ async function main(env = process.env) {
     for (const bucket of bucketManifest) {
       if (!bucket || !/^[a-z0-9][a-z0-9._-]{1,62}$/.test(bucket.name)) throw new Error('Invalid Storage bucket name in backup manifest.');
       const settings = bucket.bucketSettings || {};
-      await storageRequest(supabaseUrl,serviceKey,'/bucket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:bucket.name,public:Boolean(bucket.public),fileSizeLimit:settings.file_size_limit ?? null,allowedMimeTypes:settings.allowed_mime_types ?? null})});
+      const bucketOptions = { name: bucket.name, public: Boolean(bucket.public) };
+      if (settings.file_size_limit != null) bucketOptions.fileSizeLimit = settings.file_size_limit;
+      if (settings.allowed_mime_types != null) bucketOptions.allowedMimeTypes = settings.allowed_mime_types;
+      await storageRequest(supabaseUrl,serviceKey,'/bucket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(bucketOptions)});
       const bucketDir = path.join(payload,'storage',bucket.name);
       const manifestPath = path.join(bucketDir,'.objects-manifest.json');
       const objects = JSON.parse(fs.readFileSync(manifestPath,'utf8'));
