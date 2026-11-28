@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeApiBaseUrl } = require('../scripts/application-smoke-test');
+const { normalizeApiBaseUrl } = require('../scripts/application-smoke-check');
 const { hasRecommendedRetention } = require('../scripts/audit-b2-retention');
 test('API base URL requires HTTPS and rejects embedded credentials', () => {
   assert.equal(normalizeApiBaseUrl('https://api.example.com/'), 'https://api.example.com');
