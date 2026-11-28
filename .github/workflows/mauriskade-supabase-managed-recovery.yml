@@ -16,13 +16,15 @@ jobs:
   verify-managed-archive:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - name: Install AWS CLI and PostgreSQL 17 client
         run: |
           pipx install awscli
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
+          aws --version
           sudo install -d -m 0755 /etc/apt/keyrings
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
           sudo gpg --batch --yes --dearmor --output /etc/apt/keyrings/postgresql-pgdg.gpg /tmp/pgdg.asc
