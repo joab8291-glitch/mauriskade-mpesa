@@ -28,8 +28,6 @@ jobs:
           node-version: 22
       - name: Install AWS CLI and PostgreSQL 17 client
         run: |
-          pipx install awscli
-          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
           aws --version
           sudo install -d -m 0755 /etc/apt/keyrings
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
