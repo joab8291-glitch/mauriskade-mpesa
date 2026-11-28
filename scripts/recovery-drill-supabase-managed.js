@@ -7,6 +7,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { decryptArchive } = require('./backup-database');
 const execFileAsync = promisify(execFile);
+function hasAuthUsersEntry(listing) { return /TABLE\\s+auth\\s+users\\b/.test(String(listing)); }
 const NAME = /^mauriskade-supabase-managed-(\d{4}-\d{2}-\d{2})\.tar\.gz\.mrbk$/;
 function required(name, min = 1) {
   const value = String(process.env[name] || '');
@@ -27,7 +28,9 @@ async function main() {
   if (!/^https:\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com\/?$/.test(endpoint) || !endpoint.includes('s3.' + region + '.')) throw new Error('B2 endpoint and region do not match.');
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-managed-recovery-'));
   try {
-    const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true' };
+    const awsConfigPath = path.join(work, 'aws-config');
+    fs.writeFileSync(awsConfigPath, '[default]\\nregion = ' + region + '\\ns3 =\\n  addressing_style = path\\n  signature_version = s3v4\\n', { mode: 0o600 });
+    const env = { ...process.env, AWS_CONFIG_FILE: awsConfigPath, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true' };
     const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
     const listed = await run('aws', ['s3api', 'list-objects-v2', '--bucket', bucket, '--prefix', 'supabase-managed/', ...args, '--output', 'json'], { env });
     const objects = (JSON.parse(listed.stdout).Contents || []).filter(o => o && typeof o.Key === 'string' && NAME.test(o.Key.split('/').pop())).sort((a,b)=>a.Key.localeCompare(b.Key));
