@@ -90,7 +90,7 @@ Controlled sequence:
 ## 8. Outstanding gates
 
 - Full fresh-project Supabase restore and timed end-to-end staging acceptance.
-- Production application health endpoint returned HTTP 404 during the 2026-11-28 smoke run. Render service metadata also reports its generated Render subdomain policy as disabled. The API custom-domain mapping must be inspected in the selected Render workspace before the health checks can pass; do not treat the 404 as a successful application test.
+- The initial 2026-11-28 smoke check targeted the Render-generated `onrender.com` hostname even though Render service metadata shows that generated subdomain is disabled. Render startup logs identify `https://api.mauriskade.co.ke` as the primary service URL. The smoke workflow now targets that custom API hostname and is manual/scheduled only, so it does not probe production before a feature branch has been deployed. Render's service metadata still has no health-check path configured; configure `/health/ready` in the Render service settings after the route is deployed. External custom-domain endpoint verification remains pending.
 - Confirmation that the B2 lifecycle rule is actually configured by the read-only audit.
 - Manual staging functional tests for login, tenant boundaries, rent records, M-Pesa sandbox and Storage downloads.
 - Measured RTO and RPO from a complete rehearsal.
