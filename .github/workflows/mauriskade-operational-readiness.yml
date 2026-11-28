@@ -1,0 +1,39 @@
+name: Mauriskade operational readiness
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # 03:00 Africa/Nairobi
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-operational-readiness
+  cancel-in-progress: false
+
+jobs:
+  production-smoke-and-retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test operational readiness helpers
+        run: node --test test/ops-readiness.test.js
+      - name: Verify production API, Daraja authentication and database readiness
+        env:
+          API_BASE_URL: https://api.mauriskade.co.ke
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/application-smoke-check.js
+      - name: Audit private B2 bucket and lifecycle retention
+        if: always()
+        env:
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: node scripts/audit-b2-retention.js

@@ -57,7 +57,8 @@ if (ADMIN_KEY && ADMIN_KEY.length < 12) {
 }
 if (!ADMIN_KEY) console.warn('ADMIN_KEY is not set: the admin panel is switched off, so no logins can be created.');
 
-const pool = new Pool({ connectionString: DATABASE_URL });
+// Supabase session pooler is capped at 15 clients; leave capacity for administration and scheduled jobs.
+const pool = new Pool({ connectionString: DATABASE_URL, max: 5, connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000 });
 pool.on('error', (e) => console.error('pg pool error', e.message));
 
 const DARAJA = MPESA_ENV === 'production'
@@ -1381,6 +1382,17 @@ app.post('/api/mpesa/shared-c2b', wrap(async (req, res) => {
 }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Readiness is distinct from liveness: confirm the backend can still reach its database.
+app.get('/health/ready', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, database: true });
+  } catch (e) {
+    log('READINESS_CHECK_FAILED', e.message);
+    res.status(503).json({ ok: false, database: false });
+  }
+});
 
 // Safe, non-payment Daraja connectivity check. Never exposes credentials or sends an STK prompt.
 app.get('/health/mpesa', async (_req, res) => {
