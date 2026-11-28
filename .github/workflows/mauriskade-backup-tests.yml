@@ -6,6 +6,8 @@ on:
       - 'scripts/backup-database.js'
       - 'scripts/b2-backup-storage.js'
       - 'scripts/recovery-drill.js'
+      - 'scripts/backup-supabase-managed.js'
+      - 'scripts/recovery-drill-supabase-managed.js'
       - 'test/**'
       - 'package.json'
       - 'package-lock.json'
