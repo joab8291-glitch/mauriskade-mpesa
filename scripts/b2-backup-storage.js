@@ -135,7 +135,7 @@ async function latestB2Archive(env = process.env) {
   const candidates = files
     .filter(item => item && typeof item.fileName === 'string' && PATTERN.test(item.fileName.split('/').pop()) && item.fileName.startsWith('database/'))
     .sort((a, b) => a.fileName.localeCompare(b.fileName));
-  if (!candidates.length) throw new Error('No dated Mauriskade database backup exists in the Backblaze B2 bucket.');
+  if (!candidates.length) throw new Error('No dated Mauriskade database backup found under B2 prefix ' + prefix + '. Native API returned ' + files.length + ' visible upload(s): ' + files.map(item => item.fileName).slice(0, 20).join(', '));
   const latest = candidates[candidates.length - 1];
   return { config, key: latest.fileName, object: { Key: latest.fileName, Size: latest.contentLength }, scope };
 }
