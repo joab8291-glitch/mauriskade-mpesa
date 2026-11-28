@@ -16,7 +16,7 @@ test('Storage API path encoding preserves hierarchy and encodes unsafe segments'
 });
 
 test('Auth dump validation recognizes pg_restore listing format', () => {
-  const listing = '; 1259; 16384 TABLE auth users supabase_admin\n; 1259; 16385 TABLE auth identities supabase_admin';
+  const listing = '; 1259; 16384 TABLE auth users supabase_admin\n; 0; 16384 TABLE DATA auth users supabase_admin\n; 0; 16385 TABLE DATA auth identities supabase_admin';
   assert.equal(hasAuthUsersEntry(listing), true);
   assert.equal(hasRecoveryAuthUsersEntry(listing), true);
   assert.equal(hasAuthUsersData(listing), true);
