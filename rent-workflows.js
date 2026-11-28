@@ -36,7 +36,7 @@ async function pruneBackupStorage(env) {
   const response=await backupStorageFetch(env,'/object/list/'+encodeURIComponent(cfg.bucket),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prefix:'',limit:1000,offset,sortBy:{column:'name',order:'asc'}})});
   page=await response.json();
   if(!Array.isArray(page))throw new Error('Supabase Storage returned an invalid object listing.');
-  listed.push(...page.filter(x=>x&&typeof x.name==='string'&&x.name.startsWith(prefix)&&x.name.endsWith('.mrbk')&&/^\\d{4}-\\d{2}-\\d{2}$/.test(x.name.slice(prefix.length,-5))));
+  listed.push(...page.filter(x=>x&&typeof x.name==='string'&&x.name.startsWith(prefix)&&x.name.endsWith('.mrbk')&&validDate(x.name.slice(prefix.length,-5))));
   offset+=page.length;
  } while(page.length===1000);
  const stale=listed.filter(x=>x.name.slice(prefix.length,-5)<cutoff).map(x=>x.name);
