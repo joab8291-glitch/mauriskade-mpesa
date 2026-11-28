@@ -11,7 +11,7 @@ function backupStorageConfig(env={}) {
  const url=rawUrl.endsWith('/')?rawUrl.slice(0,-1):rawUrl;
  const key=String(env.SUPABASE_SERVICE_ROLE_KEY||'');
  const bucket=String(env.RENT_BACKUP_STORAGE_BUCKET||BACKUP_BUCKET_DEFAULT).trim();
- if(!(url.startsWith('https://')||url.startsWith('http://'))||key.length<20||!/^[-a-z0-9_]{3,63}$/.test(bucket)) throw new Error('Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a valid RENT_BACKUP_STORAGE_BUCKET.');
+ if(!url.startsWith('https://')||key.length<20||!/^[-a-z0-9_]{3,63}$/.test(bucket)) throw new Error('Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a valid RENT_BACKUP_STORAGE_BUCKET.');
  return {url,key,bucket};
 }
 async function backupStorageFetch(env,path,options={}) {
@@ -22,6 +22,8 @@ async function backupStorageFetch(env,path,options={}) {
 }
 async function uploadBackupToStorage(env,fileName,payload) {
  const cfg=backupStorageConfig(env);
+ const prefix='mauriskade-system-backup-';
+ if(typeof fileName!=='string'||!fileName.startsWith(prefix)||!fileName.endsWith('.mrbk')||!validDate(fileName.slice(prefix.length,-5)))throw new Error('Backup filename is invalid.');
  await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket)+'/'+encodeURIComponent(fileName),{method:'POST',headers:{'content-type':'application/octet-stream','cache-control':'no-store','x-upsert':'true'},body:payload});
  return {bucket:cfg.bucket,path:fileName,bytes:payload.length};
 }
