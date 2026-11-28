@@ -22,8 +22,8 @@ function safeObjectPath(value) {
 function encodeObjectPath(value) {
   return value.split('/').map(encodeURIComponent).join('/');
 }
-async function run(command, args) {
-  try { return await execFileAsync(command, args, { maxBuffer: 32 * 1024 * 1024 }); }
+async function run(command, args, options = {}) {
+  try { return await execFileAsync(command, args, { maxBuffer: 32 * 1024 * 1024, ...options }); }
   catch (error) { throw new Error(command + ' failed: ' + String(error.stderr || error.message || '').slice(-4000)); }
 }
 async function apiRequest(base, key, route, options = {}) {
