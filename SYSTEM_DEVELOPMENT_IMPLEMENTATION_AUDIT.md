@@ -32,7 +32,7 @@
 | 15 | Dashboard: billed, current-month recovered, prior arrears recovered, cash, overdue, credits, deposits, occupancy and unmatched payments. | ✓ IMPLEMENTED | Rent dashboard and extended operations KPIs include current-period expected/collected, prior arrears recovered, cash received, arrears, deposit liability, occupancy/vacancy, unmatched payments and excess credit. |
 | 16 | Arrears ageing and downloadable reports by property, unit and period. | ✓ IMPLEMENTED | Ageing buckets (0–30, 31–60, 61–90, 90+ days) support property, unit and date filters and server-generated CSV export. Monthly collections and tenant statements remain available. |
 | 17 | Role-specific manager, finance and caretaker access; approvals for sensitive actions. | ✓ IMPLEMENTED | Individual manager, finance and caretaker accounts, hashed passwords, expiring sessions, first-login password change, role-scoped endpoints and maker/checker approvals are implemented. Legacy owner-key access remains for the property owner. |
-| 18 | Record who changed what and when. | ◐ PARTIALLY IMPLEMENTED | New sensitive actions record staff/owner actor, role, timestamps, approval decisions, verification notes and allocation adjustments. Older legacy-key actions cannot always be attributed to an individual person retrospectively. |
+| 18 | Record who changed what and when. | ✓ IMPLEMENTED | New administrative and rent-management audit events record actor ID, display name, username, role, authentication source, event timestamp, action, entity context, status and details. Audit identity/event context is immutable at the database layer; provider workflows may only finalize status/detail. Older legacy-key actions remain explicitly unattributed to a named individual where historical evidence does not exist. |
 | 19 | Agree backup schedule, test restoration and provide data export. | ◐ PARTIALLY IMPLEMENTED | Encrypted backup export, scheduled remote webhook delivery, backup history and temporary-table staging restore verification are implemented. The client must configure a durable remote storage webhook and encryption key; the staging test is not a full production restore drill. |
 | 20 | Keep water/internet payments separate from rent unless an authorized reallocation occurs. | ◐ PARTIALLY IMPLEMENTED | Water/Hydro/ST​S and rent ledgers and payment handlers remain separate; rent never issues a water token. A distinct internet/service-charge ledger and an approved cross-ledger reallocation workflow are not included. |
 | 21 | Reminders 3 days before, on due date, 3/7 days overdue; live balance checks, pending holds, payment plans, channel history and staff follow-up. | ◐ PARTIALLY IMPLEMENTED | Reminder scheduler, pending-payment/dispute/payment-plan holds, SMS/WhatsApp/email webhook adapter, delivery callback history, payment plans, follow-ups and approved formal notices are implemented. No messages are sent until the client configures a provider and approved templates/recipient channels. |
@@ -40,8 +40,8 @@
 
 ### Status totals
 
-- **✓ IMPLEMENTED:** 15 requirements
-- **◐ PARTIALLY IMPLEMENTED:** 7 requirements
+- **✓ IMPLEMENTED:** 16 requirements
+- **◐ PARTIALLY IMPLEMENTED:** 6 requirements
 - **✗ NOT IMPLEMENTED:** 0 requirements
 
 The remaining partial items are explicit boundaries, not hidden or simulated functionality. Provider-dependent functions remain blocked until the client supplies/configures the relevant services and credentials.
@@ -60,6 +60,7 @@ The remaining partial items are explicit boundaries, not hidden or simulated fun
 10. Added encrypted backup export, scheduled remote delivery hook and isolated staging restore verification.
 11. Added voided-charge history and a partial unique index so changing a future schedule never deletes rows referenced by payment allocations.
 12. Updated admin operations UI and documentation while preserving the existing M-Pesa, water/Hydro/STS, customer login and tenant payment paths.
+13. Completed actor attribution for new audit events, added entity context and immutable audit identity/event metadata, and exposed actor/role/source in the admin audit table.
 
 ## Validation performed
 
