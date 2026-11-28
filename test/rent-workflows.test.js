@@ -450,3 +450,18 @@ test('standalone property units support meterless rent tenancies and tenant logi
     await assert.rejects(() => f.query("INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,property_unit_id) VALUES(NULL,'Second Tenant','Shop 01','RENT-SHOP2',10000,'monthly',$1::date,1,$2)", [today(), unit.id]), /rent_leases_active_property_unit_uidx/);
   } finally { await f.close(); }
 });
+
+test('tenant move-out notice enforces one calendar month and records the intended end date', async () => {
+  const f = await fixture();
+  try {
+    const l = await f.lease({ meter: 'NOTICE-PERIOD-1', ref: 'RENT-NOTICE1' });
+    const noticeDate = '2026-11-28';
+    let r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate, noticeEndDate: '2026-12-20' }, 'manager', 'notice-manager');
+    assert.equal(r.statusCode, 400);
+    assert.match(r.body.message, /one calendar month/i);
+    r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate }, 'manager', 'notice-manager');
+    assert.equal(r.statusCode, 200);
+    assert.equal(r.body.lease.notice_date, noticeDate);
+    assert.equal(String(r.body.lease.notice_end_date).slice(0,10), '2026-12-28');
+  } finally { await f.close(); }
+});
