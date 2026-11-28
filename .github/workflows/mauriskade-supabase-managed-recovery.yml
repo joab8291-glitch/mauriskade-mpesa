@@ -1,6 +1,11 @@
 name: Mauriskade Supabase managed services recovery drill
 
 on:
+  push:
+    branches: [backup/supabase-managed-services]
+    paths:
+      - '.github/workflows/mauriskade-supabase-managed-recovery.yml'
+      - 'scripts/recovery-drill-supabase-managed.js'
   schedule:
     - cron: "0 2 2 1,4,7,10 *" # Quarterly: 05:00 Africa/Nairobi on the 2nd
   workflow_dispatch:
