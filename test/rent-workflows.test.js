@@ -37,7 +37,7 @@ async function fixture(env = {}) {
     assert.ok(found, `Route not registered: ${method} ${url}`);
     const pattern = found[0].split(' ')[1], actual = pathname.split('/'), params = {};
     pattern.split('/').forEach((part, i) => { if (part.startsWith(':')) params[part.slice(1)] = actual[i]; });
-    const req = { body, params, query, adminActor: { id, displayName: id, role }, get: name => headers[String(name).toLowerCase()] || '' };
+    const req = { body, params, query, adminActor: { id, username: id, displayName: id, role, source: 'staff_session' }, get: name => headers[String(name).toLowerCase()] || '' };
     const res = {
       statusCode: 200, body: null, headers: {},
       status(n) { this.statusCode = n; return this; },
