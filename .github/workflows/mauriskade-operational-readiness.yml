@@ -5,7 +5,7 @@ on:
     branches: [main, dr/disaster-recovery-operational-readiness]
     paths:
       - '.github/workflows/mauriskade-operational-readiness.yml'
-      - 'scripts/application-smoke-test.js'
+      - 'scripts/application-smoke-check.js'
       - 'scripts/audit-b2-retention.js'
       - 'test/ops-readiness.test.js'
   schedule:
@@ -34,9 +34,10 @@ jobs:
         run: node --test test/ops-readiness.test.js
       - name: Verify production API, Daraja authentication and database readiness
         env:
-          API_BASE_URL: https://api.mauriskade.co.ke
+          API_BASE_URL: https://mauriskade-mpesa.onrender.com
+          CUSTOM_API_BASE_URL: https://api.mauriskade.co.ke
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: node scripts/application-smoke-test.js
+        run: node scripts/application-smoke-check.js
       - name: Audit private B2 bucket and lifecycle retention
         env:
           B2_BUCKET: ${{ secrets.B2_BUCKET }}
