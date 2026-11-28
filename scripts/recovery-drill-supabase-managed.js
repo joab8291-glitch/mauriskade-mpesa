@@ -30,7 +30,7 @@ async function main() {
   try {
     const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' };
     const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
-    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', 'supabase-managed/', ...args, '--output', 'json'], { env });
+    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', 'database/supabase-managed/', ...args, '--output', 'json'], { env });
     const objects = (JSON.parse(listed.stdout).Contents || []).filter(o => o && typeof o.Key === 'string' && NAME.test(o.Key.split('/').pop())).sort((a,b)=>a.Key.localeCompare(b.Key));
     if (!objects.length) throw new Error('No dated Supabase-managed backup archive found in B2.');
     const latest = objects[objects.length - 1];
