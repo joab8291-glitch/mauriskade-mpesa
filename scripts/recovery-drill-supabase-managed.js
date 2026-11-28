@@ -19,13 +19,14 @@ async function run(command, args, options = {}) {
   catch (error) { throw new Error(command + ' failed: ' + String(error.stderr || error.message || '').slice(-4000)); }
 }
 async function inspectB2Scope(keyId, applicationKey, expectedBucket) {
-  const response = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+  const response = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
     headers: { authorization: 'Basic ' + Buffer.from(keyId + ':' + applicationKey).toString('base64') },
     signal: AbortSignal.timeout(30000)
   });
   if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + ').');
   const allowed = (await response.json()).allowed || {};
-  if (allowed.bucketName && allowed.bucketName !== expectedBucket) throw new Error('Backblaze application key is restricted to a different bucket.');
+  const buckets = Array.isArray(allowed.buckets) ? allowed.buckets : null;
+  if (buckets && !buckets.some(item => item && item.name === expectedBucket)) throw new Error('Backblaze application key is not authorized for the configured bucket.');
   const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
   const missing = ['listFiles', 'readFiles'].filter(capability => !capabilities.includes(capability));
   if (missing.length) throw new Error('Backblaze application key is missing recovery capabilities: ' + missing.join(', '));
