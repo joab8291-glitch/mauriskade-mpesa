@@ -662,3 +662,25 @@ ALTER TABLE public.rent_backup_runs DROP CONSTRAINT IF EXISTS rent_backup_runs_s
 ALTER TABLE public.rent_backup_runs ADD CONSTRAINT rent_backup_runs_status_check CHECK(status IN ('blocked_config','queued','sent','failed'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS rent_payments_paper_receipt_uidx ON public.rent_payments(paper_receipt_number) WHERE paper_receipt_number IS NOT NULL AND btrim(paper_receipt_number)<>'';
+
+-- Cover every previously unindexed foreign key. These small indexes keep
+-- parent deletes/updates and the associated rent operations predictable as
+-- tenancy, approvals, reminders and reconciliation history grow.
+CREATE INDEX IF NOT EXISTS admin_staff_sessions_staff_id_idx ON public.admin_staff_sessions(staff_id);
+CREATE INDEX IF NOT EXISTS rent_allocation_adjustments_approval_id_idx ON public.rent_allocation_adjustments(approval_id);
+CREATE INDEX IF NOT EXISTS rent_approvals_lease_id_idx ON public.rent_approvals(lease_id);
+CREATE INDEX IF NOT EXISTS rent_bank_statement_lines_matched_lease_id_idx ON public.rent_bank_statement_lines(matched_lease_id);
+CREATE INDEX IF NOT EXISTS rent_bank_statement_lines_matched_payment_id_idx ON public.rent_bank_statement_lines(matched_payment_id);
+CREATE INDEX IF NOT EXISTS rent_communication_log_lease_id_idx ON public.rent_communication_log(lease_id);
+CREATE INDEX IF NOT EXISTS rent_communication_log_reminder_job_id_idx ON public.rent_communication_log(reminder_job_id);
+CREATE INDEX IF NOT EXISTS rent_credit_refunds_approval_id_idx ON public.rent_credit_refunds(approval_id);
+CREATE INDEX IF NOT EXISTS rent_credit_transfers_to_lease_id_idx ON public.rent_credit_transfers(to_lease_id);
+CREATE INDEX IF NOT EXISTS rent_deposit_transactions_approval_id_idx ON public.rent_deposit_transactions(approval_id);
+CREATE INDEX IF NOT EXISTS rent_disputes_lease_id_idx ON public.rent_disputes(lease_id);
+CREATE INDEX IF NOT EXISTS rent_followup_tasks_charge_id_idx ON public.rent_followup_tasks(charge_id);
+CREATE INDEX IF NOT EXISTS rent_formal_notices_approval_id_idx ON public.rent_formal_notices(approval_id);
+CREATE INDEX IF NOT EXISTS rent_formal_notices_lease_id_idx ON public.rent_formal_notices(lease_id);
+CREATE INDEX IF NOT EXISTS rent_payment_plans_lease_id_idx ON public.rent_payment_plans(lease_id);
+CREATE INDEX IF NOT EXISTS rent_payments_approval_id_idx ON public.rent_payments(approval_id);
+CREATE INDEX IF NOT EXISTS rent_reminder_jobs_lease_id_idx ON public.rent_reminder_jobs(lease_id);
+CREATE INDEX IF NOT EXISTS rent_settlements_lease_id_idx ON public.rent_settlements(lease_id);
