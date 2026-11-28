@@ -28,3 +28,6 @@ jobs:
           node --check rent-workflows.js
           node --check scripts/backup-database.js
           node --check scripts/recovery-drill.js
+          node --check scripts/b2-backup-storage.js
+          node --check scripts/backup-supabase-managed.js
+          node --check scripts/recovery-drill-supabase-managed.js
