@@ -29,9 +29,11 @@ function b2Config(env = process.env) {
 async function aws(args, env = process.env) {
   try {
     const region = requiredEnv(env, 'B2_REGION');
+    const keyId = requiredEnv(env, 'B2_APPLICATION_KEY_ID', 5);
+    const key = requiredEnv(env, 'B2_APPLICATION_KEY', 10);
     const result = await execFileAsync('aws', args, {
       maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, ...env, AWS_ACCESS_KEY_ID: env.B2_APPLICATION_KEY_ID, AWS_SECRET_ACCESS_KEY: env.B2_APPLICATION_KEY, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' }
+      env: { ...process.env, ...env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' }
     });
     return result.stdout;
   } catch (error) {
@@ -57,7 +59,7 @@ async function authorizeB2(env = process.env) {
   let bucket = Array.isArray(allowed.buckets) ? allowed.buckets.find(item => item && item.name === bucketName) : null;
   if (!bucket && Array.isArray(allowed.buckets)) throw new Error('Backblaze B2 key is not authorized for the configured bucket.');
   if (!bucket) {
-    const listResponse = await fetch(storage.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_buckets', {
+    const listResponse = await fetch(storage.apiUrl.replace(/\/$/, '') + '/b2api/v4/b2_list_buckets', {
       method: 'POST',
       headers: { authorization: auth.authorizationToken, 'content-type': 'application/json' },
       body: JSON.stringify({ accountId: auth.accountId }),
@@ -82,7 +84,7 @@ async function listB2Files(scope, prefix) {
   for (;;) {
     const body = { bucketId: scope.bucketId, prefix, maxFileCount: 1000 };
     if (startFileName) body.startFileName = startFileName;
-    const response = await fetch(scope.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_file_names', {
+    const response = await fetch(scope.apiUrl.replace(/\/$/, '') + '/b2api/v4/b2_list_file_names', {
       method: 'POST',
       headers: { authorization: scope.authorizationToken, 'content-type': 'application/json' },
       body: JSON.stringify(body),
