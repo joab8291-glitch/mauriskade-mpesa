@@ -317,7 +317,42 @@ CREATE INDEX IF NOT EXISTS admin_staff_sessions_expiry_idx ON public.admin_staff
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_id text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_name text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_role text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_username text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS actor_source text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS entity_type text;
+ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS entity_id text;
 ALTER TABLE public.admin_actions ADD COLUMN IF NOT EXISTS before_after jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- Audit identity and event time are immutable. Workflow status/detail may still be
+-- finalized after an external provider responds (e.g. STS recharge STARTED -> DONE).
+CREATE OR REPLACE FUNCTION public.guard_admin_action_audit_identity()
+RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Audit history cannot be deleted';
+  END IF;
+  IF NEW.action IS DISTINCT FROM OLD.action
+     OR NEW.meter_number IS DISTINCT FROM OLD.meter_number
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     OR NEW.actor_id IS DISTINCT FROM OLD.actor_id
+     OR NEW.actor_name IS DISTINCT FROM OLD.actor_name
+     OR NEW.actor_role IS DISTINCT FROM OLD.actor_role
+     OR NEW.actor_username IS DISTINCT FROM OLD.actor_username
+     OR NEW.actor_source IS DISTINCT FROM OLD.actor_source
+     OR NEW.entity_type IS DISTINCT FROM OLD.entity_type
+     OR NEW.entity_id IS DISTINCT FROM OLD.entity_id
+     OR NEW.before_after IS DISTINCT FROM OLD.before_after THEN
+    RAISE EXCEPTION 'Audit identity and event context are immutable';
+  END IF;
+  RETURN NEW;
+END;
+$;
+DROP TRIGGER IF EXISTS admin_actions_guard_identity ON public.admin_actions;
+CREATE TRIGGER admin_actions_guard_identity
+BEFORE UPDATE OR DELETE ON public.admin_actions
+FOR EACH ROW EXECUTE FUNCTION public.guard_admin_action_audit_identity();
+CREATE INDEX IF NOT EXISTS admin_actions_actor_created_idx ON public.admin_actions(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_actions_entity_created_idx ON public.admin_actions(entity_type, entity_id, created_at DESC);
 
 -- Financial records are append-only; approvals are requested by one staff member and
 -- must be decided by a different person. The legacy ADMIN_KEY owner is the bootstrap approver.
