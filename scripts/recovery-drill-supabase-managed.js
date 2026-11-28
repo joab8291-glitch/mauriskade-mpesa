@@ -28,11 +28,9 @@ async function main() {
   if (!/^https:\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com\/?$/.test(endpoint) || !endpoint.includes('s3.' + region + '.')) throw new Error('B2 endpoint and region do not match.');
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-managed-recovery-'));
   try {
-    const awsConfigPath = path.join(work, 'aws-config');
-    fs.writeFileSync(awsConfigPath, '[default]\nregion = us-east-1\ns3 =\n  signature_version = s3v4\n', { mode: 0o600 });
-    const env = { ...process.env, AWS_CONFIG_FILE: awsConfigPath, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: 'us-east-1', AWS_REGION: 'us-east-1', AWS_EC2_METADATA_DISABLED: 'true' };
-    const args = ['--endpoint-url', endpoint.replace(/\/$/, '')];
-    const listed = await run('aws', ['s3api', 'list-objects-v2', '--bucket', bucket, '--prefix', 'supabase-managed/', ...args, '--output', 'json'], { env });
+    const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' };
+    const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
+    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', 'supabase-managed/', ...args, '--output', 'json'], { env });
     const objects = (JSON.parse(listed.stdout).Contents || []).filter(o => o && typeof o.Key === 'string' && NAME.test(o.Key.split('/').pop())).sort((a,b)=>a.Key.localeCompare(b.Key));
     if (!objects.length) throw new Error('No dated Supabase-managed backup archive found in B2.');
     const latest = objects[objects.length - 1];
