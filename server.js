@@ -633,7 +633,8 @@ app.post('/api/auth/login', loginLimit, wrap(async (req, res) => {
 
   const u = (await pool.query(
     `SELECT u.*,COALESCE(m.flat,l.unit_label) flat,COALESCE(m.tenant_name,l.tenant_name) tenant_name,m.phone,
-            COALESCE(m.rent_account_ref,l.rent_account_ref) rent_account_ref,m.water_account_ref
+            COALESCE(m.rent_account_ref,l.rent_account_ref) rent_account_ref,m.water_account_ref,
+            (u.rent_lease_id IS NOT NULL AND (l.id IS NULL OR l.status<>'active' OR l.start_date>(now() AT TIME ZONE 'Africa/Nairobi')::date OR (l.end_date IS NOT NULL AND l.end_date<(now() AT TIME ZONE 'Africa/Nairobi')::date))) rent_login_expired
        FROM users u LEFT JOIN meters m ON m.meter_code=u.meter_code
        LEFT JOIN rent_leases l ON l.id=u.rent_lease_id WHERE u.username=$1`, [username])).rows[0];
   if (!u) {
@@ -651,7 +652,7 @@ app.post('/api/auth/login', loginLimit, wrap(async (req, res) => {
         WHERE id=$1`, [u.id]);
     return bad();
   }
-  if (u.disabled) {
+  if (u.disabled || u.rent_login_expired) {
     return res.status(403).json({ ok: false, message: `This login is switched off. Contact ${BUSINESS_NAME}.` });
   }
   await pool.query(`UPDATE users SET failed_attempts=0, locked_until=NULL, last_login_at=now() WHERE id=$1`, [u.id]);
