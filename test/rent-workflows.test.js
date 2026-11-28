@@ -480,3 +480,24 @@ test('tenant move-out notice enforces one calendar month and records the intende
     assert.equal(new Date(r.body.lease.notice_end_date).toISOString().slice(0,10), earliest);
   } finally { await f.close(); }
 });
+
+
+test('new rent audit events record the authenticated actor and immutable event context', async () => {
+  const f = await fixture();
+  try {
+    const l = await f.lease({ meter: 'AUDIT-ATTR-1', ref: 'RENT-AUDIT1' });
+    const r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate: today() }, 'manager', 'audit.manager');
+    assert.equal(r.statusCode, 200);
+    const event = (await f.query("SELECT actor_id,actor_name,actor_role,actor_username,actor_source,entity_type,entity_id,created_at FROM admin_actions WHERE action='RENT_NOTICE_DATE_SET' ORDER BY id DESC LIMIT 1", [])).rows[0];
+    assert.equal(event.actor_id, 'audit.manager');
+    assert.equal(event.actor_name, 'audit.manager');
+    assert.equal(event.actor_role, 'manager');
+    assert.equal(event.actor_username, 'audit.manager');
+    assert.equal(event.actor_source, 'staff_session');
+    assert.equal(event.entity_type, 'tenancy');
+    assert.equal(event.entity_id, l.id);
+    assert.ok(event.created_at);
+    await assert.rejects(() => f.query("UPDATE admin_actions SET actor_name='Changed' WHERE action='RENT_NOTICE_DATE_SET'"), /Audit identity and event context are immutable/);
+    await assert.rejects(() => f.query("DELETE FROM admin_actions WHERE action='RENT_NOTICE_DATE_SET'"), /Audit history cannot be deleted/);
+  } finally { await f.close(); }
+});
