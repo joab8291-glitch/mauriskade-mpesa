@@ -17,9 +17,9 @@ function b2Config(env = process.env) {
   const bucket = requiredEnv(env, 'B2_BUCKET');
   requiredEnv(env, 'B2_APPLICATION_KEY_ID', 5);
   requiredEnv(env, 'B2_APPLICATION_KEY', 10);
-  if (!/^https:\/\/s3\.[a-z0-9-]+\.backblazeb2\.com\/?$/.test(endpoint)) {
-    throw new Error('B2_S3_ENDPOINT must be the HTTPS S3 endpoint shown for the bucket in Backblaze.');
-  }
+  const endpointMatch = endpoint.match(/^https:\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com\/?$/);
+  if (!endpointMatch) throw new Error('B2_S3_ENDPOINT must be the HTTPS S3 endpoint shown for the bucket in Backblaze.');
+  if (region !== endpointMatch[1]) throw new Error('B2_REGION must match the region embedded in B2_S3_ENDPOINT.');
   if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) throw new Error('B2_BUCKET is not a valid bucket name.');
   return { endpoint: endpoint.replace(/\/$/, ''), region, bucket };
 }
