@@ -8,6 +8,7 @@ const { execFile } = require('node:child_process');
 const { decryptArchive } = require('./backup-database');
 const execFileAsync = promisify(execFile);
 function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
+function hasAuthUsersData(listing) { return String(listing).includes('TABLE DATA auth users'); }
 const NAME = /^mauriskade-supabase-managed-(\d{4}-\d{2}-\d{2})\.tar\.gz\.mrbk$/;
 function required(name, min = 1) {
   const value = String(process.env[name] || '').trim();
@@ -108,7 +109,7 @@ async function main() {
     const buckets = JSON.parse(fs.readFileSync(path.join(payload, 'storage-buckets.json'), 'utf8'));
     const config = JSON.parse(fs.readFileSync(path.join(payload, 'project-config.json'), 'utf8'));
     const authListing = await run('pg_restore', ['--list', path.join(payload, 'auth-schema.dump')]);
-    if (!hasAuthUsersEntry(authListing.stdout)) throw new Error('Auth dump does not contain auth.users.');
+    if (!hasAuthUsersEntry(authListing.stdout) || !hasAuthUsersData(authListing.stdout)) throw new Error('Auth dump does not contain auth.users data.');
     let fileCount = 0, byteCount = 0;
     for (const b of buckets) {
       const root = path.join(payload, 'storage', b.name);
@@ -139,4 +140,4 @@ async function main() {
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
 
-module.exports = { hasAuthUsersEntry, inspectB2Scope, listManagedArchives };
+module.exports = { hasAuthUsersEntry, hasAuthUsersData, inspectB2Scope, listManagedArchives };
