@@ -25,13 +25,54 @@ async function inspectB2Scope(keyId, applicationKey, expectedBucket) {
   });
   if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + ').');
   const auth = await response.json();
-  const allowed = (auth.apiInfo && auth.apiInfo.storageApi && auth.apiInfo.storageApi.allowed) || {};
+  const storage = auth.apiInfo && auth.apiInfo.storageApi;
+  const allowed = storage && storage.allowed || {};
   const buckets = Array.isArray(allowed.buckets) ? allowed.buckets : null;
-  if (buckets && !buckets.some(item => item && item.name === expectedBucket)) throw new Error('Backblaze application key is not authorized for the configured bucket.');
+  let bucket = buckets ? buckets.find(item => item && item.name === expectedBucket) : null;
+  if (buckets && !bucket) throw new Error('Backblaze application key is not authorized for the configured bucket.');
   const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
   const missing = ['listFiles', 'readFiles'].filter(capability => !capabilities.includes(capability));
   if (missing.length) throw new Error('Backblaze application key is missing recovery capabilities: ' + missing.join(', '));
-  return { namePrefix: allowed.namePrefix || 'database/' };
+  if (!bucket) {
+    const listResponse = await fetch(storage.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_buckets', {
+      method: 'POST',
+      headers: { authorization: auth.authorizationToken, 'content-type': 'application/json' },
+      body: JSON.stringify({ accountId: auth.accountId }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!listResponse.ok) throw new Error('Backblaze could not resolve the configured bucket for recovery.');
+    const listed = await listResponse.json();
+    bucket = (listed.buckets || []).find(item => item && item.bucketName === expectedBucket);
+  }
+  if (!bucket || !(bucket.bucketId || bucket.id)) throw new Error('Backblaze did not return the configured recovery bucket ID.');
+  return {
+    apiUrl: storage.apiUrl,
+    authorizationToken: auth.authorizationToken,
+    bucketId: bucket.bucketId || bucket.id,
+    namePrefix: allowed.namePrefix || 'database/'
+  };
+}
+async function listManagedArchives(scope) {
+  const files = [];
+  const prefix = scope.namePrefix + 'supabase-managed/';
+  let startFileName;
+  for (;;) {
+    const body = { bucketId: scope.bucketId, prefix, maxFileCount: 1000 };
+    if (startFileName) body.startFileName = startFileName;
+    const response = await fetch(scope.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_file_names', {
+      method: 'POST',
+      headers: { authorization: scope.authorizationToken, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000)
+    });
+    if (!response.ok) throw new Error('Backblaze managed archive listing failed (' + response.status + '): ' + (await response.text()).slice(0, 500));
+    const result = await response.json();
+    if (!Array.isArray(result.files)) throw new Error('Backblaze returned an invalid managed archive listing.');
+    files.push(...result.files.filter(item => item && item.action === 'upload' && typeof item.fileName === 'string' && NAME.test(item.fileName.split('/').pop())));
+    if (!result.nextFileName || result.nextFileName === startFileName) break;
+    startFileName = result.nextFileName;
+  }
+  return files.sort((a, b) => a.fileName.localeCompare(b.fileName));
 }
 async function main() {
   const encryptionKey = required('RENT_BACKUP_ENCRYPTION_KEY', 32);
@@ -46,12 +87,11 @@ async function main() {
   try {
     const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' };
     const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
-    const listed = await run('aws', ['s3api', 'list-objects', '--bucket', bucket, '--prefix', b2Scope.namePrefix + 'supabase-managed/', ...args, '--output', 'json'], { env });
-    const objects = (JSON.parse(listed.stdout).Contents || []).filter(o => o && typeof o.Key === 'string' && NAME.test(o.Key.split('/').pop())).sort((a,b)=>a.Key.localeCompare(b.Key));
+    const objects = await listManagedArchives(b2Scope);
     if (!objects.length) throw new Error('No dated Supabase-managed backup archive found in B2.');
     const latest = objects[objects.length - 1];
     const encryptedPath = path.join(work, 'managed.mrbk');
-    await run('aws', ['s3api', 'get-object', '--bucket', bucket, '--key', latest.Key, ...args, encryptedPath], { env });
+    await run('aws', ['s3api', 'get-object', '--bucket', bucket, '--key', latest.fileName, '--endpoint-url', endpoint.replace(/\\/$/, ''), '--region', region, encryptedPath], { env });
     const encrypted = fs.readFileSync(encryptedPath);
     if (latest.Size !== undefined && Number(latest.Size) !== encrypted.length) throw new Error('Downloaded managed archive size mismatch.');
     const plain = decryptArchive(encrypted, encryptionKey);
@@ -87,7 +127,7 @@ async function main() {
       status: 'supabase_managed_recovery_drill_passed',
       source: 'backblaze_b2',
       bucket,
-      objectKey: latest.Key,
+      objectKey: latest.fileName,
       encryptedBytes: encrypted.length,
       sha256: digest,
       authSchemaArchiveValid: true,
@@ -100,4 +140,4 @@ async function main() {
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
 
-module.exports = { hasAuthUsersEntry, inspectB2Scope };
+module.exports = { hasAuthUsersEntry, inspectB2Scope, listManagedArchives };
