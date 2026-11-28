@@ -6,6 +6,7 @@ const path = require('node:path');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const execFileAsync = promisify(execFile);
+const { replicateToB2 } = require('./b2-backup-storage');
 const PREFIX = 'mauriskade-system-backup-';
 const BUCKET_DEFAULT = 'mauriskade-db-backups';
 
@@ -119,8 +120,9 @@ async function main() {
     fs.writeFileSync(dumpPath, recovered, { mode: 0o600 });
     const restore = await restoreAndVerify(dumpPath, process.env.RESTORE_DATABASE_URL);
     const storage = await uploadAndPrune(env, fileName, fs.readFileSync(encryptedPath));
+    const offsite = await replicateToB2(encryptedPath, fileName, process.env);
     const digest = crypto.createHash('sha256').update(encrypted).digest('hex');
-    console.log(JSON.stringify({ status: 'verified_and_uploaded', fileName, bytes: encrypted.length, sha256: digest, restore, storage }));
+    console.log(JSON.stringify({ status: 'verified_and_uploaded', fileName, bytes: encrypted.length, sha256: digest, restore, storage, offsite }));
   } finally { fs.rmSync(workDir, { recursive: true, force: true }); }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });

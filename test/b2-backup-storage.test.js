@@ -1,0 +1,40 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { b2Config, sha256File } = require('../scripts/b2-backup-storage');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+
+const config = {
+  B2_S3_ENDPOINT: 'https://s3.us-west-004.backblazeb2.com',
+  B2_REGION: 'us-west-004',
+  B2_BUCKET: 'mauriskade-offsite-backups',
+  B2_APPLICATION_KEY_ID: 'key-id-example',
+  B2_APPLICATION_KEY: 'application-key-example-long'
+};
+
+test('B2 configuration accepts a valid regional endpoint and private bucket name', () => {
+  assert.deepEqual(b2Config(config), {
+    endpoint: 'https://s3.us-west-004.backblazeb2.com',
+    region: 'us-west-004',
+    bucket: 'mauriskade-offsite-backups'
+  });
+});
+test('B2 configuration rejects AWS endpoints and missing credentials', () => {
+  assert.throws(() => b2Config({ ...config, B2_S3_ENDPOINT: 'https://s3.amazonaws.com' }), /B2_S3_ENDPOINT/);
+  assert.throws(() => b2Config({ ...config, B2_APPLICATION_KEY: '' }), /B2_APPLICATION_KEY/);
+  assert.throws(() => b2Config({ ...config, B2_REGION: 'us-west-001' }), /must match the region/);
+});
+test('B2 bucket names must be DNS-compatible', () => {
+  assert.throws(() => b2Config({ ...config, B2_BUCKET: 'Invalid Bucket' }), /valid bucket name/);
+});
+test('SHA-256 helper hashes the exact encrypted object bytes', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-b2-test-'));
+  try {
+    const file = path.join(dir, 'backup.mrbk');
+    fs.writeFileSync(file, 'encrypted-fixture');
+    assert.equal(sha256File(file), crypto.createHash('sha256').update('encrypted-fixture').digest('hex'));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

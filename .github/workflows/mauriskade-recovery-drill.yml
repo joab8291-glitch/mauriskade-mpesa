@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/mauriskade-recovery-drill.yml'
       - 'scripts/recovery-drill.js'
+      - 'scripts/b2-backup-storage.js'
   schedule:
     - cron: "0 1 1 1,4,7,10 *" # Quarterly: 04:00 Africa/Nairobi on Jan/Apr/Jul/Oct 1
   workflow_dispatch:
@@ -38,6 +39,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install AWS CLI for Backblaze B2
+        run: pipx install awscli
       - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
@@ -55,9 +58,11 @@ jobs:
           test "$(psql "$RECOVERY_DATABASE_URL" -Atc "SELECT current_database()")" = "recovery_drill"
       - name: Download, decrypt and restore latest stored archive
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
-          RENT_BACKUP_STORAGE_BUCKET: mauriskade-db-backups
+          B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+          B2_REGION: ${{ secrets.B2_REGION }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
           RECOVERY_DATABASE_URL: postgresql://postgres:recovery-only-password@localhost:5432/recovery_drill
         run: node scripts/recovery-drill.js
