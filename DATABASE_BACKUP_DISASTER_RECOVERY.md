@@ -17,8 +17,8 @@ Before upload, the daily backup workflow decrypts its newly created archive, ins
 The separate workflow `.github/workflows/mauriskade-recovery-drill.yml` performs a recovery test from the independent Backblaze B2 object rather than from the backup job's local temporary file:
 
 1. Starts a new, isolated PostgreSQL 17 service database named `recovery_drill`.
-2. Lists the private `mauriskade-db-backups` bucket and selects the newest correctly named dated archive.
-3. Downloads that object over the Supabase Storage API using the repository's server-side service-role secret.
+2. Lists the private Backblaze B2 bucket and selects the newest correctly named dated archive.
+3. Downloads that object through the Backblaze S3-compatible API using the bucket-scoped B2 application key.
 4. Authenticates and decrypts the archive using the original `RENT_BACKUP_ENCRYPTION_KEY`; AES-GCM authentication failure stops the run.
 5. Inspects the decrypted PostgreSQL custom archive and restores it into `recovery_drill`.
 6. Verifies application table, index, sequence, policy and nine key rent/payment table counts. The output includes the selected archive name, encrypted/decrypted byte counts and SHA-256 digest.
@@ -32,13 +32,19 @@ The restore script explicitly refuses any database whose name is not `recovery_d
 GitHub repository Settings -> Secrets and variables -> Actions -> New repository secret:
 
 - `DATABASE_URL`: the private PostgreSQL connection string used by the Render backend. Use Supabase direct connection if reachable from GitHub Actions, otherwise the session pooler connection string. Used only by the daily backup workflow.
-- `SUPABASE_URL`: project API URL.
-- `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase secret/service-role API key.
+- `SUPABASE_URL`: project API URL (daily backup uploads the encrypted archive to the Supabase backup bucket).
+- `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase secret/service-role API key (daily backup only).
 - `RENT_BACKUP_ENCRYPTION_KEY`: the same independently generated key used by the backup job (64-character hexadecimal recommended). Keep an offline copy.
+- `B2_S3_ENDPOINT`: complete HTTPS S3 endpoint shown on the B2 bucket details page.
+- `B2_REGION`: region code embedded in that endpoint (must match exactly).
+- `B2_BUCKET`: exact private B2 bucket name.
+- `B2_APPLICATION_KEY_ID` and `B2_APPLICATION_KEY`: bucket-restricted application key ID and secret. The recovery drill reads from B2; the daily job writes and verifies objects.
 
 Render environment variables are not automatically available to GitHub Actions. Never put secret values in source control or workflow logs.
 
-## Backblaze B2 setup and retention\n\nCreate a private bucket named `mauriskade-offsite-backups` (or another globally available lowercase bucket name) in the region assigned to your Backblaze account. Do not make it public. Copy the exact S3 endpoint shown beside the bucket. Create a standard application key restricted to this bucket, with list-files, read-files and write-files capabilities; do not use the account master key. Do not grant bucket deletion or file deletion permissions to the backup key. The workflow uses the S3-compatible API with AWS Signature Version 4. The application key ID maps to `B2_APPLICATION_KEY_ID`; the one-time application key value maps to `B2_APPLICATION_KEY`.\n\nConfigure the bucket lifecycle in Backblaze to hide current backup objects after 90 days and delete noncurrent versions after 1 day (if the console exposes a previous-version retention setting). Keep the bucket private. B2 buckets are versioned, so lifecycle settings matter for controlling old versions and storage use. The archive is already encrypted client-side with AES-256-GCM before it reaches either provider.\n\nThe daily job requires the AWS CLI in the runner (`pipx install awscli`). It writes `database/mauriskade-system-backup-YYYY-MM-DD.mrbk`, verifies the upload with HEAD metadata/size, downloads it and verifies SHA-256. The quarterly recovery workflow downloads from B2 and restores only to the isolated `recovery_drill` database.\n\n## Manual recovery procedure
+## Backblaze B2 setup and retention
+
+Create a private bucket named `mauriskade-offsite-backups` (or another globally available lowercase bucket name) in the region assigned to your Backblaze account. Do not make it public. Copy the exact S3 endpoint shown beside the bucket. Create a standard application key restricted to this bucket, with list-files, read-files and write-files capabilities; do not use the account master key. Do not grant bucket deletion or file deletion permissions to the backup key. The workflow uses the S3-compatible API with AWS Signature Version 4. The application key ID maps to `B2_APPLICATION_KEY_ID`; the one-time application key value maps to `B2_APPLICATION_KEY`.\n\nConfigure the bucket lifecycle in Backblaze to hide current backup objects after 90 days and delete noncurrent versions after 1 day (if the console exposes a previous-version retention setting). Keep the bucket private. B2 buckets are versioned, so lifecycle settings matter for controlling old versions and storage use. The archive is already encrypted client-side with AES-256-GCM before it reaches either provider.\n\nThe daily job requires the AWS CLI in the runner (`pipx install awscli`). It writes `database/mauriskade-system-backup-YYYY-MM-DD.mrbk`, verifies the upload with HEAD metadata/size, downloads it and verifies SHA-256. The quarterly recovery workflow downloads from B2 and restores only to the isolated `recovery_drill` database. It no longer depends on the Supabase backup bucket for its recovery source.\n\n## Manual recovery procedure
 
 1. Provision a new isolated PostgreSQL 17 database (or a separate Supabase project). Create the Supabase API roles `anon`, `authenticated`, and `service_role` before restoring.
 2. Download the chosen `.mrbk` object from the private bucket and decrypt it using the original `RENT_BACKUP_ENCRYPTION_KEY`.
