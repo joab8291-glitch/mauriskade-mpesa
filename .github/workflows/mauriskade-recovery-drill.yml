@@ -2,7 +2,7 @@ name: Mauriskade independent backup recovery drill
 
 on:
   push:
-    branches: [main]
+    branches: [main, backup/supabase-managed-services]
     paths:
       - '.github/workflows/mauriskade-recovery-drill.yml'
       - 'scripts/recovery-drill.js'
@@ -40,9 +40,7 @@ jobs:
         with:
           node-version: 22
       - name: Install AWS CLI for Backblaze B2
-        run: pipx install awscli
-          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
-          aws --version
+        run: aws --version
       - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
