@@ -57,10 +57,11 @@ The remaining partial items are explicit boundaries, not hidden or simulated fun
 7. Added future rent changes, same-unit renewal/unit transfer, future-advance release and approved rent-credit/deposit transfer.
 8. Added final move-out settlement, prorated final rent, released advance rent, deposit/credit settlement, downloadable PDF and rejection rollback.
 9. Added payment plans, disputes, approved formal notices, reminder scheduling, delivery callback history and staff follow-up queue.
-10. Replaced the table-only application snapshot scheduler with a dedicated GitHub Actions PostgreSQL 17 `pg_dump` workflow. It archives the complete application-owned `public` schema and data, encrypts with AES-256-GCM, restores into a disposable PostgreSQL 17 `restore_test` database before upload, and prunes private Storage objects after a successful restore check.\n11. Added a separate quarterly/on-demand recovery-drill workflow that lists and downloads the newest dated archive from private Supabase Storage, authenticates/decrypts it, and restores it into a newly started PostgreSQL 17 `recovery_drill` database with explicit safeguards against production targets. First post-merge run remains pending.
-11. Added voided-charge history and a partial unique index so changing a future schedule never deletes rows referenced by payment allocations.
-12. Updated admin operations UI and documentation while preserving the existing M-Pesa, water/Hydro/STS, customer login and tenant payment paths.
-13. Completed actor attribution for new audit events, added entity context and immutable audit identity/event metadata, and exposed actor/role/source in the admin audit table.
+10. Replaced the table-only application snapshot scheduler with a dedicated GitHub Actions PostgreSQL 17 `pg_dump` workflow. It archives the complete application-owned `public` schema and data, encrypts with AES-256-GCM, restores into a disposable PostgreSQL 17 `restore_test` database before upload, and prunes private Storage objects after a successful restore check.
+11. Added a separate quarterly/on-demand recovery-drill workflow that lists and downloads the newest dated archive from private Supabase Storage, authenticates/decrypts it, and restores it into a newly started PostgreSQL 17 `recovery_drill` database with explicit safeguards against production targets. First post-merge run remains pending.
+12. Added voided-charge history and a partial unique index so changing a future schedule never deletes rows referenced by payment allocations.
+13. Updated admin operations UI and documentation while preserving the existing M-Pesa, water/Hydro/STS, customer login and tenant payment paths.
+14. Completed actor attribution for new audit events, added entity context and immutable audit identity/event metadata, and exposed actor/role/source in the admin audit table.
 
 ## Validation performed
 
