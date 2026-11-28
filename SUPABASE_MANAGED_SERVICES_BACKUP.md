@@ -1,6 +1,6 @@
 # Supabase managed-services backup and recovery
 
-This supplements the application-owned `public` PostgreSQL archive. It runs daily at 02:30 Africa/Nairobi and writes a separate encrypted artifact to the private Backblaze B2 bucket under `supabase-managed/`.
+This supplements the application-owned `public` PostgreSQL archive. It runs daily at 02:30 Africa/Nairobi and writes a separate encrypted artifact to the private Backblaze B2 bucket under `database/supabase-managed/`.
 
 ## Included in the encrypted artifact
 
