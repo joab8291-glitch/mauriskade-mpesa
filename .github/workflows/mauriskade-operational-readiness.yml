@@ -1,13 +1,6 @@
 name: Mauriskade operational readiness
 
 on:
-  push:
-    branches: [main, dr/disaster-recovery-operational-readiness]
-    paths:
-      - '.github/workflows/mauriskade-operational-readiness.yml'
-      - 'scripts/application-smoke-check.js'
-      - 'scripts/audit-b2-retention.js'
-      - 'test/ops-readiness.test.js'
   schedule:
     - cron: "0 0 * * *" # 03:00 Africa/Nairobi
   workflow_dispatch:
