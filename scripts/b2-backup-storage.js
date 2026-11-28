@@ -29,11 +29,11 @@ function b2Config(env = process.env) {
 async function aws(args, env = process.env) {
   const configPath = path.join(os.tmpdir(), 'mauriskade-aws-' + process.pid + '.config');
   const region = requiredEnv(env, 'B2_REGION');
-  fs.writeFileSync(configPath, '[default]\nregion = ' + region + '\ns3 =\n  addressing_style = path\n  signature_version = s3v4\n', { mode: 0o600 });
+  fs.writeFileSync(configPath, '[default]\nregion = us-east-1\ns3 =\n  signature_version = s3v4\n', { mode: 0o600 });
   try {
     const result = await execFileAsync('aws', args, {
       maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, ...env, AWS_CONFIG_FILE: configPath, AWS_ACCESS_KEY_ID: env.B2_APPLICATION_KEY_ID, AWS_SECRET_ACCESS_KEY: env.B2_APPLICATION_KEY, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5', AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required', AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required' }
+      env: { ...process.env, ...env, AWS_CONFIG_FILE: configPath, AWS_ACCESS_KEY_ID: env.B2_APPLICATION_KEY_ID, AWS_SECRET_ACCESS_KEY: env.B2_APPLICATION_KEY, AWS_DEFAULT_REGION: 'us-east-1', AWS_REGION: 'us-east-1', AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5', AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required', AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required' }
     });
     return result.stdout;
   } catch (error) {
@@ -51,7 +51,7 @@ async function replicateToB2(filePath, fileName, env = process.env) {
   if (!PATTERN.test(fileName)) throw new Error('Refusing to replicate an unexpected backup filename.');
   const digest = sha256File(filePath);
   const key = 'database/' + fileName;
-  await aws(['s3', 'cp', filePath, 's3://' + config.bucket + '/' + key, '--metadata', 'sha256=' + digest, '--endpoint-url', config.endpoint, '--region', config.region, '--no-progress'], env);
+  await aws(['s3', 'cp', filePath, 's3://' + config.bucket + '/' + key, '--metadata', 'sha256=' + digest, '--endpoint-url', config.endpoint, '--no-progress'], env);
   const head = JSON.parse(await aws(['s3api', 'head-object', '--bucket', config.bucket, '--key', key, '--endpoint-url', config.endpoint, '--region', config.region, '--output', 'json'], env));
   if (Number(head.ContentLength) !== require('node:fs').statSync(filePath).size || !head.Metadata || head.Metadata.sha256 !== digest) {
     throw new Error('Backblaze B2 object verification failed after upload.');
