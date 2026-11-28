@@ -79,7 +79,7 @@ test('private Supabase Storage backup adapter uploads encrypted objects and prun
     const uploaded = await uploadBackupToStorage(env, 'mauriskade-system-backup-' + today() + '.mrbk', bytes);
     assert.equal(uploaded.bucket, 'mauriskade-db-backups');
     assert.equal(uploaded.bytes, bytes.length);
-    assert.match(calls[0].url, /\\/storage\\/v1\\/object\\/mauriskade-db-backups\\/mauriskade-system-backup-/);
+    assert.ok(calls[0].url.includes('/storage/v1/object/mauriskade-db-backups/mauriskade-system-backup-'));
     assert.equal(calls[0].options.headers.authorization, 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY);
     assert.equal(calls[0].options.headers['x-upsert'], 'true');
     const result = await pruneBackupStorage(env);
