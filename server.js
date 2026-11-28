@@ -18,6 +18,7 @@ const { promisify } = require('util');
 const express = require('express');
 const { Pool } = require('pg');
 const { registerRentRoutes, processRentStkCallback, processRentC2B, makeReceiptPdf } = require('./rent');
+const { registerRentWorkflowRoutes, runRentAutomation } = require('./rent-workflows');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -593,6 +594,7 @@ const byUser = (req) => (req.user ? req.user.id : req.ip);
 const pollLimit = rateLimit({ windowMs: 60000, max: 120, key: byUser });
 const payLimit = rateLimit({ windowMs: 10 * 60000, max: 6, key: byUser });
 const adminLimit = rateLimit({ windowMs: 60000, max: 120 });
+const staffLoginLimit = rateLimit({ windowMs: 10 * 60000, max: 8 });
 
 // What the pages need to know before they start
 app.get('/api/config', (_req, res) => {
@@ -873,15 +875,45 @@ app.post('/api/mpesa/callback/:secret', async (req, res) => {
 function adminAuth(req, res, next) {
   const got = Buffer.from(req.get('x-admin-key') || '');
   const want = Buffer.from(ADMIN_KEY || '');
-  if (!ADMIN_KEY || got.length !== want.length || !crypto.timingSafeEqual(got, want)) {
-    return res.status(403).json({ ok: false, message: 'Forbidden' });
+  if (ADMIN_KEY && got.length === want.length && crypto.timingSafeEqual(got, want)) {
+    req.adminActor = { id: 'legacy-owner', username: 'owner', displayName: 'Property Owner', role: 'owner', source: 'legacy_key' };
+    return next();
   }
-  next();
+  const bearer = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!bearer || bearer.length < 32) return res.status(403).json({ ok: false, message: 'Sign in with an authorized staff account.' });
+  pool.query(`SELECT s.staff_id, a.username, a.display_name, a.role, a.must_change_password
+                FROM admin_staff_sessions s JOIN admin_staff a ON a.id=s.staff_id
+               WHERE s.token_hash=$1 AND s.expires_at>now() AND a.active=true`, [sha256(bearer)])
+    .then(({ rows }) => {
+      const staff = rows[0];
+      if (!staff) return res.status(403).json({ ok: false, message: 'Your staff session has expired. Sign in again.' });
+      const path = req.path || '';
+      if (staff.must_change_password && !['/staff/change-password','/staff/me','/staff/logout'].includes(path)) return res.status(403).json({ ok: false, mustChangePassword: true, message: 'Change your temporary staff password before continuing.' });
+      const staffPath = path.startsWith('/staff/');
+      if (!(path.startsWith('/rent/') || path === '/rent' || staffPath)) return res.status(403).json({ ok: false, message: 'Staff accounts cannot access water administration.' });
+      if (staff.role === 'caretaker' && !staffPath && !(req.method === 'GET' && (/^\/rent\/(leases|properties|units|occupancy)(\/|$)/.test(path)))) return res.status(403).json({ ok: false, message: 'Caretaker access is limited to occupancy and tenancy details.' });
+      if (staff.role === 'finance' && !staffPath && req.method !== 'GET' && !(/^\/rent\/(payments\/manual|payments\/[^/]+\/reconcile|payments\/reports\/[^/]+|deposits\/[^/]+\/receive|deposits\/refunds\/[^/]+\/mark-paid|approvals(?:\/[^/]+\/decide)?|bank-imports|bank-lines\/[^/]+\/(?:match|post)|payment-plans\/[^/]+\/installments\/[^/]+\/mark-paid|credit-refunds\/[^/]+\/mark-paid|deposits\/refunds\/pending|settlements\/[^/]+|payment-plans\/[^/]+|disputes\/[^/]+|followups\/[^/]+|notices\/[^/]+\/send)$/.test(path))) return res.status(403).json({ ok: false, message: 'Finance staff can only perform authorized financial, reconciliation and approval actions.' });
+      req.adminActor = { id: staff.staff_id, username: staff.username, displayName: staff.display_name, role: staff.role, source: 'staff_session' };
+      pool.query('UPDATE admin_staff_sessions SET last_seen_at=now() WHERE token_hash=$1', [sha256(bearer)]).catch(() => {});
+      next();
+    }).catch(e => { console.error('admin staff auth', e.message); if (!res.headersSent) res.status(503).json({ ok: false, message: 'Staff authentication is temporarily unavailable.' }); });
 }
+app.post('/api/admin/staff/login', staffLoginLimit, wrap(async (req, res) => {
+  const username = String(req.body && req.body.username || '').trim().toLowerCase();
+  const password = String(req.body && req.body.password || '');
+  const staff = (await pool.query('SELECT * FROM admin_staff WHERE lower(username)=lower($1) AND active=true', [username])).rows[0];
+  const valid = await verifyPassword(password, staff ? staff.password_hash : await hashPassword('invalid-staff-login-password'));
+  if (!staff || !valid) return res.status(401).json({ ok: false, message: 'Invalid staff username or password.' });
+  const token = crypto.randomBytes(32).toString('base64url');
+  await pool.query("INSERT INTO admin_staff_sessions(token_hash,staff_id,expires_at) VALUES($1,$2,now()+interval '12 hours')", [sha256(token), staff.id]);
+  await pool.query('UPDATE admin_staff SET last_login_at=now() WHERE id=$1', [staff.id]);
+  res.json({ ok: true, token, staff: { id: staff.id, username: staff.username, displayName: staff.display_name, role: staff.role, mustChangePassword: staff.must_change_password } });
+}));
 app.use('/api/admin', adminLimit, adminAuth);
 
 registerRentRoutes({ app, pool, requireUser, requireReady, normPhone, darajaPost, payLimit,
   mpesaShortcode: MPESA_SHORTCODE, callbackBaseUrl: CALLBACK_BASE_URL, callbackSecret: CALLBACK_SECRET });
+registerRentWorkflowRoutes({ app, pool, env: process.env });
 
 app.get('/api/admin/summary', wrap(async (_req, res) => {
   const r = (await pool.query(
@@ -1396,5 +1428,6 @@ async function worker() {
     process.exit(1);
   }
   setInterval(worker, 30000);
+  setInterval(() => runRentAutomation(pool, process.env).catch(e => log('rent automation error', e.message)), 5 * 60000);
   app.listen(PORT, () => log(`hydro-pay listening on :${PORT} (${MPESA_ENV})`));
 })();

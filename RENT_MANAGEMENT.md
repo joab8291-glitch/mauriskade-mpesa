@@ -6,7 +6,7 @@ The rent module runs alongside the existing water-credit service. Rent and water
 
 1. Open the administrator panel and select **Rent management**.
 2. Create a tenancy against a registered Hydro meter. Enter the tenant, unit, unique rent account reference, amount per period, billing frequency, start date and due day.
-3. The service generates rent charges through the next 18 months. The admin can edit the rent amount, frequency, due day and tenancy status later. Already allocated payments are preserved.
+3. The service generates rent charges through the next 18 months. The admin can edit rent details and schedule future rent changes. Existing allocations are preserved. An actual move-out must use final settlement; the direct tenancy editor will not bypass prorating or release prepaid rent.
 4. Use **Agreement** to draft or revise the tenancy agreement. Save a draft, then issue it. Issued agreements appear in the customer's rent account.
 5. The shortcode uses the existing Webazi Daraja shared C2B callback registration. Do not register Mauriskade-specific callback URLs from the Mauriskade admin panel. Webazi routes `RENT-` references here and `WATER-` references into the Hydro recharge workflow. Both Render services must have the same `MAURISKADE_C2B_SECRET`; Webazi also needs `MAURISKADE_C2B_URL=https://api.mauriskade.co.ke/api/mpesa/shared-c2b`.
 6. Paybill C2B confirmations are matched using the exact rent account reference. Unknown references appear in **Unmatched Paybill payments**. Verify the M-Pesa statement, enter the correct rent account reference and reconcile.
@@ -25,7 +25,7 @@ The rent module runs alongside the existing water-credit service. Rent and water
 
 ## Database and security
 
-Rental tables: `rent_leases`, `rent_charges`, `rent_payments`, `rent_allocations`, `tenancy_agreements`, and `rent_receipts`. All have RLS enabled, browser-role grants revoked, and restrictive deny policies for `anon` and `authenticated`. The existing trusted backend connection continues to perform all rent operations.
+Rental and operations tables include `rent_leases`, `rent_charges`, `rent_payments`, `rent_allocations`, `tenancy_agreements`, `rent_receipts`, `rent_payment_reports`, `properties`, `property_units`, `rent_approvals`, `rent_deposit_transactions`, `rent_credit_refunds`, `rent_credit_transfers`, `rent_allocation_adjustments`, `rent_scheduled_changes`, `rent_settlements`, `rent_bank_imports`, `rent_bank_statement_lines`, `rent_reminder_jobs`, `rent_followup_tasks`, `rent_payment_plans`, `rent_payment_plan_installments`, `rent_disputes`, `rent_communication_log`, `rent_formal_notices`, `rent_backup_runs` and `rent_backup_tests`. Application-owned tables have RLS enabled, browser-role grants revoked and restrictive deny policies for `anon` and `authenticated`. The trusted backend connection performs rent operations.
 
 No water transactions, Hydro meter records, customer passwords, or existing audit records are removed or rewritten by the rent module.
 
@@ -52,4 +52,53 @@ No water transactions, Hydro meter records, customer passwords, or existing audi
 - Tenants can view a running rent statement and submit a missing-payment report using an M-Pesa transaction code. Reports enter an admin review queue and are never auto-posted. A matching Paybill confirmation or verified manual payment resolves the report. A transaction-code collision between manual and Paybill records is held in the admin audit log instead of double-posting.
 - Rent receipts show allocations to rental periods and any remaining unallocated credit. Payment polling and receipt downloads are scoped to the latest tenancy on the signed-in meter.
 
-The following client-brief items still require agreed policy, credentials, or a larger workflow before they can safely be enabled: deposit accounting and refund/deduction approvals; waivers, write-offs and reversals; opening-balance migration and approved adjustments; multi-property/unit registry beyond Hydro meter-backed units; staff roles and two-person approval; scheduled SMS/WhatsApp/email reminders and delivery tracking; payment-plan and formal-notice workflows; bank-statement import; backup/restore testing; and complete move-out deposit settlement. The current shared `ADMIN_KEY` is a single administrator credential, not role-based access control.
+## Expanded operations, controls and remaining configuration
+
+The administrator's **Deposits, approvals & operations** page provides:
+
+- Property and unit registration, meter mapping, occupancy and unavailable status.
+- Verified deposit receipts, deposit liability and available deposit balance.
+- Independent approval queue for deposit refunds/deductions/transfers, rent-credit refunds/transfers, payment reversals, rent adjustments, opening balances, write-offs, payment plans, final settlements and formal notices.
+- Bank statement CSV staging, line-to-tenancy matching, verification and controlled posting.
+- Arrears ageing by property, unit and date, with CSV download.
+- Future rent changes, tenancy renewal/unit transfer, advance-rent release and final move-out settlement.
+- Payment plans, disputes, reminder queue, communication history and staff follow-up tasks.
+- Owner-only individual staff account management and encrypted backup export/verification.
+
+### Deposit and credit handling
+
+Security deposits are recorded in `rent_deposit_transactions` and never included in rent collections. Deposit refunds are reserved after independent approval and are only marked paid when the actual bank/cash reference and verification note are entered. Rent credit is tracked separately; approved credit refunds and transfers reduce the source tenancy balance. A transfer creates a corresponding credit on the destination tenancy only after independent approval.
+
+### Move-out and renewal
+
+Use **Prepare final settlement** for an actual move-out. It calculates the final rental period, releases any future allocated rent into tenant credit, calculates deposit deductions/refunds and any rent-credit refund, and requests independent approval. An approved settlement stops billing and produces a downloadable final statement PDF. A rejected request restores the previous tenancy dates and full-period rent charge. Use **Renew tenancy or transfer to another unit** for a new lease record; former lease, receipts, agreements and ledger history remain preserved. For a cross-unit transfer, the destination meter’s previous login is disabled immediately and fresh credentials must be issued for the incoming tenancy. The outgoing tenant retains access only until the effective move-out date; the scheduled worker then revokes that session unless the same meter has a new active tenancy. For a same-unit renewal, the existing tenant login remains active and switches to the new lease on its start date.
+
+### Staff roles
+
+- **Manager:** tenancy/unit operations, approvals and operational controls.
+- **Finance:** payments, reconciliation, bank import, reports, refund completion and approval decisions.
+- **Caretaker:** read-only occupancy and tenancy details.
+- **Property owner:** legacy owner key and staff account administration.
+
+Sensitive actions use maker/checker approval; the requester cannot approve their own request. Older events recorded under the legacy shared owner key cannot be retrospectively attributed to an individual staff member.
+
+### Notification and backup configuration
+
+Set these environment variables on the backend only when the client has selected providers and approved the associated costs/policies:
+
+- `RENT_NOTIFICATION_WEBHOOK_URL`
+- `RENT_NOTIFICATION_WEBHOOK_SECRET`
+- `RENT_NOTIFICATION_CHANNELS` (`sms`, `whatsapp`, `email`)
+- `RENT_BACKUP_WEBHOOK_URL`
+- `RENT_BACKUP_WEBHOOK_SECRET`
+- `RENT_BACKUP_ENCRYPTION_KEY` (separate 32+ character secret)
+- `RENT_BACKUP_HOUR` (default `2`, East Africa time)
+
+The notification adapter expects the provider to return a message ID and call `/api/rent/notifications/delivery` with the configured secret header. Without a provider URL, the system records a blocked configuration state; it does not claim that reminders were sent. The backup adapter sends an encrypted archive to the configured durable remote endpoint. Admin backup verification restores the archive into temporary staging tables and checks table/row counts; it does not overwrite production data and is not a substitute for a separately approved full restore drill.
+
+### Known boundaries
+
+- Rent tenancies still require Hydro meter-backed customer login identities. Property/unit registry supports non-metered unit records, but independent non-metered tenant accounts are not yet supported.
+- Former tenant history is preserved for authorized administrators; former tenants do not keep a separate archived portal login after the meter login is revoked for a new occupant.
+- Internet/service charges and authorized cross-ledger transfers are not included; rent and water/Hydro remain strictly separate.
+- Live Daraja transactions, Android-device end-to-end acceptance and production database restore were not performed in the isolated code tests. Complete those during the client's controlled acceptance window.
