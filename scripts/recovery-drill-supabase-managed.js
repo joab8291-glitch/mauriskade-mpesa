@@ -85,3 +85,5 @@ async function main() {
   } finally { fs.rmSync(work, { recursive: true, force: true }); }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+
+module.exports = { hasAuthUsersEntry };
