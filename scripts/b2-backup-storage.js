@@ -29,7 +29,7 @@ function b2Config(env = process.env) {
 async function aws(args, env = process.env) {
   const configPath = path.join(os.tmpdir(), 'mauriskade-aws-' + process.pid + '.config');
   const region = requiredEnv(env, 'B2_REGION');
-  fs.writeFileSync(configPath, '[default]\\nregion = ' + region + '\\ns3 =\\n  addressing_style = path\\n  signature_version = s3v4\\n', { mode: 0o600 });
+  fs.writeFileSync(configPath, '[default]\nregion = ' + region + '\ns3 =\n  addressing_style = path\n  signature_version = s3v4\n', { mode: 0o600 });
   try {
     const result = await execFileAsync('aws', args, {
       maxBuffer: 16 * 1024 * 1024,
