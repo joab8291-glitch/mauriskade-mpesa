@@ -84,6 +84,19 @@ async function getProjectConfig(projectRef, token) {
   if (!response.ok) throw new Error('Supabase Management API config export failed (' + response.status + '): ' + (await response.text()).slice(0, 600));
   return response.json();
 }
+async function inspectB2ApplicationKey(keyId, applicationKey, expectedBucket) {
+  const response = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+    headers: { authorization: 'Basic ' + Buffer.from(keyId + ':' + applicationKey).toString('base64') },
+    signal: AbortSignal.timeout(30000)
+  });
+  if (!response.ok) throw new Error('Backblaze application-key authorization failed (' + response.status + '): ' + (await response.text()).slice(0, 500));
+  const auth = await response.json();
+  const allowed = auth.allowed || {};
+  if (allowed.bucketName && allowed.bucketName !== expectedBucket) throw new Error('Backblaze application key is restricted to a different bucket.');
+  const summary = { bucketName: allowed.bucketName || null, namePrefix: allowed.namePrefix || null, capabilities: Array.isArray(allowed.capabilities) ? allowed.capabilities : [] };
+  console.log(JSON.stringify({ status: 'b2_application_key_scope_verified', ...summary }));
+  return summary;
+}
 async function main(env = process.env) {
   const databaseUrl = required(env, 'DATABASE_URL');
   const supabaseUrl = required(env, 'SUPABASE_URL');
@@ -96,6 +109,7 @@ async function main(env = process.env) {
   const b2Bucket = required(env, 'B2_BUCKET');
   const b2KeyId = required(env, 'B2_APPLICATION_KEY_ID', 5);
   const b2Key = required(env, 'B2_APPLICATION_KEY', 10);
+  const b2Scope = await inspectB2ApplicationKey(b2KeyId, b2Key, b2Bucket);
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) throw new Error('SUPABASE_URL must be the project HTTPS URL.');
   if (!/^[a-z0-9]{20}$/.test(projectRef)) throw new Error('SUPABASE_PROJECT_REF must be the 20-character project reference.');
   const endpointMatch = b2Endpoint.match(/^https:\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com\/?$/);
@@ -153,7 +167,7 @@ async function main(env = process.env) {
     const decrypted = decryptArchive(fs.readFileSync(encryptedPath), encryptionKey);
     if (!decrypted.equals(fs.readFileSync(tarPath))) throw new Error('Managed backup AES-256-GCM round-trip verification failed.');
     const digest = crypto.createHash('sha256').update(encrypted).digest('hex');
-    const objectKey = 'database/supabase-managed/' + name;
+    const objectKey = (b2Scope.namePrefix || 'database/') + 'supabase-managed/' + name;
     const awsEnv = {
       ...process.env,
       AWS_ACCESS_KEY_ID: b2KeyId,
@@ -191,4 +205,4 @@ async function main(env = process.env) {
   }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig, hasAuthUsersEntry };
+module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig, hasAuthUsersEntry, inspectB2ApplicationKey };
