@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { PGlite } = require('@electric-sql/pglite');
-const { registerRentWorkflowRoutes, runRentAutomation, parseCsv, csvDate } = require('../rent-workflows');
+const { registerRentWorkflowRoutes, runRentAutomation, parseCsv, csvDate, backupStorageConfig, uploadBackupToStorage, pruneBackupStorage } = require('../rent-workflows');
 const { createReceipt, generateCharges } = require('../rent');
 
 const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
@@ -57,6 +57,41 @@ async function fixture(env = {}) {
   }
   return { db, pool, query, call, lease, close: () => db.close() };
 }
+
+test('private Supabase Storage backup adapter uploads encrypted objects and prunes only expired backup archives', async () => {
+  const env = { SUPABASE_URL: 'https://example.supabase.co/', SUPABASE_SERVICE_ROLE_KEY: 'server-only-test-key-long-enough', RENT_BACKUP_STORAGE_BUCKET: 'mauriskade-db-backups', RENT_BACKUP_RETENTION_DAYS: '90' };
+  assert.equal(backupStorageConfig(env).url, 'https://example.supabase.co');
+  const originalFetch = global.fetch;
+  const calls = [];
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).includes('/object/list/')) {
+      return new Response(JSON.stringify([
+        { name: 'mauriskade-system-backup-2020-01-01.mrbk' },
+        { name: 'mauriskade-system-backup-' + today() + '.mrbk' },
+        { name: 'unrelated-file.txt' },
+      ]), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response('', { status: 200 });
+  };
+  try {
+    const bytes = Buffer.from('encrypted-test-archive');
+    const uploaded = await uploadBackupToStorage(env, 'mauriskade-system-backup-' + today() + '.mrbk', bytes);
+    assert.equal(uploaded.bucket, 'mauriskade-db-backups');
+    assert.equal(uploaded.bytes, bytes.length);
+    assert.match(calls[0].url, /\\/storage\\/v1\\/object\\/mauriskade-db-backups\\/mauriskade-system-backup-/);
+    assert.equal(calls[0].options.headers.authorization, 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY);
+    assert.equal(calls[0].options.headers['x-upsert'], 'true');
+    const result = await pruneBackupStorage(env);
+    assert.equal(result.retentionDays, 90);
+    assert.equal(result.deleted, 1);
+    const deletion = calls.find(x => x.options.method === 'DELETE');
+    assert.ok(deletion);
+    assert.deepEqual(JSON.parse(deletion.options.body).prefixes, ['mauriskade-system-backup-2020-01-01.mrbk']);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
 
 test('CSV statement parser handles quoted fields and rejects malformed dates', () => {
   const rows = parseCsv('date,amount,reference,description\n2026-11-28,1500,ABC-1,"Rent, unit A1"\n2026-11-29,2500,ABC-2,"Quoted ""receipt"""');
