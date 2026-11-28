@@ -4,7 +4,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const execFileAsync = promisify(execFile);
 const PREFIX = 'mauriskade-system-backup-';
-const PATTERN = /^mauriskade-system-backup-(\\d{4}-\\d{2}-\\d{2})\\.mrbk$/;
+const PATTERN = /^mauriskade-system-backup-(\d{4}-\d{2}-\d{2})\.mrbk$/;
 
 function requiredEnv(env, name, min = 1) {
   const value = String(env[name] || '');
@@ -17,7 +17,7 @@ function b2Config(env = process.env) {
   const bucket = requiredEnv(env, 'B2_BUCKET');
   requiredEnv(env, 'B2_APPLICATION_KEY_ID', 5);
   requiredEnv(env, 'B2_APPLICATION_KEY', 10);
-  if (!/^https:\/\/s3\\.[a-z0-9-]+\\.backblazeb2\\.com\/?$/.test(endpoint)) {
+  if (!/^https:\/\/s3\.[a-z0-9-]+\.backblazeb2\.com\/?$/.test(endpoint)) {
     throw new Error('B2_S3_ENDPOINT must be the HTTPS S3 endpoint shown for the bucket in Backblaze.');
   }
   if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) throw new Error('B2_BUCKET is not a valid bucket name.');
@@ -65,7 +65,7 @@ async function latestB2Archive(env = process.env) {
   const config = b2Config(env);
   const output = await aws(['s3api', 'list-objects-v2', '--bucket', config.bucket, '--prefix', 'database/', '--endpoint-url', config.endpoint, '--region', config.region, '--output', 'json'], env);
   const parsed = JSON.parse(output || '{}');
-  const objects = (parsed.Contents || []).filter(item => item && typeof item.Key === 'string' && /^database\\/mauriskade-system-backup-\\d{4}-\\d{2}-\\d{2}\\.mrbk$/.test(item.Key));
+  const objects = (parsed.Contents || []).filter(item => item && typeof item.Key === 'string' && /^database\/mauriskade-system-backup-\d{4}-\d{2}-\d{2}\.mrbk$/.test(item.Key));
   objects.sort((a, b) => a.Key.localeCompare(b.Key));
   if (!objects.length) throw new Error('No dated Mauriskade database backup exists in the Backblaze B2 bucket.');
   return { config, key: objects[objects.length - 1].Key, object: objects[objects.length - 1] };
