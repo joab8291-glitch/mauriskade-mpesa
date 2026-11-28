@@ -1382,6 +1382,17 @@ app.post('/api/mpesa/shared-c2b', wrap(async (req, res) => {
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+// Readiness is distinct from liveness: confirm the backend can still reach its database.
+app.get('/health/ready', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, database: true });
+  } catch (e) {
+    log('READINESS_CHECK_FAILED', e.message);
+    res.status(503).json({ ok: false, database: false });
+  }
+});
+
 // Safe, non-payment Daraja connectivity check. Never exposes credentials or sends an STK prompt.
 app.get('/health/mpesa', async (_req, res) => {
   try {
