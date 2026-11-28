@@ -28,9 +28,10 @@ async function checkDatabase(connectionString) {
 async function main(env = process.env) {
   const apiBase = normalizeApiBaseUrl(env.API_BASE_URL);
   const health = await checkJsonEndpoint(apiBase + '/health');
+  const readiness = await checkJsonEndpoint(apiBase + '/health/ready', ['database']);
   const daraja = await checkJsonEndpoint(apiBase + '/health/mpesa', ['darajaAuth']);
   const database = await checkDatabase(env.DATABASE_URL);
-  console.log(JSON.stringify({ status: 'application_smoke_test_passed', paymentActionsPerformed: false, endpoints: { health: health.status, darajaAuth: daraja.status }, database }));
+  console.log(JSON.stringify({ status: 'application_smoke_test_passed', paymentActionsPerformed: false, endpoints: { health: health.status, databaseReadiness: readiness.status, darajaAuth: daraja.status }, database }));
 }
 if (require.main === module) main().catch(error => { console.error('Application smoke test failed: ' + error.message); process.exitCode = 1; });
 module.exports = { normalizeApiBaseUrl, checkJsonEndpoint, checkDatabase };
