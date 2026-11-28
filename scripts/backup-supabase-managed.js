@@ -7,6 +7,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { encryptArchive, decryptArchive, localDate } = require('./backup-database');
 const execFileAsync = promisify(execFile);
+function hasAuthUsersEntry(listing) { return /TABLE\\s+auth\\s+users\\b/.test(String(listing)); }
 
 function required(env, name, min = 1) {
   const value = String(env[name] || '');
@@ -153,8 +154,11 @@ async function main(env = process.env) {
     if (!decrypted.equals(fs.readFileSync(tarPath))) throw new Error('Managed backup AES-256-GCM round-trip verification failed.');
     const digest = crypto.createHash('sha256').update(encrypted).digest('hex');
     const objectKey = 'supabase-managed/' + name;
+    const awsConfigPath = path.join(work, 'aws-config');
+    fs.writeFileSync(awsConfigPath, '[default]\\nregion = ' + b2Region + '\\ns3 =\\n  addressing_style = path\\n  signature_version = s3v4\\n', { mode: 0o600 });
     const awsEnv = {
       ...process.env,
+      AWS_CONFIG_FILE: awsConfigPath,
       AWS_ACCESS_KEY_ID: b2KeyId,
       AWS_SECRET_ACCESS_KEY: b2Key,
       AWS_DEFAULT_REGION: b2Region,
@@ -187,4 +191,4 @@ async function main(env = process.env) {
   }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig };
+module.exports = { safeObjectPath, encodeObjectPath, listBucketObjects, getProjectConfig, hasAuthUsersEntry };
