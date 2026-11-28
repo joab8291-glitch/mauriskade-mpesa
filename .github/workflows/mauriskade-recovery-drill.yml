@@ -1,0 +1,58 @@
+name: Mauriskade independent backup recovery drill
+
+on:
+  schedule:
+    - cron: "0 1 1 1,4,7,10 *" # Quarterly: 04:00 Africa/Nairobi on Jan/Apr/Jul/Oct 1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-independent-recovery-drill
+  cancel-in-progress: false
+
+jobs:
+  recover-from-stored-archive:
+    runs-on: ubuntu-latest
+    services:
+      recovery-db:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: recovery-only-password
+          POSTGRES_DB: recovery_drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d recovery_drill"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+          sudo gpg --batch --yes --dearmor --output /etc/apt/keyrings/postgresql-pgdg.gpg /tmp/pgdg.asc
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql-pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo ${VERSION_CODENAME})-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Prepare fresh isolated recovery database
+        env:
+          RECOVERY_DATABASE_URL: postgresql://postgres:recovery-only-password@localhost:5432/recovery_drill
+        run: |
+          psql "$RECOVERY_DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;"
+          test "$(psql "$RECOVERY_DATABASE_URL" -Atc "SELECT current_database()")" = "recovery_drill"
+      - name: Download, decrypt and restore latest stored archive
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
+          RENT_BACKUP_STORAGE_BUCKET: mauriskade-db-backups
+          RECOVERY_DATABASE_URL: postgresql://postgres:recovery-only-password@localhost:5432/recovery_drill
+        run: node scripts/recovery-drill.js
