@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
 const NAME = /^mauriskade-supabase-managed-(\d{4}-\d{2}-\d{2})\.tar\.gz\.mrbk$/;
 function required(name, min = 1) {
-  const value = String(process.env[name] || '');
+  const value = String(process.env[name] || '').trim();
   if (value.length < min) throw new Error('Missing or invalid required secret/configuration: ' + name);
   return value;
 }
