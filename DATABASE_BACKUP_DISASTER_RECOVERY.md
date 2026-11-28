@@ -6,7 +6,7 @@ The production backup job runs in GitHub Actions daily at 02:00 Africa/Nairobi (
 
 PostgreSQL 17 `pg_dump` custom format captures the application-owned `public` schema, including table definitions and data, indexes, constraints, sequences, views, functions, triggers, and row-level-security policies. Supabase-managed control-plane schemas such as `auth`, `storage`, and platform internals are excluded and remain under Supabase platform backup/recovery scope.
 
-Archives are encrypted with AES-256-GCM and uploaded to the private `mauriskade-db-backups` bucket. Objects older than 90 days are removed only after the current archive passes restore verification.
+Archives are encrypted with AES-256-GCM and uploaded to the private Supabase `mauriskade-db-backups` bucket. The same encrypted archive is then replicated to the separate private Backblaze B2 bucket under `database/`. The B2 upload is not treated as successful until the object metadata/size is checked and the object is downloaded again and its SHA-256 digest matches. The existing Supabase copy is retained with its 90-day application-level pruning.
 
 ## Pre-upload restore verification
 
@@ -14,7 +14,7 @@ Before upload, the daily backup workflow decrypts its newly created archive, ins
 
 ## Independent stored-archive recovery drill
 
-The separate workflow `.github/workflows/mauriskade-recovery-drill.yml` performs a recovery test from the actual private Storage object rather than from the backup job's local temporary file:
+The separate workflow `.github/workflows/mauriskade-recovery-drill.yml` performs a recovery test from the independent Backblaze B2 object rather than from the backup job's local temporary file:
 
 1. Starts a new, isolated PostgreSQL 17 service database named `recovery_drill`.
 2. Lists the private `mauriskade-db-backups` bucket and selects the newest correctly named dated archive.
@@ -23,7 +23,7 @@ The separate workflow `.github/workflows/mauriskade-recovery-drill.yml` performs
 5. Inspects the decrypted PostgreSQL custom archive and restores it into `recovery_drill`.
 6. Verifies application table, index, sequence, policy and nine key rent/payment table counts. The output includes the selected archive name, encrypted/decrypted byte counts and SHA-256 digest.
 
-This workflow is scheduled quarterly at 04:00 Africa/Nairobi on 1 January, 1 April, 1 July and 1 October. It can also be run on demand using GitHub Actions -> Mauriskade independent backup recovery drill -> Run workflow. A successful run is the evidence that an already-uploaded Storage object can be retrieved, decrypted and restored into a separate clean database. The first post-merge run must be completed before recording the independent drill as passed.
+This workflow is scheduled quarterly at 04:00 Africa/Nairobi on 1 January, 1 April, 1 July and 1 October. It can also be run on demand using GitHub Actions -> Mauriskade independent backup recovery drill -> Run workflow. A successful run is the evidence that an already-uploaded off-site B2 object can be retrieved, decrypted and restored into a separate clean database. The first post-merge run must be completed before recording the independent drill as passed.
 
 The restore script explicitly refuses any database whose name is not `recovery_drill`. It never connects to the production database for restoration.
 
@@ -38,7 +38,7 @@ GitHub repository Settings -> Secrets and variables -> Actions -> New repository
 
 Render environment variables are not automatically available to GitHub Actions. Never put secret values in source control or workflow logs.
 
-## Manual recovery procedure
+## Backblaze B2 setup and retention\n\nCreate a private bucket named `mauriskade-offsite-backups` (or another globally available lowercase bucket name) in the region assigned to your Backblaze account. Do not make it public. Copy the exact S3 endpoint shown beside the bucket. Create a standard application key restricted to this bucket, with list-files, read-files and write-files capabilities; do not use the account master key. Do not grant bucket deletion or file deletion permissions to the backup key. The workflow uses the S3-compatible API with AWS Signature Version 4. The application key ID maps to `B2_APPLICATION_KEY_ID`; the one-time application key value maps to `B2_APPLICATION_KEY`.\n\nConfigure the bucket lifecycle in Backblaze to hide current backup objects after 90 days and delete noncurrent versions after 1 day (if the console exposes a previous-version retention setting). Keep the bucket private. B2 buckets are versioned, so lifecycle settings matter for controlling old versions and storage use. The archive is already encrypted client-side with AES-256-GCM before it reaches either provider.\n\nThe daily job requires the AWS CLI in the runner (`pipx install awscli`). It writes `database/mauriskade-system-backup-YYYY-MM-DD.mrbk`, verifies the upload with HEAD metadata/size, downloads it and verifies SHA-256. The quarterly recovery workflow downloads from B2 and restores only to the isolated `recovery_drill` database.\n\n## Manual recovery procedure
 
 1. Provision a new isolated PostgreSQL 17 database (or a separate Supabase project). Create the Supabase API roles `anon`, `authenticated`, and `service_role` before restoring.
 2. Download the chosen `.mrbk` object from the private bucket and decrypt it using the original `RENT_BACKUP_ENCRYPTION_KEY`.
