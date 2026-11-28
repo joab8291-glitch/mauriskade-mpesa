@@ -69,7 +69,7 @@ async function main() {
     const buckets = JSON.parse(fs.readFileSync(path.join(payload, 'storage-buckets.json'), 'utf8'));
     const config = JSON.parse(fs.readFileSync(path.join(payload, 'project-config.json'), 'utf8'));
     const authListing = await run('pg_restore', ['--list', path.join(payload, 'auth-schema.dump')]);
-    if (!/TABLE auth\.users/.test(authListing.stdout)) throw new Error('Auth dump does not contain auth.users.');
+    if (!hasAuthUsersEntry(authListing.stdout)) throw new Error('Auth dump does not contain auth.users.');
     let fileCount = 0, byteCount = 0;
     for (const b of buckets) {
       const root = path.join(payload, 'storage', b.name);
