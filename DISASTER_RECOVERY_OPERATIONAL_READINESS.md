@@ -56,7 +56,7 @@ The backup bucket must remain private. The read-only audit checks the configured
 
 This means current backup objects are hidden after 90 days and hidden versions are deleted after a further day. The rule is intended to cover both database/ application backups and database/supabase-managed/ exports.
 
-The audit workflow reports failure if the bucket is public or the rule is absent/mismatched. It does not change lifecycle settings. A missing rule must be reviewed before it is applied because lifecycle deletion is destructive.
+The 2026-11-28 live audit confirmed that the configured B2 bucket is private (allPrivate) and has default SSE-B2 encryption, but its lifecycleRules array is empty. Therefore the recommended 90-day rule is NOT configured. The audit workflow reports failure until the rule is present. It does not change lifecycle settings. A missing rule must be reviewed before it is applied because lifecycle deletion is destructive.
 
 The current B2 key has read access to bucket lifecycle metadata and the backup workflows use bucket-scoped file permissions. Never grant backup jobs account-wide delete-bucket or key-management permissions. Preserve an independently stored copy of RENT_BACKUP_ENCRYPTION_KEY; the encrypted archives are unusable without it.
 
@@ -88,6 +88,7 @@ Controlled sequence:
 ## 8. Outstanding gates
 
 - Full fresh-project Supabase restore and timed end-to-end staging acceptance.
+- Production application health endpoint returned HTTP 404 during the 2026-11-28 smoke run. Render service metadata also reports its generated Render subdomain policy as disabled. The API custom-domain mapping must be inspected in the selected Render workspace before the health checks can pass; do not treat the 404 as a successful application test.
 - Confirmation that the B2 lifecycle rule is actually configured by the read-only audit.
 - Manual staging functional tests for login, tenant boundaries, rent records, M-Pesa sandbox and Storage downloads.
 - Measured RTO and RPO from a complete rehearsal.
