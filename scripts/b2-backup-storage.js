@@ -10,7 +10,7 @@ const PREFIX = 'mauriskade-system-backup-';
 const PATTERN = /^mauriskade-system-backup-(\d{4}-\d{2}-\d{2})\.mrbk$/;
 
 function requiredEnv(env, name, min = 1) {
-  const value = String(env[name] || '');
+  const value = String(env[name] || '').trim();
   if (value.length < min) throw new Error('Missing or invalid required secret/configuration: ' + name);
   return value;
 }
