@@ -9,7 +9,7 @@ const { encryptArchive, decryptArchive, localDate } = require('./backup-database
 const execFileAsync = promisify(execFile);
 function hasAuthUsersEntry(listing) { return String(listing).includes('TABLE auth users'); }
 function hasAuthUsersData(listing) { return String(listing).includes('TABLE DATA auth users'); }
-function authDataTables(listing) { return String(listing).split('\\n').filter(line => line.includes('TABLE DATA auth ')).map(line => line.trim().split(/\\s+/).slice(4, 6).join(' ')); }
+function authDataTables(listing) { return String(listing).split('\n').filter(line => line.includes('TABLE DATA auth ')).map(line => { const parts = line.trim().split(/\s+/); return parts.slice(4, 6).join(' '); }); }
 
 function required(env, name, min = 1) {
   const value = String(env[name] || '').trim();
