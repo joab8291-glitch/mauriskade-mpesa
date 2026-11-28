@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/rent-only-tenancies
+      - feature/complete-audit-attribution
   pull_request:
     branches:
       - main
