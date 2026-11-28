@@ -195,11 +195,14 @@ const requireUser = wrap(async (req, res, next) => {
   const tok = parseCookies(req.headers.cookie)[COOKIE];
   if (!tok) return res.status(401).json({ ok: false, message: 'Please sign in.' });
   const { rows } = await pool.query(
-    `SELECT u.id, u.meter_code, u.must_change, u.disabled, m.flat, m.tenant_name, m.phone, m.rent_account_ref, m.water_account_ref, s.token_hash
-       FROM sessions s
-       JOIN users u  ON u.id = s.user_id
-       JOIN meters m ON m.meter_code = u.meter_code
-      WHERE s.token_hash = $1 AND s.expires_at > now()`, [sha256(tok)]);
+    `SELECT u.id,u.meter_code,u.rent_lease_id,u.must_change,
+            (u.disabled OR (u.rent_lease_id IS NOT NULL AND (l.id IS NULL OR l.status<>'active' OR l.start_date>(now() AT TIME ZONE 'Africa/Nairobi')::date OR (l.end_date IS NOT NULL AND l.end_date<(now() AT TIME ZONE 'Africa/Nairobi')::date)))) AS disabled,
+            COALESCE(m.flat,l.unit_label) flat,COALESCE(m.tenant_name,l.tenant_name) tenant_name,m.phone,
+            COALESCE(m.rent_account_ref,l.rent_account_ref) rent_account_ref,m.water_account_ref,s.token_hash
+       FROM sessions s JOIN users u ON u.id=s.user_id
+       LEFT JOIN meters m ON m.meter_code=u.meter_code
+       LEFT JOIN rent_leases l ON l.id=u.rent_lease_id
+      WHERE s.token_hash=$1 AND s.expires_at>now()`, [sha256(tok)]);
   const u = rows[0];
   if (!u || u.disabled) return res.status(401).json({ ok: false, message: 'Please sign in.' });
   req.user = u;
@@ -211,7 +214,8 @@ const requireReady = (req, res, next) => (req.user.must_change
   : next());
 
 const meView = (u) => ({
-  meterCode: u.meter_code, flat: u.flat || null, tenantName: u.tenant_name || null,
+  meterCode: u.meter_code || null, rentOnly: !u.meter_code && !!u.rent_lease_id,
+  flat: u.flat || null, tenantName: u.tenant_name || null, username: u.username || null,
   phone: u.phone || null, rentAccountRef: u.rent_account_ref || null, waterAccountRef: u.water_account_ref || null, mustChange: !!u.must_change,
 });
 
@@ -624,12 +628,14 @@ app.get('/api/quote', lightLimit, (req, res) => {
 app.post('/api/auth/login', loginLimit, wrap(async (req, res) => {
   const username = String((req.body && req.body.username) || '').replace(/\s/g, '');
   const password = String((req.body && req.body.password) || '');
-  const bad = () => res.status(401).json({ ok: false, message: 'Wrong meter number or password.' });
+  const bad = () => res.status(401).json({ ok: false, message: 'Wrong username or password.' });
   if (!username || !password || password.length > 200) return bad();
 
   const u = (await pool.query(
-    `SELECT u.*, m.flat, m.tenant_name, m.phone FROM users u JOIN meters m ON m.meter_code=u.meter_code
-      WHERE u.username=$1`, [username])).rows[0];
+    `SELECT u.*,COALESCE(m.flat,l.unit_label) flat,COALESCE(m.tenant_name,l.tenant_name) tenant_name,m.phone,
+            COALESCE(m.rent_account_ref,l.rent_account_ref) rent_account_ref,m.water_account_ref
+       FROM users u LEFT JOIN meters m ON m.meter_code=u.meter_code
+       LEFT JOIN rent_leases l ON l.id=u.rent_lease_id WHERE u.username=$1`, [username])).rows[0];
   if (!u) {
     if (dummyHash) await verifyPassword(password, dummyHash);
     return bad();
@@ -664,6 +670,7 @@ app.get('/api/me', requireUser, (req, res) => res.json({ ok: true, me: meView(re
 
 // Total water actually issued to this signed-in meter during the current Nairobi calendar month.
 app.get('/api/me/usage', requireUser, wrap(async (req, res) => {
+  if (!req.user.meter_code) return res.json({ ok: true, meter: null, monthVolume: 0 });
   const { rows } = await pool.query(
     `SELECT COALESCE(sum(water_volume), 0)::numeric(12,2) AS volume
        FROM transactions
@@ -700,6 +707,7 @@ app.post('/api/auth/change-password', requireUser, wrap(async (req, res) => {
 
 // Start a payment for the signed-in customer's own meter
 app.post('/api/pay', requireUser, requireReady, payLimit, wrap(async (req, res) => {
+  if (!req.user.meter_code) return res.status(403).json({ok:false,message:'This rent-only login has no Hydro water meter. Use the rent payment section.'});
   const meter = req.user.meter_code;
   const phone = normPhone(req.body && req.body.phone);
   const amount = Number(req.body && req.body.amount);
