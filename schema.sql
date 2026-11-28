@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS public.rent_settings (
 );
 INSERT INTO public.rent_settings(singleton,allocation_rule) VALUES(true,'oldest_due_first')
  ON CONFLICT(singleton) DO NOTHING;
+ALTER TABLE public.rent_settings ADD COLUMN IF NOT EXISTS notice_period_months integer NOT NULL DEFAULT 1 CHECK (notice_period_months BETWEEN 1 AND 12);
 
 -- Tenant-reported missing payments are cases for staff investigation; they are never auto-posted.
 CREATE TABLE IF NOT EXISTS public.rent_payment_reports (
