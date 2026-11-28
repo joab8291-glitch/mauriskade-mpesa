@@ -1,0 +1,46 @@
+name: Mauriskade Supabase managed services recovery drill
+
+on:
+  push:
+    branches: [backup/supabase-managed-services]
+    paths:
+      - '.github/workflows/mauriskade-supabase-managed-recovery.yml'
+      - 'scripts/recovery-drill-supabase-managed.js'
+      - 'scripts/backup-supabase-managed.js'
+  schedule:
+    - cron: "0 2 2 1,4,7,10 *" # Quarterly: 05:00 Africa/Nairobi on the 2nd
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-supabase-managed-recovery
+  cancel-in-progress: false
+
+jobs:
+  verify-managed-archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install AWS CLI and PostgreSQL 17 client
+        run: |
+          aws --version
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+          sudo gpg --batch --yes --dearmor --output /etc/apt/keyrings/postgresql-pgdg.gpg /tmp/pgdg.asc
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql-pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo ${VERSION_CODENAME})-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Download, decrypt and verify Auth, Storage and configuration backup
+        env:
+          RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
+          B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+          B2_REGION: ${{ secrets.B2_REGION }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: node scripts/recovery-drill-supabase-managed.js
