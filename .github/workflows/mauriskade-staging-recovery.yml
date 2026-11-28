@@ -1,0 +1,57 @@
+name: Mauriskade staging disaster recovery restore
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mauriskade-staging-disaster-recovery
+  cancel-in-progress: false
+
+jobs:
+  restore-staging:
+    runs-on: ubuntu-latest
+    services:
+      postgres-check:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: local-restore-guard
+          POSTGRES_DB: local_check
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d local_check"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install AWS CLI and PostgreSQL 17 client
+        run: |
+          aws --version
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+          sudo gpg --batch --yes --dearmor --output /etc/apt/keyrings/postgresql-pgdg.gpg /tmp/pgdg.asc
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql-pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo ${VERSION_CODENAME})-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Test staging restore safety guards
+        run: node --test test/staging-restore.test.js
+      - name: Restore public database and Storage objects to the explicitly configured staging project
+        env:
+          STAGING_PROJECT_REF: ${{ secrets.STAGING_PROJECT_REF }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          RENT_BACKUP_ENCRYPTION_KEY: ${{ secrets.RENT_BACKUP_ENCRYPTION_KEY }}
+          B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+          B2_REGION: ${{ secrets.B2_REGION }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: node scripts/restore-staging.js
