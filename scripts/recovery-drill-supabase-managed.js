@@ -86,14 +86,13 @@ async function main() {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mauriskade-managed-recovery-'));
   try {
     const env = { ...process.env, AWS_ACCESS_KEY_ID: keyId, AWS_SECRET_ACCESS_KEY: key, AWS_DEFAULT_REGION: region, AWS_REGION: region, AWS_EC2_METADATA_DISABLED: 'true', AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '5' };
-    const args = ['--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region];
     const objects = await listManagedArchives(b2Scope);
     if (!objects.length) throw new Error('No dated Supabase-managed backup archive found in B2.');
     const latest = objects[objects.length - 1];
     const encryptedPath = path.join(work, 'managed.mrbk');
-    await run('aws', ['s3api', 'get-object', '--bucket', bucket, '--key', latest.fileName, '--endpoint-url', endpoint.replace(/\\/$/, ''), '--region', region, encryptedPath], { env });
+    await run('aws', ['s3api', 'get-object', '--bucket', bucket, '--key', latest.fileName, '--endpoint-url', endpoint.replace(/\/$/, ''), '--region', region, encryptedPath], { env });
     const encrypted = fs.readFileSync(encryptedPath);
-    if (latest.Size !== undefined && Number(latest.Size) !== encrypted.length) throw new Error('Downloaded managed archive size mismatch.');
+    if (latest.contentLength !== undefined && Number(latest.contentLength) !== encrypted.length) throw new Error('Downloaded managed archive size mismatch.');
     const plain = decryptArchive(encrypted, encryptionKey);
     const tarPath = path.join(work, 'managed.tar.gz');
     fs.writeFileSync(tarPath, plain, { mode: 0o600 });
