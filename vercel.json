@@ -20,5 +20,6 @@
       "source": "/copyright",
       "destination": "/copyright.html"
     }
-  ]
+  ],
+  "installCommand": "npm ci --no-audit --no-fund"
 }

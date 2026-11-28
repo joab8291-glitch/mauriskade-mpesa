@@ -135,6 +135,8 @@ test('final move-out proration releases over-allocation and approved rent credit
     const start = (await f.query("SELECT date_trunc('month',current_date)::date d", [])).rows[0].d;
     const endMonth = (await f.query("SELECT (date_trunc('month',current_date)+interval '1 month - 1 day')::date d", [])).rows[0].d;
     const l = await f.lease({ meter: 'PRORATE-1', ref: 'RENT-PROR1', start });
+    const tenantUser=(await f.query("INSERT INTO users(meter_code,rent_lease_id,username,password_hash) VALUES($1,$2,'former.tenant','scrypt$test$hash') RETURNING id",['PRORATE-1',l.id])).rows[0];
+    await f.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES('former-tenant-session',$1,now()+interval '1 day')",[tenantUser.id]);
     const charge = (await f.query("INSERT INTO rent_charges(lease_id,period_start,period_end,due_date,amount,charge_type) VALUES($1,$2,$3,$3,5000,'rent') RETURNING id", [l.id, start, endMonth])).rows[0];
     const pay = (await f.query("INSERT INTO rent_payments(lease_id,rent_account_ref,amount,method,status,transaction_time,external_reference,verified_by,verification_note) VALUES($1,$2,5000,'manual','confirmed',current_date,'PRORATE-PAY-1','finance','Full rent received') RETURNING id", [l.id, l.rent_account_ref])).rows[0];
     await f.query('INSERT INTO rent_allocations(payment_id,charge_id,amount) VALUES($1,$2,5000)', [pay.id, charge.id]);
@@ -146,9 +148,13 @@ test('final move-out proration releases over-allocation and approved rent credit
     const end = new Date(new Date(start instanceof Date ? start : start + 'T00:00:00Z').getTime() + 14 * 86400000).toISOString().slice(0, 10);
     let r = await f.call('POST', `/api/admin/rent/settlements/${l.id}`, { endDate: end }, 'manager', 'settlement-maker');
     assert.equal(r.statusCode, 201);
+    assert.equal((await f.query('SELECT disabled FROM users WHERE id=$1',[tenantUser.id])).rows[0].disabled,true,'tenant portal is disabled as soon as move-out settlement is prepared');
+    assert.equal((await f.query('SELECT count(*)::int n FROM sessions WHERE user_id=$1',[tenantUser.id])).rows[0].n,0,'all existing tenant sessions are revoked');
     const settlementApproval = r.body.approval.id, creditApproval = r.body.creditRefundApproval.id;
     r = await f.call('POST', `/api/admin/rent/approvals/${settlementApproval}/decide`, { decision: 'approved', note: 'Move-out proration and final ledger checked' }, 'finance', 'settlement-checker');
     assert.equal(r.statusCode, 200);
+    assert.equal((await f.query('SELECT disabled FROM users WHERE id=$1',[tenantUser.id])).rows[0].disabled,true,'approved former tenant remains disabled');
+    assert.equal((await f.query('SELECT status FROM rent_leases WHERE id=$1',[l.id])).rows[0].status,'ended');
     const pdf = await f.call('GET', `/api/admin/rent/settlements/${r.body.approval?.payload?.settlementId || (await f.query('SELECT id FROM rent_settlements WHERE lease_id=$1',[l.id])).rows[0].id}/statement.pdf`, {}, 'finance', 'settlement-checker');
     assert.equal(pdf.statusCode, 200);
     assert.equal(pdf.body.subarray(0,4).toString(), '%PDF');
@@ -313,9 +319,13 @@ test('rejecting a proposed move-out restores the original full-period charge and
   try {
     const start = (await f.query("SELECT (current_date-interval '15 days')::date d", [])).rows[0].d;
     const l = await f.lease({ meter: 'REJECT-SETTLE', ref: 'RENT-REJ01', start, rent: 8000 });
+    const tenantUser=(await f.query("INSERT INTO users(meter_code,rent_lease_id,username,password_hash) VALUES($1,$2,'reject.tenant','scrypt$test$hash') RETURNING id",['REJECT-SETTLE',l.id])).rows[0];
+    await f.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES('rejected-tenant-session',$1,now()+interval '1 day')",[tenantUser.id]);
     const end = today();
     let r = await f.call('POST', `/api/admin/rent/settlements/${l.id}`, { endDate: end }, 'manager', 'settlement-maker');
     assert.equal(r.statusCode, 201);
+    assert.equal((await f.query('SELECT disabled FROM users WHERE id=$1',[tenantUser.id])).rows[0].disabled,true);
+    assert.equal((await f.query('SELECT count(*)::int n FROM sessions WHERE user_id=$1',[tenantUser.id])).rows[0].n,0);
     const partial = (await f.query('SELECT id,amount,period_end FROM rent_charges WHERE lease_id=$1 AND voided_at IS NULL ORDER BY period_start DESC LIMIT 1', [l.id])).rows[0];
     assert.ok(Number(partial.amount) < 8000);
     r = await f.call('POST', `/api/admin/rent/approvals/${r.body.approval.id}/decide`, { decision: 'rejected', note: 'Move-out date was entered incorrectly; tenancy continues' }, 'finance', 'settlement-checker');
@@ -327,6 +337,8 @@ test('rejecting a proposed move-out restores the original full-period charge and
     const lease = (await f.query('SELECT end_date,status FROM rent_leases WHERE id=$1', [l.id])).rows[0];
     assert.equal(lease.end_date, null);
     assert.equal(lease.status, 'active');
+    assert.equal((await f.query('SELECT disabled FROM users WHERE id=$1',[tenantUser.id])).rows[0].disabled,false,'rejected move-out restores the former active login account');
+    assert.equal((await f.query('SELECT count(*)::int n FROM sessions WHERE user_id=$1',[tenantUser.id])).rows[0].n,0,'revoked sessions are not resurrected; tenant must sign in again');
   } finally { await f.close(); }
 });
 
