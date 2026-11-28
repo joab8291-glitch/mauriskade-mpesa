@@ -34,7 +34,7 @@ async function inspectB2Scope(keyId, applicationKey, expectedBucket) {
   const missing = ['listFiles', 'readFiles'].filter(capability => !capabilities.includes(capability));
   if (missing.length) throw new Error('Backblaze application key is missing recovery capabilities: ' + missing.join(', '));
   if (!bucket) {
-    const listResponse = await fetch(storage.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_buckets', {
+    const listResponse = await fetch(storage.apiUrl.replace(/\/$/, '') + '/b2api/v4/b2_list_buckets', {
       method: 'POST',
       headers: { authorization: auth.authorizationToken, 'content-type': 'application/json' },
       body: JSON.stringify({ accountId: auth.accountId }),
@@ -59,7 +59,7 @@ async function listManagedArchives(scope) {
   for (;;) {
     const body = { bucketId: scope.bucketId, prefix, maxFileCount: 1000 };
     if (startFileName) body.startFileName = startFileName;
-    const response = await fetch(scope.apiUrl.replace(/\\/$/, '') + '/b2api/v4/b2_list_file_names', {
+    const response = await fetch(scope.apiUrl.replace(/\/$/, '') + '/b2api/v4/b2_list_file_names', {
       method: 'POST',
       headers: { authorization: scope.authorizationToken, 'content-type': 'application/json' },
       body: JSON.stringify(body),
