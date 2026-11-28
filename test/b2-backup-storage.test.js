@@ -25,6 +25,7 @@ test('B2 configuration accepts a valid regional endpoint and private bucket name
 test('B2 configuration rejects AWS endpoints and missing credentials', () => {
   assert.throws(() => b2Config({ ...config, B2_S3_ENDPOINT: 'https://s3.amazonaws.com' }), /B2_S3_ENDPOINT/);
   assert.throws(() => b2Config({ ...config, B2_APPLICATION_KEY: '' }), /B2_APPLICATION_KEY/);
+  assert.throws(() => b2Config({ ...config, B2_REGION: 'us-west-001' }), /must match the region/);
 });
 test('B2 bucket names must be DNS-compatible', () => {
   assert.throws(() => b2Config({ ...config, B2_BUCKET: 'Invalid Bucket' }), /valid bucket name/);
