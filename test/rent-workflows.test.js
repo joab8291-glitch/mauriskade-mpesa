@@ -464,7 +464,7 @@ test('tenant move-out notice enforces one calendar month and records the intende
     assert.match(r.body.message, /one calendar month/i);
     r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate }, 'manager', 'notice-manager');
     assert.equal(r.statusCode, 200);
-    assert.equal(String(r.body.lease.notice_date).slice(0,10), noticeDate);
-    assert.equal(String(r.body.lease.notice_end_date).slice(0,10), earliest);
+    assert.equal(new Date(r.body.lease.notice_date).toISOString().slice(0,10), noticeDate);
+    assert.equal(new Date(r.body.lease.notice_end_date).toISOString().slice(0,10), earliest);
   } finally { await f.close(); }
 });
