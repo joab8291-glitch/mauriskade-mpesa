@@ -5,6 +5,7 @@ const { b2Config, sha256File } = require('../scripts/b2-backup-storage');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const config = {
   B2_S3_ENDPOINT: 'https://s3.us-west-004.backblazeb2.com',
@@ -33,6 +34,6 @@ test('SHA-256 helper hashes the exact encrypted object bytes', () => {
   try {
     const file = path.join(dir, 'backup.mrbk');
     fs.writeFileSync(file, 'encrypted-fixture');
-    assert.equal(sha256File(file), 'c671e7a6b1b08d8d7e9e8f0a5d16c7ec4f6c6e3b0a4b7e2c7d4a8b9b9c7c9f15');
+    assert.equal(sha256File(file), crypto.createHash('sha256').update('encrypted-fixture').digest('hex'));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
