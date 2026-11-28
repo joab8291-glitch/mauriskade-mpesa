@@ -154,24 +154,19 @@ async function main(env = process.env) {
     if (!decrypted.equals(fs.readFileSync(tarPath))) throw new Error('Managed backup AES-256-GCM round-trip verification failed.');
     const digest = crypto.createHash('sha256').update(encrypted).digest('hex');
     const objectKey = 'supabase-managed/' + name;
-    const awsConfigPath = path.join(work, 'aws-config');
-    fs.writeFileSync(awsConfigPath, '[default]\nregion = us-east-1\ns3 =\n  signature_version = s3v4\n', { mode: 0o600 });
     const awsEnv = {
       ...process.env,
-      AWS_CONFIG_FILE: awsConfigPath,
       AWS_ACCESS_KEY_ID: b2KeyId,
       AWS_SECRET_ACCESS_KEY: b2Key,
-      AWS_DEFAULT_REGION: 'us-east-1',
-      AWS_REGION: 'us-east-1',
+      AWS_DEFAULT_REGION: b2Region,
+      AWS_REGION: b2Region,
       AWS_EC2_METADATA_DISABLED: 'true',
       AWS_RETRY_MODE: 'standard',
-      AWS_MAX_ATTEMPTS: '5',
-      AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
-      AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required'
+      AWS_MAX_ATTEMPTS: '5'
     };
-    const endpointArgs = ['--endpoint-url', b2Endpoint.replace(/\/$/, '')];
+    const endpointArgs = ['--endpoint-url', b2Endpoint.replace(/\/$/, ''), '--region', b2Region];
     console.log(JSON.stringify({ status: 'managed_archive_ready_for_b2', bytes: encrypted.length, storageBuckets: storageSummary.length, storageObjects: storageSummary.reduce((sum, item) => sum + item.objects, 0) }));
-    await run('aws', ['s3', 'cp', encryptedPath, 's3://' + b2Bucket + '/' + objectKey, '--metadata', 'sha256=' + digest, ...endpointArgs, '--no-progress'], { env: awsEnv });
+    await run('aws', ['s3api', 'put-object', '--bucket', b2Bucket, '--key', objectKey, '--body', encryptedPath, '--metadata', 'sha256=' + digest, ...endpointArgs], { env: awsEnv });
     const head = await run('aws', ['s3api', 'head-object', '--bucket', b2Bucket, '--key', objectKey, ...endpointArgs, '--output', 'json'], { env: awsEnv });
     const meta = JSON.parse(head.stdout);
     if (Number(meta.ContentLength) !== encrypted.length || !meta.Metadata || meta.Metadata.sha256 !== digest) throw new Error('Managed backup B2 HEAD verification failed.');
