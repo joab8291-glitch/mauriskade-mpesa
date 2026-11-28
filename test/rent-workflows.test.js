@@ -8,6 +8,7 @@ const { createReceipt, generateCharges } = require('../rent');
 
 const schema = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8');
 const today = () => new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+const addCalendarMonth = value => { const d=new Date(value+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d.toISOString().slice(0,10); };
 
 async function fixture(env = {}) {
   const db = new PGlite();
@@ -448,5 +449,22 @@ test('standalone property units support meterless rent tenancies and tenant logi
     assert.ok((await f.query('SELECT count(*)::int n FROM rent_charges WHERE lease_id=$1', [lease.id])).rows[0].n > 0);
     await assert.rejects(() => f.query("INSERT INTO users(meter_code,username,password_hash) VALUES(NULL,'INVALID-NO-LEASE','scrypt$test$hash')"), /users_customer_identity_check/);
     await assert.rejects(() => f.query("INSERT INTO rent_leases(meter_code,tenant_name,unit_label,rent_account_ref,rent_amount,billing_frequency,start_date,due_day,property_unit_id) VALUES(NULL,'Second Tenant','Shop 01','RENT-SHOP2',10000,'monthly',$1::date,1,$2)", [today(), unit.id]), /rent_leases_active_property_unit_uidx/);
+  } finally { await f.close(); }
+});
+
+test('tenant move-out notice enforces one calendar month and records the intended end date', async () => {
+  const f = await fixture();
+  try {
+    const l = await f.lease({ meter: 'NOTICE-PERIOD-1', ref: 'RENT-NOTICE1' });
+    const noticeDate = today();
+    const earliest = addCalendarMonth(noticeDate);
+    const tooEarly = new Date(new Date(earliest+'T00:00:00Z').getTime()-86400000).toISOString().slice(0,10);
+    let r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate, noticeEndDate: tooEarly }, 'manager', 'notice-manager');
+    assert.equal(r.statusCode, 400);
+    assert.match(r.body.message, /one calendar month/i);
+    r = await f.call('POST', `/api/admin/rent/leases/${l.id}/notice-date`, { noticeDate }, 'manager', 'notice-manager');
+    assert.equal(r.statusCode, 200);
+    assert.equal(new Date(r.body.lease.notice_date).toISOString().slice(0,10), noticeDate);
+    assert.equal(new Date(r.body.lease.notice_end_date).toISOString().slice(0,10), earliest);
   } finally { await f.close(); }
 });

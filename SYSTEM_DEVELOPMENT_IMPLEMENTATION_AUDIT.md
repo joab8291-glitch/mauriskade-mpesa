@@ -75,7 +75,7 @@ The remaining partial items are explicit boundaries, not hidden or simulated fun
 
 - **Notifications:** configure `RENT_NOTIFICATION_WEBHOOK_URL`, `RENT_NOTIFICATION_WEBHOOK_SECRET`, `RENT_NOTIFICATION_CHANNELS` and provider callback handling. Confirm approved SMS/WhatsApp/email wording, sender IDs, opt-out policy and provider charges. Until configured, reminders/notices are not sent and are logged as blocked/queued/approved rather than falsely marked delivered.
 - **Backups:** configure `RENT_BACKUP_WEBHOOK_URL`, `RENT_BACKUP_WEBHOOK_SECRET`, a separate 32+ character `RENT_BACKUP_ENCRYPTION_KEY`, destination retention and access policy. Then perform and sign off a real restore drill to a separate database.
-- **Business policy:** approve notice periods, renewal terms, deposit holding/deduction/refund rules, opening balance migration source, and who may approve write-offs/reversals.
+- **Business policy:** one-calendar-month tenant notice is configured and enforced; renewal terms, deposit holding/deduction/refund rules, opening balance migration source, and who may approve write-offs/reversals still require client approval.
 - **Portfolio model:** confirm whether non-Hydro-metered rental units must be supported independently of the water meter registry.
 - **Former tenant portal:** decide whether former occupants need separate archived accounts to access historical statements after a new occupant is assigned.
 - **Internet/service charges:** define whether these are rent ledger charge types or a separate ledger and how any cross-ledger transfer is approved.

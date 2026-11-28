@@ -210,11 +210,13 @@ CREATE TABLE IF NOT EXISTS public.rent_settings (
  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
  allocation_rule text NOT NULL DEFAULT 'oldest_due_first'
    CHECK (allocation_rule IN ('oldest_due_first','oldest_period_first','newest_due_first')),
+ notice_period_months integer NOT NULL DEFAULT 1 CHECK (notice_period_months BETWEEN 1 AND 12),
  updated_by text,
  updated_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO public.rent_settings(singleton,allocation_rule) VALUES(true,'oldest_due_first')
  ON CONFLICT(singleton) DO NOTHING;
+ALTER TABLE public.rent_settings ADD COLUMN IF NOT EXISTS notice_period_months integer NOT NULL DEFAULT 1 CHECK (notice_period_months BETWEEN 1 AND 12);
 
 -- Tenant-reported missing payments are cases for staff investigation; they are never auto-posted.
 CREATE TABLE IF NOT EXISTS public.rent_payment_reports (
@@ -286,6 +288,7 @@ DO $rent_identity$ BEGIN
  END IF;
 END $rent_identity$;
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS notice_date date;
+ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS notice_end_date date;
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS tenant_email text;
 ALTER TABLE public.meters ADD COLUMN IF NOT EXISTS tenant_email text;
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS security_deposit integer NOT NULL DEFAULT 0 CHECK(security_deposit>=0);

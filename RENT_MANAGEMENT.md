@@ -69,6 +69,10 @@ The administrator's **Deposits, approvals & operations** page provides:
 
 Security deposits are recorded in `rent_deposit_transactions` and never included in rent collections. Deposit refunds are reserved after independent approval and are only marked paid when the actual bank/cash reference and verification note are entered. Rent credit is tracked separately; approved credit refunds and transfers reduce the source tenancy balance. A transfer creates a corresponding credit on the destination tenancy only after independent approval.
 
+### One-month tenant notice, move-out and renewal
+
+The tenancy policy requires the tenant to give at least **one calendar month of notice** before the intended move-out date. Staff record the date notice was received and the intended move-out date. The backend enforces the minimum date (for example, notice received on 28 November means the earliest move-out date is 28 December); a shorter period is rejected. If no move-out date is entered, the system calculates the one-month minimum. The notice period is stored in `rent_settings.notice_period_months` and defaults to 1.
+
 ### Move-out and renewal
 
 Use **Prepare final settlement** for an actual move-out. It calculates the final rental period, releases any future allocated rent into tenant credit, calculates deposit deductions/refunds and any rent-credit refund, and requests independent approval. An approved settlement stops billing and produces a downloadable final statement PDF. A rejected request restores the previous tenancy dates and full-period rent charge. Use **Renew tenancy or transfer to another unit** for a new lease record; former lease, receipts, agreements and ledger history remain preserved. For a cross-unit transfer, the destination meter’s previous login is disabled immediately and fresh credentials must be issued for the incoming tenancy. The outgoing tenant retains access only until the effective move-out date; the scheduled worker then revokes that session unless the same meter has a new active tenancy. For a same-unit renewal, the existing tenant login remains active and switches to the new lease on its start date.
