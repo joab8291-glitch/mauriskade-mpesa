@@ -39,6 +39,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: node scripts/application-smoke-check.js
       - name: Audit private B2 bucket and lifecycle retention
+        if: always()
         env:
           B2_BUCKET: ${{ secrets.B2_BUCKET }}
           B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
