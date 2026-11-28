@@ -846,13 +846,13 @@ button,.btn{border-radius:10px}
   });
 
   function setWho() {
-    $('#whoMeter').textContent = me.waterAccountRef || me.meterCode;
+    $('#whoMeter').textContent = me.waterAccountRef || me.meterCode || me.rentAccountRef || 'Rent account';
     const bits = [];
     if (me.flat) bits.push('Flat ' + me.flat);
     if (me.tenantName) bits.push(me.tenantName);
     if (me.rentAccountRef) bits.push('Rent ' + me.rentAccountRef);
     if (me.waterAccountRef) bits.push('Water ' + me.waterAccountRef);
-    $('#whoLabel').textContent = bits.length ? bits.join(' · ') : 'Meter ' + me.meterCode;
+    $('#whoLabel').textContent = bits.length ? bits.join(' · ') : (me.rentOnly ? 'Rent account' : 'Meter ' + me.meterCode);
     $('#userName').textContent = me.tenantName || (me.flat ? 'Flat ' + me.flat : 'My account');
   }
 
@@ -932,12 +932,11 @@ button,.btn{border-radius:10px}
     setWho();
     if (me.phone && !$('#phone').value) $('#phone').value = String(me.phone).replace(/^254/, '');
     msg('#payMsg', '');
-    scheduleQuote();
+    if(!me.rentOnly)scheduleQuote();
     show('pay');
     $('#portalTenantName').textContent=me.name||me.tenant_name||me.username||'Tenant';
-    setPortalTab('overview');
-    loadRecent();
-    loadMonthlyUsage();
+    if(me.rentOnly){document.querySelectorAll('[data-portal-tab="water"],[data-portal-tab="overview"]').forEach(b=>b.hidden=true);$('#view-pay').hidden=true;$('#view-help').hidden=true;$('#recent').hidden=true;setPortalTab('rent');}
+    else{document.querySelectorAll('[data-portal-tab="water"],[data-portal-tab="overview"]').forEach(b=>b.hidden=false);setPortalTab('overview');loadRecent();loadMonthlyUsage();}
     loadRentAccount();
   }
 

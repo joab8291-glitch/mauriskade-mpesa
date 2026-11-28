@@ -273,6 +273,18 @@ CREATE TABLE IF NOT EXISTS public.property_units (
  UNIQUE(property_id,unit_label)
 );
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS property_unit_id uuid REFERENCES public.property_units(id);
+-- Standalone rent units do not need a Hydro water meter.
+ALTER TABLE public.rent_leases ALTER COLUMN meter_code DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS rent_leases_active_property_unit_uidx ON public.rent_leases(property_unit_id) WHERE status='active' AND property_unit_id IS NOT NULL;
+-- A customer login may belong to a legacy meter or one rent-only tenancy.
+ALTER TABLE public.users ALTER COLUMN meter_code DROP NOT NULL;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS rent_lease_id uuid REFERENCES public.rent_leases(id) ON DELETE CASCADE;
+CREATE UNIQUE INDEX IF NOT EXISTS users_rent_lease_uidx ON public.users(rent_lease_id) WHERE rent_lease_id IS NOT NULL;
+DO $rent_identity$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_customer_identity_check' AND conrelid='public.users'::regclass) THEN
+  ALTER TABLE public.users ADD CONSTRAINT users_customer_identity_check CHECK (meter_code IS NOT NULL OR rent_lease_id IS NOT NULL);
+ END IF;
+END $rent_identity$;
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS notice_date date;
 ALTER TABLE public.rent_leases ADD COLUMN IF NOT EXISTS tenant_email text;
 ALTER TABLE public.meters ADD COLUMN IF NOT EXISTS tenant_email text;

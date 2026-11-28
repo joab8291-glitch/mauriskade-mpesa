@@ -15,7 +15,7 @@
 
 | # | Client requirement | Status | Findings / remaining boundary |
 |---|---|---|---|
-| 1 | Register properties and units; track vacant, occupied and unavailable units. | ◐ PARTIALLY IMPLEMENTED | Property and unit registry, meter mapping, occupancy and unavailable status are implemented. Rent-account creation still requires a Hydro meter-backed tenant login; a fully independent non-metered unit/tenant identity is not yet supported. |
+| 1 | Register properties and units; track vacant, occupied and unavailable units. | ✓ IMPLEMENTED | Property units can be registered with or without a Hydro meter. Rent tenancies can be assigned directly to an unmetered unit, receive a separate rent-only customer username/password, and use the rent portal and M-Pesa rent ledger without a water account. Meter-linked tenancies and Hydro logins remain supported. Active tenancy uniqueness and unit occupancy are enforced by database constraints and server checks. |
 | 2 | Assign tenants to units and preserve occupancy/transfer history. | ✓ IMPLEMENTED | Each tenancy is a separate lease. Transfer/renewal closes the former tenancy on the prior day, creates the new tenancy, preserves old ledger/agreement history, disables the destination meter login immediately for cross-unit transfers, retains the outgoing tenant login only until the effective end date, and keeps the login through a same-unit renewal. Deposits and rent credit require separate approval before transfer. |
 | 3 | Record rent, deposit, billing cycle, due date, start/end and notice dates; store signed agreements and renewals. | ◐ PARTIALLY IMPLEMENTED | Rent, expected deposit, billing frequency, due day, dates, tenant email, agreement versions and issue workflow exist. Same-unit renewal is supported through the renewal/transfer workflow. The client must still approve formal notice periods, renewal terms and deposit custody policy. |
 | 4 | Support scheduled rent changes, unit transfers and move-out. | ✓ IMPLEMENTED | Future rent changes preserve historical charges and only replace unallocated future periods. Transfer/renewal and final move-out settlement are separate workflows with history and approval controls. |
@@ -40,8 +40,8 @@
 
 ### Status totals
 
-- **✓ IMPLEMENTED:** 14 requirements
-- **◐ PARTIALLY IMPLEMENTED:** 8 requirements
+- **✓ IMPLEMENTED:** 15 requirements
+- **◐ PARTIALLY IMPLEMENTED:** 7 requirements
 - **✗ NOT IMPLEMENTED:** 0 requirements
 
 The remaining partial items are explicit boundaries, not hidden or simulated functionality. Provider-dependent functions remain blocked until the client supplies/configures the relevant services and credentials.
