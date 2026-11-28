@@ -7,10 +7,11 @@ function decryptBackup(payload,secret){if(payload.length<33||payload.subarray(0,
 const sha256 = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const BACKUP_BUCKET_DEFAULT='mauriskade-db-backups';
 function backupStorageConfig(env={}) {
- const url=String(env.SUPABASE_URL||'').replace(/\\/$/,'');
+ const rawUrl=String(env.SUPABASE_URL||'');
+ const url=rawUrl.endsWith('/')?rawUrl.slice(0,-1):rawUrl;
  const key=String(env.SUPABASE_SERVICE_ROLE_KEY||'');
  const bucket=String(env.RENT_BACKUP_STORAGE_BUCKET||BACKUP_BUCKET_DEFAULT).trim();
- if(!/^https:\\/\\//i.test(url)||key.length<20||!/^[-a-z0-9_]{3,63}$/.test(bucket)) throw new Error('Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a valid RENT_BACKUP_STORAGE_BUCKET.');
+ if(!(url.startsWith('https://')||url.startsWith('http://'))||key.length<20||!/^[-a-z0-9_]{3,63}$/.test(bucket)) throw new Error('Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and a valid RENT_BACKUP_STORAGE_BUCKET.');
  return {url,key,bucket};
 }
 async function backupStorageFetch(env,path,options={}) {
@@ -21,22 +22,24 @@ async function backupStorageFetch(env,path,options={}) {
 }
 async function uploadBackupToStorage(env,fileName,payload) {
  const cfg=backupStorageConfig(env);
- const response=await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket)+'/'+encodeURIComponent(fileName),{method:'POST',headers:{'content-type':'application/octet-stream','cache-control':'no-store','x-upsert':'true'},body:payload});
+ await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket)+'/'+encodeURIComponent(fileName),{method:'POST',headers:{'content-type':'application/octet-stream','cache-control':'no-store','x-upsert':'true'},body:payload});
  return {bucket:cfg.bucket,path:fileName,bytes:payload.length};
 }
 async function pruneBackupStorage(env) {
  const cfg=backupStorageConfig(env);
- const retention=Math.max(7,Math.min(3650,Number.parseInt(env.RENT_BACKUP_RETENTION_DAYS||'90',10)||90));
+ const parsed=Number.parseInt(env.RENT_BACKUP_RETENTION_DAYS||'90',10);
+ const retention=Math.max(7,Math.min(3650,Number.isFinite(parsed)?parsed:90));
  const cutoff=new Date(Date.now()+3*3600000-retention*86400000).toISOString().slice(0,10);
+ const prefix='mauriskade-system-backup-';
  let offset=0,listed=[],page=[];
  do {
   const response=await backupStorageFetch(env,'/object/list/'+encodeURIComponent(cfg.bucket),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prefix:'',limit:1000,offset,sortBy:{column:'name',order:'asc'}})});
   page=await response.json();
   if(!Array.isArray(page))throw new Error('Supabase Storage returned an invalid object listing.');
-  listed.push(...page.filter(x=>x&&typeof x.name==='string'&&/^mauriskade-system-backup-\\d{4}-\\d{2}-\\d{2}\\.mrbk$/.test(x.name)));
+  listed.push(...page.filter(x=>x&&typeof x.name==='string'&&x.name.startsWith(prefix)&&x.name.endsWith('.mrbk')&&/^\\d{4}-\\d{2}-\\d{2}$/.test(x.name.slice(prefix.length,-5))));
   offset+=page.length;
  } while(page.length===1000);
- const stale=listed.filter(x=>x.name.slice('mauriskade-system-backup-'.length,10)<cutoff).map(x=>x.name);
+ const stale=listed.filter(x=>x.name.slice(prefix.length,-5)<cutoff).map(x=>x.name);
  for(let i=0;i<stale.length;i+=1000){
   const response=await backupStorageFetch(env,'/object/'+encodeURIComponent(cfg.bucket),{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({prefixes:stale.slice(i,i+1000)})});
   await response.text();
