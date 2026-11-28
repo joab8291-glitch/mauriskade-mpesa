@@ -153,7 +153,7 @@ async function main(env = process.env) {
     const decrypted = decryptArchive(fs.readFileSync(encryptedPath), encryptionKey);
     if (!decrypted.equals(fs.readFileSync(tarPath))) throw new Error('Managed backup AES-256-GCM round-trip verification failed.');
     const digest = crypto.createHash('sha256').update(encrypted).digest('hex');
-    const objectKey = 'supabase-managed/' + name;
+    const objectKey = 'database/supabase-managed/' + name;
     const awsEnv = {
       ...process.env,
       AWS_ACCESS_KEY_ID: b2KeyId,
