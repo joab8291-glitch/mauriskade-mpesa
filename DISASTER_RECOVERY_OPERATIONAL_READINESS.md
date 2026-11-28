@@ -64,6 +64,8 @@ The current B2 key has read access to bucket lifecycle metadata and the backup w
 
 Create a separate Supabase project in the same organization and a compatible region/Postgres major version. Do not use the production project reference or production database as a restore target.
 
+The repository includes the manual workflow `.github/workflows/mauriskade-staging-recovery.yml`. After provisioning the staging project, add these repository Actions secrets: `STAGING_PROJECT_REF`, `STAGING_DATABASE_URL`, `STAGING_SUPABASE_URL`, and `STAGING_SUPABASE_SERVICE_ROLE_KEY`. The workflow is manual-only, rejects the production project reference/host, refuses a non-empty staging public schema or Storage bucket list, restores the public database, recreates Storage buckets and upload/download-verifies every archived object. It validates the Auth archive but deliberately does not import the managed Auth schema or reapply project configuration; those remain platform-aware operator steps.
+
 Controlled sequence:
 
 1. Provision a separate staging Supabase project and record its project reference, direct database connection string, API URL and server-side service-role secret in GitHub Actions secrets. Never place secrets in source control or chat.
